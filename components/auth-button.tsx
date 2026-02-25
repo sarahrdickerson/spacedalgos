@@ -2,6 +2,16 @@ import Link from "next/link";
 import { Button } from "./ui/button";
 import { createClient } from "@/lib/supabase/server";
 import { LogoutButton } from "./logout-button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { DropdownMenuLabel } from "@radix-ui/react-dropdown-menu";
 
 export async function AuthButton() {
   const supabase = await createClient();
@@ -12,10 +22,43 @@ export async function AuthButton() {
   const user = data?.claims;
 
   return user ? (
-    <div className="flex items-center gap-4">
-      Hey, {user.email}!
-      <LogoutButton />
-    </div>
+    // <div className="flex items-center gap-4">
+    //   Hey, !
+    //   <LogoutButton />
+    // </div>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" className="rounded-full">
+          <Avatar>
+            <AvatarImage
+              src={user.picture ?? undefined}
+              alt={user.email ?? undefined}
+            />
+            <AvatarFallback>
+              {user.email?.[0].toUpperCase() ?? "?"}
+            </AvatarFallback>
+          </Avatar>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-full sm:w-auto">
+        <DropdownMenuGroup>
+          <DropdownMenuLabel className="text-sm px-2">
+            {user.email}
+          </DropdownMenuLabel>
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        {/* <DropdownMenuGroup>
+          <DropdownMenuItem>Profile</DropdownMenuItem>
+          <DropdownMenuItem>Settings</DropdownMenuItem>
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator /> */}
+        <DropdownMenuGroup>
+          <DropdownMenuItem variant="destructive">
+            <LogoutButton />
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   ) : (
     <div className="flex gap-2">
       <Button asChild size="sm" variant={"outline"}>

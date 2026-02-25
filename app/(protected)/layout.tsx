@@ -4,6 +4,7 @@ import { AuthButton } from "@/components/auth-button";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import Link from "next/link";
 import { Suspense } from "react";
+import StartPracticeButton from "@/components/start-practice-button";
 
 export default function ProtectedLayout({
   children,
@@ -27,6 +28,9 @@ export default function ProtectedLayout({
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <Suspense>
+                <StartPracticeButton />
+              </Suspense>
               <ThemeSwitcher />
               <Suspense>
                 <AuthButton />

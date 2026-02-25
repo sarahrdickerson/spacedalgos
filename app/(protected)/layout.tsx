@@ -23,6 +23,9 @@ export default function ProtectedLayout({
               <Link href={"/dash"} className="text-sm">
                 study plans
               </Link>
+              <Link href={"/problemsets"} className="text-sm">
+                problem sets
+              </Link>
               <div className="flex items-center gap-2">
                 <DeployButton />
               </div>
@@ -38,7 +41,7 @@ export default function ProtectedLayout({
             </div>
           </div>
         </nav>
-        <div className="flex-1 flex flex-col gap-20 max-w-6xl p-5">
+        <div className="flex-1 flex flex-col gap-20 w-full max-w-6xl p-5">
           {children}
         </div>
 

@@ -7,7 +7,8 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Badge } from "@/components/ui/badge";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, ExternalLink } from "lucide-react";
+import LogSolveButton from "./_components/log-solve-button";
 
 const ProblemSetsPage = () => {
   const [problemSets, setProblemSets] = React.useState<typeof blind75 | null>(
@@ -75,22 +76,29 @@ const ProblemSetsPage = () => {
                             href={item.problem.leetcode_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="hover:underline font-medium"
+                            className="hover:underline font-medium flex flex-row gap-2 items-center"
                           >
-                            {item.problem.title}
+                            {item.problem.title}{" "}
+                            <ExternalLink className="text-muted-foreground size-4" />
                           </a>
                         </div>
-                        <Badge
-                          variant={
-                            item.problem.difficulty === "Easy"
-                              ? "default"
-                              : item.problem.difficulty === "Medium"
-                              ? "secondary"
-                              : "destructive"
-                          }
-                        >
-                          {item.problem.difficulty}
-                        </Badge>
+                        <div className="flex flex-row gap-2 items-center">
+                          <LogSolveButton
+                            problemKey={item.problem.key}
+                            problemTitle={item.problem.title}
+                          />
+                          <Badge
+                            className={
+                              item.problem.difficulty === "Easy"
+                                ? "bg-green-500/10 text-green-700 dark:text-green-400 hover:bg-green-500/20"
+                                : item.problem.difficulty === "Medium"
+                                ? "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 hover:bg-yellow-500/20"
+                                : "bg-red-500/10 text-red-700 dark:text-red-400 hover:bg-red-500/20"
+                            }
+                          >
+                            {item.problem.difficulty}
+                          </Badge>
+                        </div>
                       </div>
                     ))}
                   </div>

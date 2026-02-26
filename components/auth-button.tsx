@@ -27,7 +27,7 @@ export async function AuthButton() {
         <Button variant="ghost" size="icon" className="rounded-full">
           <Avatar>
             <AvatarImage
-              src={user.picture ?? undefined}
+              src={user?.user_metadata?.avatar_url ?? undefined}
               alt={user.email ?? undefined}
             />
             <AvatarFallback>

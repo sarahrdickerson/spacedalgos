@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Inter } from "next/font/google";
 import { ThemeProvider } from "next-themes";
+import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
 const inter = Inter({subsets:['latin'],variable:'--font-sans'});
@@ -36,6 +37,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           {children}
+          <Toaster position="bottom-center" />
         </ThemeProvider>
       </body>
     </html>

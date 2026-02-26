@@ -100,7 +100,7 @@ const ProblemSetsPage = () => {
                     {category}
                     <Badge variant="secondary">{problems.length}</Badge>
                   </div>
-                  <ChevronDown className="h-5 w-5 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                  <ChevronDown className="h-5 w-5 transition-transform duration-200 data-[state=open]:rotate-180" />
                 </CollapsibleTrigger>
                 <CollapsibleContent className="w-full">
                   <div className="flex flex-col gap-2 w-full p-4 pt-0">

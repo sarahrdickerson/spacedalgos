@@ -88,6 +88,17 @@ const ProblemSetsPage = () => {
 
   return (
     <div className="flex-1 w-full flex flex-col gap-12">
+      {error && (
+        <div className="flex flex-col items-center justify-center gap-4 py-8">
+          <p className="text-destructive text-lg font-medium">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="text-sm text-muted-foreground hover:text-foreground underline"
+          >
+            Error loading problem sets. Try reloading the page.
+          </button>
+        </div>
+      )}
       {activeSet && (
         <div className="flex flex-col w-full gap-6">
           <h1 className="text-2xl font-bold">

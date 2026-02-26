@@ -22,10 +22,6 @@ export async function AuthButton() {
   const user = data?.claims;
 
   return user ? (
-    // <div className="flex items-center gap-4">
-    //   Hey, !
-    //   <LogoutButton />
-    // </div>
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className="rounded-full">

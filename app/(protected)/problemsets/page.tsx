@@ -8,11 +8,13 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { ChevronDown, ExternalLink } from "lucide-react";
 import LogSolveButton from "./_components/log-solve-button";
+import { Spinner } from "@/components/ui/spinner";
 
 const ProblemSetsPage = () => {
-  //   const [problemSets, setProblemSets] = React.useState<any>(null); // TODO: uncommenet in future to support multiple problem sets/lists and selection of which to view. For now we just fetch and show the first one (blind75) for simplicity
+  //   const [problemSets, setProblemSets] = React.useState<any>(null); // TODO: uncomment in future to support multiple problem sets/lists and selection of which to view. For now we just fetch and show the first one (blind75) for simplicity
   const [activeSet, setActiveSet] = React.useState<any>(null);
   const [error, setError] = React.useState<string | null>(null);
+  const [loading, setLoading] = React.useState<boolean>(true);
 
   React.useEffect(() => {
     const loadProblemSets = async () => {
@@ -29,6 +31,7 @@ const ProblemSetsPage = () => {
           //   setProblemSets([]);
           setActiveSet(null);
           setError("No problem sets available.");
+          setLoading(false);
           return;
         }
 
@@ -51,11 +54,13 @@ const ProblemSetsPage = () => {
 
         setActiveSet({ list, items });
         setError(null);
+        setLoading(false);
       } catch (e) {
         console.error(e);
         setError("Unable to load problem sets. Please try again later.");
         // setProblemSets([]);
         setActiveSet(null);
+        setLoading(false);
       }
     };
 
@@ -88,6 +93,14 @@ const ProblemSetsPage = () => {
 
   return (
     <div className="flex-1 w-full flex flex-col gap-12">
+      {loading && (
+        <div className="flex items-center justify-center py-12">
+          <div className="flex flex-col items-center gap-3">
+            <Spinner className="w-8 h-8 text-primary" />
+            <p className="text-muted-foreground">Loading problem sets...</p>
+          </div>
+        </div>
+      )}
       {error && (
         <div className="flex flex-col items-center justify-center gap-4 py-8">
           <p className="text-destructive text-lg font-medium">{error}</p>
@@ -95,11 +108,11 @@ const ProblemSetsPage = () => {
             onClick={() => window.location.reload()}
             className="text-sm text-muted-foreground hover:text-foreground underline"
           >
-            Error loading problem sets. Try reloading the page.
+            Reload page.
           </button>
         </div>
       )}
-      {activeSet && (
+      {!loading && activeSet && (
         <div className="flex flex-col w-full gap-6">
           <h1 className="text-2xl font-bold">
             {activeSet.list.name ?? activeSet.list.key}

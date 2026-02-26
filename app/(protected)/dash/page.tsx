@@ -6,6 +6,7 @@ import { FetchDataSteps } from "@/components/tutorial/fetch-data-steps";
 import { Suspense } from "react";
 import CurrentStudyPlan from "./_components/current-study-plan";
 import DueQuestions from "./_components/due-questions";
+import { CalendarProblems } from "@/components/calendar-problems";
 
 async function UserDetails() {
   const supabase = await createClient();
@@ -29,6 +30,9 @@ export default function DashPage() {
           <DueQuestions />
         </div>
       </div>
+      <Suspense fallback={<div className="h-[600px] animate-pulse bg-muted rounded-lg" />}>
+        <CalendarProblems />
+      </Suspense>
       <div className="flex flex-col gap-2 items-start">
         <h2 className="font-bold text-2xl mb-4">Your user details</h2>
         <pre className="text-xs font-mono p-3 rounded border border-muted max-h-32 overflow-auto">

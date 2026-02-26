@@ -12,22 +12,53 @@ import LogSolveButton from "./_components/log-solve-button";
 const ProblemSetsPage = () => {
   const [problemSets, setProblemSets] = React.useState<any>(null);
   const [activeSet, setActiveSet] = React.useState<any>(null);
+  const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    // Fetch problem lists from API
-    fetch("/api/problems/problemlists")
-      .then((response) => response.json())
-      .then(({ data }) => {
+    const loadProblemSets = async () => {
+      try {
+        // Fetch problem lists from API
+        const response = await fetch("/api/problems/problemlists");
+        if (!response.ok) {
+          throw new Error("Failed to load problem lists");
+        }
+        const json = await response.json();
+        const data = Array.isArray(json?.data) ? json.data : [];
+
+        if (data.length === 0) {
+          setProblemSets([]);
+          setActiveSet(null);
+          setError("No problem sets available.");
+          return;
+        }
+
         let foundKey = data[0]?.key || "blind75"; // default to blind75 if no lists found
         setProblemSets(data);
 
         // Fetch the first problem list's items to display by default (blind75)
-        fetch("/api/problems/problemlist-items?listKey=" + foundKey)
-          .then((res) => res.json())
-          .then(({ list, items }) => {
-            setActiveSet({ list, items });
-          });
-      });
+        const itemsResponse = await fetch(
+          "/api/problems/problemlist-items?listKey=" + encodeURIComponent(foundKey)
+        );
+        if (!itemsResponse.ok) {
+          throw new Error("Failed to load problem list items");
+        }
+        const { list, items } = await itemsResponse.json();
+
+        if (!list || !Array.isArray(items)) {
+          throw new Error("Invalid problem list items payload");
+        }
+
+        setActiveSet({ list, items });
+        setError(null);
+      } catch (e) {
+        console.error(e);
+        setError("Unable to load problem sets. Please try again later.");
+        setProblemSets([]);
+        setActiveSet(null);
+      }
+    };
+
+    loadProblemSets();
   }, []);
 
   // Group problems by category and sort by order_index

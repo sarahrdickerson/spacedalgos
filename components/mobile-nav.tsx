@@ -12,7 +12,7 @@ export function MobileNav() {
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button variant="ghost" aria-label="Open navigation menu">
+        <Button variant="ghost" size="icon" aria-label="Open navigation menu">
           <HamburgerMenuIcon />
         </Button>
       </SheetTrigger>

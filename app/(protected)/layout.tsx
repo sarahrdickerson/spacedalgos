@@ -8,6 +8,7 @@ import StartPracticeButton from "@/components/start-practice-button";
 import { HamburgerMenuIcon } from "@radix-ui/react-icons";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { NavLink } from "@/components/nav-link";
 
 export default function ProtectedLayout({
   children,
@@ -29,12 +30,12 @@ export default function ProtectedLayout({
                   <SheetTitle className="text-xl font-bold pl-3">
                     spaced algos
                   </SheetTitle>
-                  <Link href={"/dash"} className="w-full px-3 py-2 text-sm rounded-md hover:bg-accent hover:text-accent-foreground transition-colors">
+                  <NavLink href="/dash" variant="mobile">
                     study plans
-                  </Link>
-                  <Link href={"/problemsets"} className="w-full px-3 py-2 text-sm rounded-md hover:bg-accent hover:text-accent-foreground transition-colors">
+                  </NavLink>
+                  <NavLink href="/problemsets" variant="mobile">
                     problem sets
-                  </Link>
+                  </NavLink>
                 </SheetContent>
               </Sheet>
               <h1 className="text-xl font-bold">spaced algos</h1>
@@ -45,12 +46,12 @@ export default function ProtectedLayout({
               <Link href={"/dash"} className="text-xl font-bold">
                 spaced algos
               </Link>
-              <Link href={"/dash"} className="text-sm">
+              <NavLink href="/dash">
                 study plans
-              </Link>
-              <Link href={"/problemsets"} className="text-sm">
+              </NavLink>
+              <NavLink href="/problemsets">
                 problem sets
-              </Link>
+              </NavLink>
             </div>
 
             {/* User Actions */}

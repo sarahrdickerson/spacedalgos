@@ -22,6 +22,7 @@ export function NavLink({
     return (
       <Link
         href={href}
+        aria-current={isActive ? "page" : undefined}
         className={cn(
           "w-full px-3 py-2 text-sm rounded-md hover:bg-accent hover:text-accent-foreground transition-colors",
           isActive && "bg-accent text-accent-foreground font-medium",
@@ -36,6 +37,7 @@ export function NavLink({
   return (
     <Link
       href={href}
+      aria-current={isActive ? "page" : undefined}
       className={cn(
         "text-sm hover:text-foreground transition-colors",
         isActive ? "text-foreground font-semibold" : "text-muted-foreground",

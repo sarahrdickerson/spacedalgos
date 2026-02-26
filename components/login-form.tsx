@@ -13,8 +13,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { toast } from "sonner";
+import { Separator } from "@/components/ui/separator";
 
 export function LoginForm({
   className,
@@ -22,7 +25,6 @@ export function LoginForm({
 }: React.ComponentPropsWithoutRef<"div">) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
@@ -30,7 +32,6 @@ export function LoginForm({
     e.preventDefault();
     const supabase = createClient();
     setIsLoading(true);
-    setError(null);
 
     try {
       const { error } = await supabase.auth.signInWithPassword({
@@ -41,10 +42,31 @@ export function LoginForm({
       // Update this route to redirect to an authenticated route. The user already has an active session.
       router.push("/dash");
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "An error occurred");
+      const message = error instanceof Error ? error.message : "Failed to login";
+      toast.error(message);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const signInWithGoogle = async () => {
+    setIsLoading(true);
+
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/confirm`,
+        },
+      });
+      if (error) throw error;
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to sign in with Google";
+      toast.error(message);
+      setIsLoading(false);
+    }
+    // Note: If OAuth succeeds, user is redirected and loading state persists
   };
 
   return (
@@ -88,11 +110,31 @@ export function LoginForm({
                   onChange={(e) => setPassword(e.target.value)}
                 />
               </div>
-              {error && <p className="text-sm text-red-500">{error}</p>}
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? "Logging in..." : "Login"}
               </Button>
             </div>
+            <div className="w-full flex flex-row items-center">
+              <Separator className="my-6 flex-1" />
+              <p className="mx-2">OR</p>
+              <Separator className="my-6 flex-1" />
+            </div>
+            <Button
+              type="button"
+              onClick={signInWithGoogle}
+              className="w-full"
+              variant="outline"
+              disabled={isLoading}
+            >
+              <Image
+                src="/images/googleicon.svg"
+                alt="Google logo"
+                className="mr-2"
+                width={20}
+                height={20}
+              />
+              {isLoading ? "Logging in..." : "Login with Google"}
+            </Button>
             <div className="mt-4 text-center text-sm">
               Don&apos;t have an account?{" "}
               <Link

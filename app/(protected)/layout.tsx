@@ -85,8 +85,8 @@ export default function ProtectedLayout({
             </a>
           </p>
           <div className="flex items-center gap-2">
-                <DeployButton />
-              </div>
+            <DeployButton />
+          </div>
         </footer>
       </div>
     </main>

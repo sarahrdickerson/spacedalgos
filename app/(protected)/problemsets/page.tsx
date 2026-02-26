@@ -10,7 +10,7 @@ import { ChevronDown, ExternalLink } from "lucide-react";
 import LogSolveButton from "./_components/log-solve-button";
 
 const ProblemSetsPage = () => {
-  const [problemSets, setProblemSets] = React.useState<any>(null);
+  //   const [problemSets, setProblemSets] = React.useState<any>(null); // TODO: uncommenet in future to support multiple problem sets/lists and selection of which to view. For now we just fetch and show the first one (blind75) for simplicity
   const [activeSet, setActiveSet] = React.useState<any>(null);
 
   React.useEffect(() => {
@@ -19,7 +19,7 @@ const ProblemSetsPage = () => {
       .then((response) => response.json())
       .then(({ data }) => {
         let foundKey = data[0]?.key || "blind75"; // default to blind75 if no lists found
-        setProblemSets(data);
+        // setProblemSets(data);
 
         // Fetch the first problem list's items to display by default (blind75)
         fetch("/api/problems/problemlist-items?listKey=" + foundKey)

@@ -16,6 +16,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { toast } from "sonner";
 import { Separator } from "@/components/ui/separator";
 
 export function LoginForm({
@@ -50,13 +51,24 @@ export function LoginForm({
   };
 
   const signInWithGoogle = async () => {
-    const supabase = createClient();
-    await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/confirm`,
-      },
-    });
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/confirm`,
+        },
+      });
+      if (error) throw error;
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to sign in with Google";
+      toast.error(message);
+      setIsLoading(false);
+    }
+    // Note: If OAuth succeeds, user is redirected and loading state persists
   };
 
   return (

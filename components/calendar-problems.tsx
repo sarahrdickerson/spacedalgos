@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils"
 interface CalendarEvent {
   id: string
   title: string
-  number: number
+  repetitionNumber: number
   date: Date
   color?: "blue" | "green" | "red" | "purple" | "orange"
 }
@@ -17,35 +17,35 @@ const sampleEvents: CalendarEvent[] = [
   {
     id: "1",
     title: "Two Sum",
-    number: 1,
+    repetitionNumber: 1,
     date: new Date(2026, 1, 20),
     color: "blue",
   },
   {
     id: "2",
     title: "Two Sum",
-    number: 2,
+    repetitionNumber: 2,
     date: new Date(2026, 1, 25),
     color: "green",
   },
   {
     id: "3",
     title: "Reverse Linked List",
-    number: 1,
+    repetitionNumber: 1,
     date: new Date(2026, 1, 21),
     color: "red",
   },
   {
     id: "4",
     title: "Reverse Linked List",
-    number: 2, 
+    repetitionNumber: 2, 
     date: new Date(2026, 1, 26),
     color: "purple",
   },
   {
     id: "5",
     title: "Binary Tree Inorder Traversal",
-    number: 1,
+    repetitionNumber: 1,
     date: new Date(2026, 1, 18),
     color: "orange",
   },
@@ -63,11 +63,12 @@ export function CalendarProblems() {
 
     return (
       <div className="flex flex-col gap-1">
+        {/* TODO: add onClick to the events to link to "logging a solve" */}
         {events.map((event) => (
           <div
             key={event.id}
             className={cn(
-              "text-xs px-2 py-1 rounded truncate cursor-pointer transition-colors",
+              "text-xs px-2 py-1 rounded cursor-pointer transition-colors",
               event.color === "blue" && "bg-blue-500/10 text-blue-700 dark:text-blue-400 hover:bg-blue-500/20",
               event.color === "green" && "bg-green-500/10 text-green-700 dark:text-green-400 hover:bg-green-500/20",
               event.color === "red" && "bg-red-500/10 text-red-700 dark:text-red-400 hover:bg-red-500/20",
@@ -77,7 +78,7 @@ export function CalendarProblems() {
             )}
             title={event.title}
           >
-            {event.title}
+            {event.title} ({event.repetitionNumber})
           </div>
         ))}
       </div>

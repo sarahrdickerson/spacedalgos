@@ -45,7 +45,6 @@ export default function Home() {
               Supabase
             </a>
           </p>
-          <ThemeSwitcher />
         </footer>
       </div>
     </main>

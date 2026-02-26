@@ -4,6 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { InfoIcon } from "lucide-react";
 import { FetchDataSteps } from "@/components/tutorial/fetch-data-steps";
 import { Suspense } from "react";
+import CurrentStudyPlan from "./_components/current-study-plan";
+import DueQuestions from "./_components/due-questions";
 
 async function UserDetails() {
   const supabase = await createClient();
@@ -16,19 +18,20 @@ async function UserDetails() {
   return JSON.stringify(data.claims, null, 2);
 }
 
-export default function ProtectedPage() {
+export default function DashPage() {
   return (
     <div className="flex-1 w-full flex flex-col gap-12">
-      <div className="w-full">
-        <div className="bg-accent text-sm p-3 px-5 rounded-md text-foreground flex gap-3 items-center">
-          <InfoIcon size="16" strokeWidth={2} />
-          This is a protected page that you can only see as an authenticated
-          user
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+        <div className="flex flex-col gap-2 items-start md:col-span-2">
+          <CurrentStudyPlan />
+        </div>
+        <div className="flex flex-col gap-2 items-start">
+          <DueQuestions />
         </div>
       </div>
       <div className="flex flex-col gap-2 items-start">
         <h2 className="font-bold text-2xl mb-4">Your user details</h2>
-        <pre className="text-xs font-mono p-3 rounded border max-h-32 overflow-auto">
+        <pre className="text-xs font-mono p-3 rounded border border-muted max-h-32 overflow-auto">
           <Suspense>
             <UserDetails />
           </Suspense>

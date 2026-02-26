@@ -5,9 +5,7 @@ import { ThemeSwitcher } from "@/components/theme-switcher";
 import Link from "next/link";
 import { Suspense } from "react";
 import StartPracticeButton from "@/components/start-practice-button";
-import { HamburgerMenuIcon } from "@radix-ui/react-icons";
-import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from "@/components/ui/sheet";
-import { Button } from "@/components/ui/button";
+import { MobileNav } from "@/components/mobile-nav";
 import { NavLink } from "@/components/nav-link";
 
 export default function ProtectedLayout({
@@ -22,25 +20,7 @@ export default function ProtectedLayout({
           <div className="w-full max-w-6xl flex justify-between items-center p-3 px-5 text-sm">
             {/* Mobile Menubar */}
             <div className="flex flex-row justify-start md:hidden items-center gap-2">
-              <Sheet>
-                <SheetTrigger asChild>
-                  <Button variant="ghost" aria-label="Open navigation menu"><HamburgerMenuIcon/></Button>
-                </SheetTrigger>
-                <SheetContent className="flex flex-col gap-5 pt-5 px-5" side="left">
-                  <SheetTitle className="text-xl font-bold pl-3">
-                    spaced algos
-                  </SheetTitle>
-                  <SheetDescription className="sr-only">
-                    Navigate between study plans and problem sets
-                  </SheetDescription>
-                  <NavLink href="/dash" variant="mobile">
-                    study plans
-                  </NavLink>
-                  <NavLink href="/problemsets" variant="mobile">
-                    problem sets
-                  </NavLink>
-                </SheetContent>
-              </Sheet>
+              <MobileNav />
               <h1 className="text-xl font-bold">spaced algos</h1>
             </div>
 

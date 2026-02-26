@@ -19,23 +19,29 @@ export default function ProtectedLayout({
       <div className="flex-1 w-full flex flex-col gap-4 items-center">
         <nav className="w-full flex justify-center border-b border-b-muted h-16">
           <div className="w-full max-w-6xl flex justify-between items-center p-3 px-5 text-sm">
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="ghost"><HamburgerMenuIcon className="" /></Button>
-              </SheetTrigger>
-              <SheetContent className="flex flex-col gap-5 pt-5 px-5" side="left">
-                <SheetTitle className="text-xl font-bold pl-3">
-                  spaced algos
-                </SheetTitle>
-                <Link href={"/dash"} className="w-full px-3 py-2 text-sm rounded-md hover:bg-accent hover:text-accent-foreground transition-colors">
-                  study plans
-                </Link>
-                <Link href={"/problemsets"} className="w-full px-3 py-2 text-sm rounded-md hover:bg-accent hover:text-accent-foreground transition-colors">
-                  problem sets
-                </Link>
-              </SheetContent>
-            </Sheet>
-            <div className="flex gap-5 items-center font-semibold">
+            {/* Mobile Menubar */}
+            <div className="flex flex-row justify-start md:hidden items-center gap-2">
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button variant="ghost"><HamburgerMenuIcon className="" /></Button>
+                </SheetTrigger>
+                <SheetContent className="flex flex-col gap-5 pt-5 px-5" side="left">
+                  <SheetTitle className="text-xl font-bold pl-3">
+                    spaced algos
+                  </SheetTitle>
+                  <Link href={"/dash"} className="w-full px-3 py-2 text-sm rounded-md hover:bg-accent hover:text-accent-foreground transition-colors">
+                    study plans
+                  </Link>
+                  <Link href={"/problemsets"} className="w-full px-3 py-2 text-sm rounded-md hover:bg-accent hover:text-accent-foreground transition-colors">
+                    problem sets
+                  </Link>
+                </SheetContent>
+              </Sheet>
+              <h1 className="text-xl font-bold">spaced algos</h1>
+            </div>
+
+            {/* Desktop Menubar */}
+            <div className="gap-5 items-center font-semibold hidden md:flex">
               <Link href={"/dash"} className="text-xl font-bold">
                 spaced algos
               </Link>
@@ -45,14 +51,15 @@ export default function ProtectedLayout({
               <Link href={"/problemsets"} className="text-sm">
                 problem sets
               </Link>
-              <div className="flex items-center gap-2">
-                <DeployButton />
-              </div>
             </div>
+
+            {/* User Actions */}
             <div className="flex items-center gap-2">
-              <Suspense>
-                <StartPracticeButton />
-              </Suspense>
+              <div className="hidden md:block">
+                <Suspense>
+                  <StartPracticeButton />
+                </Suspense>
+              </div>
               <ThemeSwitcher />
               <Suspense>
                 <AuthButton />
@@ -76,6 +83,9 @@ export default function ProtectedLayout({
               Supabase
             </a>
           </p>
+          <div className="flex items-center gap-2">
+                <DeployButton />
+              </div>
         </footer>
       </div>
     </main>

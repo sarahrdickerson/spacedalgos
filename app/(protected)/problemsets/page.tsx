@@ -1,6 +1,5 @@
 "use client";
 import React from "react";
-import blind75 from "@/data/b75.json";
 import {
   Collapsible,
   CollapsibleContent,
@@ -11,15 +10,24 @@ import { ChevronDown, ExternalLink } from "lucide-react";
 import LogSolveButton from "./_components/log-solve-button";
 
 const ProblemSetsPage = () => {
-  const [problemSets, setProblemSets] = React.useState<typeof blind75 | null>(
-    null
-  );
-  const [activeSet, setActiveSet] = React.useState<typeof blind75 | null>(null);
+  const [problemSets, setProblemSets] = React.useState<any>(null);
+  const [activeSet, setActiveSet] = React.useState<any>(null);
 
   React.useEffect(() => {
-    // In a real app, you'd fetch this data from an API
-    setProblemSets(blind75);
-    setActiveSet(blind75);
+    // Fetch problem lists from API
+    fetch("/api/problems/problemlists")
+      .then((response) => response.json())
+      .then(({ data }) => {
+        let foundKey = data[0]?.key || "blind75"; // default to blind75 if no lists found
+        setProblemSets(data);
+
+        // Fetch the first problem list's items to display by default (blind75)
+        fetch("/api/problems/problemlist-items?listKey=" + foundKey)
+          .then((res) => res.json())
+          .then(({ list, items }) => {
+            setActiveSet({ list, items });
+          });
+      });
   }, []);
 
   // Group problems by category and sort by order_index
@@ -28,7 +36,7 @@ const ProblemSetsPage = () => {
 
     const groups: Record<string, Array<(typeof activeSet.items)[0]>> = {};
 
-    activeSet.items.forEach((item) => {
+    activeSet.items.forEach((item: { problem: { category: any } }) => {
       const category = item.problem.category;
       if (!groups[category]) {
         groups[category] = [];
@@ -39,7 +47,7 @@ const ProblemSetsPage = () => {
     // Sort each group by order_index
     Object.keys(groups).forEach((category) => {
       groups[category].sort(
-        (a, b) => a.list_item.order_index - b.list_item.order_index
+        (a, b) => (a.order_index ?? 0) - (b.order_index ?? 0)
       );
     });
 
@@ -50,7 +58,9 @@ const ProblemSetsPage = () => {
     <div className="flex-1 w-full flex flex-col gap-12">
       {activeSet && (
         <div className="flex flex-col w-full gap-6">
-          <h1 className="text-2xl font-bold">{activeSet.list.name}</h1>
+          <h1 className="text-2xl font-bold">
+            {activeSet.list.name ?? activeSet.list.key}
+          </h1>
           <div className="flex flex-col gap-4 w-full">
             {Object.entries(groupedProblems).map(([category, problems]) => (
               <Collapsible key={category} className="w-full border rounded-lg">
@@ -70,7 +80,7 @@ const ProblemSetsPage = () => {
                       >
                         <div className="flex items-center gap-3">
                           <span className="text-muted-foreground text-sm">
-                            {item.list_item.order_index}
+                            {item.order_index}
                           </span>
                           <a
                             href={item.problem.leetcode_url}

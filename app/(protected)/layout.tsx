@@ -5,6 +5,8 @@ import { ThemeSwitcher } from "@/components/theme-switcher";
 import Link from "next/link";
 import { Suspense } from "react";
 import StartPracticeButton from "@/components/start-practice-button";
+import { MobileNav } from "@/components/mobile-nav";
+import { NavLink } from "@/components/nav-link";
 
 export default function ProtectedLayout({
   children,
@@ -16,24 +18,32 @@ export default function ProtectedLayout({
       <div className="flex-1 w-full flex flex-col gap-4 items-center">
         <nav className="w-full flex justify-center border-b border-b-muted h-16">
           <div className="w-full max-w-6xl flex justify-between items-center p-3 px-5 text-sm">
-            <div className="flex gap-5 items-center font-semibold">
+            {/* Mobile Menubar */}
+            <div className="flex flex-row justify-start md:hidden items-center gap-2">
+              <MobileNav />
+              <h1 className="text-xl font-bold">spaced algos</h1>
+            </div>
+
+            {/* Desktop Menubar */}
+            <div className="gap-5 items-center font-semibold hidden md:flex">
               <Link href={"/dash"} className="text-xl font-bold">
                 spaced algos
               </Link>
-              <Link href={"/dash"} className="text-sm">
+              <NavLink href="/dash">
                 study plans
-              </Link>
-              <Link href={"/problemsets"} className="text-sm">
+              </NavLink>
+              <NavLink href="/problemsets">
                 problem sets
-              </Link>
-              <div className="flex items-center gap-2">
-                <DeployButton />
-              </div>
+              </NavLink>
             </div>
+
+            {/* User Actions */}
             <div className="flex items-center gap-2">
-              <Suspense>
-                <StartPracticeButton />
-              </Suspense>
+              <div className="hidden md:block">
+                <Suspense>
+                  <StartPracticeButton />
+                </Suspense>
+              </div>
               <ThemeSwitcher />
               <Suspense>
                 <AuthButton />
@@ -57,6 +67,9 @@ export default function ProtectedLayout({
               Supabase
             </a>
           </p>
+          <div className="flex items-center gap-2">
+            <DeployButton />
+          </div>
         </footer>
       </div>
     </main>

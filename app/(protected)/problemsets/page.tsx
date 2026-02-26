@@ -119,13 +119,13 @@ const ProblemSetsPage = () => {
           </h1>
           <div className="flex flex-col gap-4 w-full">
             {Object.entries(groupedProblems).map(([category, problems]) => (
-              <Collapsible key={category} className="w-full border rounded-lg">
-                <CollapsibleTrigger className="flex items-center justify-between w-full p-4 text-lg font-semibold hover:bg-accent transition-colors">
+              <Collapsible key={category} className="w-full border border-muted rounded-lg">
+                <CollapsibleTrigger className="group flex items-center justify-between w-full p-4 text-lg font-semibold hover:bg-accent hover:rounded-sm transition-colors">
                   <div className="flex items-center gap-2">
                     {category}
                     <Badge variant="secondary">{problems.length}</Badge>
                   </div>
-                  <ChevronDown className="h-5 w-5 transition-transform duration-200 data-[state=open]:rotate-180" />
+                  <ChevronDown className="h-5 w-5 transition-transform duration-200 group-data-[state=open]:rotate-180" />
                 </CollapsibleTrigger>
                 <CollapsibleContent className="w-full">
                   <div className="flex flex-col gap-2 w-full p-4 pt-0">

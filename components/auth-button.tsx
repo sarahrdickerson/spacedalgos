@@ -36,7 +36,7 @@ export async function AuthButton() {
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-full sm:w-auto">
+      <DropdownMenuContent className="w-full sm:w-auto" align="end">
         <DropdownMenuGroup>
           <DropdownMenuLabel className="text-sm px-2">
             {user.email}

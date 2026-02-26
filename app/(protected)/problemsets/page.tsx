@@ -6,6 +6,13 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ChevronDown, ExternalLink } from "lucide-react";
 import LogSolveButton from "./_components/log-solve-button";
 
@@ -13,20 +20,27 @@ const ProblemSetsPage = () => {
   const [problemSets, setProblemSets] = React.useState<any>(null);
   const [activeSet, setActiveSet] = React.useState<any>(null);
 
+  const fetchSetByKey = (key: string) => {
+    fetch("/api/problems/problemlist-items?listKey=" + key)
+      .then((res) => res.json())
+      .then(({ list, items }) => {
+        setActiveSet({ list, items });
+      })
+      .catch((err) => {
+        console.error("Failed to fetch problem list items:", err);
+      });
+  };
+
   React.useEffect(() => {
     // Fetch problem lists from API
     fetch("/api/problems/problemlists")
       .then((response) => response.json())
       .then(({ data }) => {
-        let foundKey = data[0]?.key || "blind75"; // default to blind75 if no lists found
+        const firstKey = data[0]?.key || "blind75"; // default to blind75 if no lists found
         setProblemSets(data);
 
-        // Fetch the first problem list's items to display by default (blind75)
-        fetch("/api/problems/problemlist-items?listKey=" + foundKey)
-          .then((res) => res.json())
-          .then(({ list, items }) => {
-            setActiveSet({ list, items });
-          });
+        // Fetch the first problem list's items to display by default
+        fetchSetByKey(firstKey);
       });
   }, []);
 
@@ -58,6 +72,23 @@ const ProblemSetsPage = () => {
     <div className="flex-1 w-full flex flex-col gap-12">
       {activeSet && (
         <div className="flex flex-col w-full gap-6">
+          {problemSets && problemSets.length > 1 && (
+            <Select
+              value={activeSet.list.key}
+              onValueChange={(key) => fetchSetByKey(key)}
+            >
+              <SelectTrigger className="w-64">
+                <SelectValue placeholder="Select a problem set" />
+              </SelectTrigger>
+              <SelectContent>
+                {problemSets.map((set: { key: string; name?: string }) => (
+                  <SelectItem key={set.key} value={set.key}>
+                    {set.name ?? set.key}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           <h1 className="text-2xl font-bold">
             {activeSet.list.name ?? activeSet.list.key}
           </h1>

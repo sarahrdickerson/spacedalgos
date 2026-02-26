@@ -26,7 +26,7 @@ const ProblemSetsPage = () => {
         const data = Array.isArray(json?.data) ? json.data : [];
 
         if (data.length === 0) {
-          setProblemSets([]);
+          //   setProblemSets([]);
           setActiveSet(null);
           setError("No problem sets available.");
           return;
@@ -37,7 +37,8 @@ const ProblemSetsPage = () => {
 
         // Fetch the first problem list's items to display by default (blind75)
         const itemsResponse = await fetch(
-          "/api/problems/problemlist-items?listKey=" + encodeURIComponent(foundKey)
+          "/api/problems/problemlist-items?listKey=" +
+            encodeURIComponent(foundKey)
         );
         if (!itemsResponse.ok) {
           throw new Error("Failed to load problem list items");
@@ -53,7 +54,7 @@ const ProblemSetsPage = () => {
       } catch (e) {
         console.error(e);
         setError("Unable to load problem sets. Please try again later.");
-        setProblemSets([]);
+        // setProblemSets([]);
         setActiveSet(null);
       }
     };

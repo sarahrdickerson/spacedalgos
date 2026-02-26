@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Inter } from "next/font/google";
 import { ThemeProvider } from "next-themes";
-import { Toaster } from "sonner";
+import { Toaster } from "../components/ui/sonner";
 import "./globals.css";
 
 const inter = Inter({subsets:['latin'],variable:'--font-sans'});

@@ -13,8 +13,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Separator } from "@/components/ui/separator";
 
 export function LoginForm({
   className,
@@ -45,6 +47,16 @@ export function LoginForm({
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const signInWithGoogle = async () => {
+    const supabase = createClient();
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/auth/confirm`,
+      },
+    });
   };
 
   return (
@@ -93,6 +105,12 @@ export function LoginForm({
                 {isLoading ? "Logging in..." : "Login"}
               </Button>
             </div>
+            <div className="w-full flex flex-row items-center">
+              <Separator className="my-6 flex-1" />
+              <p className="mx-2">OR</p>
+              <Separator className="my-6 flex-1" />
+            </div>
+            <Button type="button" onClick={signInWithGoogle} className="w-full" variant="outline"><Image src="/images/googleicon.svg" alt="Google logo" className="mr-2" width={20} height={20} />Login with Google</Button>
             <div className="mt-4 text-center text-sm">
               Don&apos;t have an account?{" "}
               <Link

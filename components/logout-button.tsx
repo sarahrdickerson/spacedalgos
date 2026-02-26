@@ -1,8 +1,8 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
-import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
+import { ExitIcon } from "@radix-ui/react-icons";
 
 export function LogoutButton() {
   const router = useRouter();
@@ -13,5 +13,9 @@ export function LogoutButton() {
     router.push("/auth/login");
   };
 
-  return <Button onClick={logout}>Logout</Button>;
+  return (
+    <button onClick={logout} className="flex flex-row justify-between w-full">
+      Logout <ExitIcon />
+    </button>
+  );
 }

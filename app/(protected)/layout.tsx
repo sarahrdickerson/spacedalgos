@@ -4,6 +4,7 @@ import { AuthButton } from "@/components/auth-button";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import Link from "next/link";
 import { Suspense } from "react";
+import StartPracticeButton from "@/components/start-practice-button";
 
 export default function ProtectedLayout({
   children,
@@ -12,25 +13,39 @@ export default function ProtectedLayout({
 }) {
   return (
     <main className="min-h-screen flex flex-col items-center">
-      <div className="flex-1 w-full flex flex-col gap-20 items-center">
-        <nav className="w-full flex justify-center border-b border-b-foreground/10 h-16">
-          <div className="w-full max-w-5xl flex justify-between items-center p-3 px-5 text-sm">
+      <div className="flex-1 w-full flex flex-col gap-4 items-center">
+        <nav className="w-full flex justify-center border-b border-b-muted h-16">
+          <div className="w-full max-w-6xl flex justify-between items-center p-3 px-5 text-sm">
             <div className="flex gap-5 items-center font-semibold">
-              <Link href={"/"}>Next.js Supabase Starter</Link>
+              <Link href={"/dash"} className="text-xl font-bold">
+                spaced algos
+              </Link>
+              <Link href={"/dash"} className="text-sm">
+                study plans
+              </Link>
+              <Link href={"/problemsets"} className="text-sm">
+                problem sets
+              </Link>
               <div className="flex items-center gap-2">
                 <DeployButton />
               </div>
             </div>
-            <Suspense>
-              <AuthButton />
-            </Suspense>
+            <div className="flex items-center gap-2">
+              <Suspense>
+                <StartPracticeButton />
+              </Suspense>
+              <ThemeSwitcher />
+              <Suspense>
+                <AuthButton />
+              </Suspense>
+            </div>
           </div>
         </nav>
-        <div className="flex-1 flex flex-col gap-20 max-w-5xl p-5">
+        <div className="flex-1 flex flex-col gap-20 w-full max-w-6xl p-5">
           {children}
         </div>
 
-        <footer className="w-full flex items-center justify-center border-t mx-auto text-center text-xs gap-8 py-16">
+        <footer className="w-full flex items-center justify-center border-t border-t-muted mx-auto text-center text-xs gap-8 py-16">
           <p>
             Powered by{" "}
             <a
@@ -42,7 +57,6 @@ export default function ProtectedLayout({
               Supabase
             </a>
           </p>
-          <ThemeSwitcher />
         </footer>
       </div>
     </main>

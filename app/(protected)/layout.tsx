@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import StartPracticeButton from "@/components/start-practice-button";
 import { HamburgerMenuIcon } from "@radix-ui/react-icons";
-import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { NavLink } from "@/components/nav-link";
 
@@ -24,12 +24,15 @@ export default function ProtectedLayout({
             <div className="flex flex-row justify-start md:hidden items-center gap-2">
               <Sheet>
                 <SheetTrigger asChild>
-                  <Button variant="ghost"><HamburgerMenuIcon className="" /></Button>
+                  <Button variant="ghost"><HamburgerMenuIcon/></Button>
                 </SheetTrigger>
                 <SheetContent className="flex flex-col gap-5 pt-5 px-5" side="left">
                   <SheetTitle className="text-xl font-bold pl-3">
                     spaced algos
                   </SheetTitle>
+                  <SheetDescription className="sr-only">
+                    Navigate between study plans and problem sets
+                  </SheetDescription>
                   <NavLink href="/dash" variant="mobile">
                     study plans
                   </NavLink>

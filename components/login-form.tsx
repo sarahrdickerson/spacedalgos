@@ -119,7 +119,22 @@ export function LoginForm({
               <p className="mx-2">OR</p>
               <Separator className="my-6 flex-1" />
             </div>
-            <Button type="button" onClick={signInWithGoogle} className="w-full" variant="outline"><Image src="/images/googleicon.svg" alt="Google logo" className="mr-2" width={20} height={20} />Login with Google</Button>
+            <Button
+              type="button"
+              onClick={signInWithGoogle}
+              className="w-full"
+              variant="outline"
+              disabled={isLoading}
+            >
+              <Image
+                src="/images/googleicon.svg"
+                alt="Google logo"
+                className="mr-2"
+                width={20}
+                height={20}
+              />
+              {isLoading ? "Logging in..." : "Login with Google"}
+            </Button>
             <div className="mt-4 text-center text-sm">
               Don&apos;t have an account?{" "}
               <Link

@@ -1,4 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 
 const DueQuestions = () => {
   const questionStats = {
@@ -21,7 +22,7 @@ const DueQuestions = () => {
                   due today
                 </p>
               </div>
-              <div className="h-12 w-px bg-border" />
+              <Separator orientation="vertical" className="h-12"/>
               <div>
                 <p className="font-medium text-md">
                   <span className="text-2xl font-bold">
@@ -30,7 +31,7 @@ const DueQuestions = () => {
                   completed
                 </p>
               </div>
-              <div className="h-12 w-px bg-border" />
+              <Separator orientation="vertical" className="h-12"/>
               <div>
                 <p className="font-medium text-md">
                   <span className="text-2xl font-bold">

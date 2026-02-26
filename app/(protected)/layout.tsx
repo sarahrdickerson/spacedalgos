@@ -24,7 +24,7 @@ export default function ProtectedLayout({
             <div className="flex flex-row justify-start md:hidden items-center gap-2">
               <Sheet>
                 <SheetTrigger asChild>
-                  <Button variant="ghost"><HamburgerMenuIcon className="" /></Button>
+                  <Button variant="ghost" aria-label="Open navigation menu"><HamburgerMenuIcon className="" /></Button>
                 </SheetTrigger>
                 <SheetContent className="flex flex-col gap-5 pt-5 px-5" side="left">
                   <SheetTitle className="text-xl font-bold pl-3">

@@ -10,6 +10,8 @@ import { ChevronDown, ExternalLink, History } from "lucide-react";
 import LogSolveButton from "./_components/log-solve-button";
 import { Spinner } from "@/components/ui/spinner";
 import { Progress } from "@/components/ui/progress";
+import MenuButton from "./_components/menu-button";
+import { Button } from "@/components/ui/button";
 
 const ProblemSetsPage = () => {
   //   const [problemSets, setProblemSets] = React.useState<any>(null); // TODO: uncomment in future to support multiple problem sets/lists and selection of which to view. For now we just fetch and show the first one (blind75) for simplicity
@@ -143,9 +145,32 @@ const ProblemSetsPage = () => {
                         3: "Mastered"
                       };
                       
-                      // Calculate days until review
+                      // Calculate days until review and progress bar decay
                       let daysUntilReview: number | null = null;
-                      if (progress?.next_review_at) {
+                      let progressValue = ((progress?.stage || 0) / 3) * 100;
+                      
+                      if (progress?.next_review_at && progress?.interval_days && progress?.stage) {
+                        const nextReview = new Date(progress.next_review_at);
+                        const now = new Date();
+                        const diffMs = nextReview.getTime() - now.getTime();
+                        daysUntilReview = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+                        
+                        // Calculate decay: as we approach next_review_at, progress decays to previous stage
+                        const intervalDays = progress.interval_days;
+                        const daysSinceLastAttempt = intervalDays - daysUntilReview;
+                        
+                        if (daysSinceLastAttempt >= 0 && intervalDays > 0) {
+                          const decayRatio = Math.min(1, daysSinceLastAttempt / intervalDays);
+                          const currentStageProgress = (progress.stage / 3) * 100;
+                          const previousStageProgress = ((progress.stage - 1) / 3) * 100;
+                          
+                          // Decay from current stage to previous stage
+                          progressValue = currentStageProgress - (decayRatio * (currentStageProgress - previousStageProgress));
+                          
+                          // Clamp to ensure it doesn't go below previous stage
+                          progressValue = Math.max(previousStageProgress, Math.min(currentStageProgress, progressValue));
+                        }
+                      } else if (progress?.next_review_at) {
                         const nextReview = new Date(progress.next_review_at);
                         const now = new Date();
                         const diffMs = nextReview.getTime() - now.getTime();
@@ -155,7 +180,7 @@ const ProblemSetsPage = () => {
                       return (
                         <div
                           key={problem.key}
-                          className="flex flex-col p-3 rounded-lg hover:bg-accent transition-colors"
+                          className="flex flex-col p-3 rounded-lg hover:bg-accent/40 transition-colors"
                         >
                           <div className="flex items-center justify-between p-3 w-full">
                             <div className="flex items-center gap-3">
@@ -173,10 +198,6 @@ const ProblemSetsPage = () => {
                               </a>
                             </div>
                             <div className="flex flex-row gap-2 items-center">
-                              <LogSolveButton
-                                problemKey={problem.key}
-                                problemTitle={problem.title}
-                              />
                               <Badge
                                 className={
                                   problem.difficulty === "Easy"
@@ -188,13 +209,21 @@ const ProblemSetsPage = () => {
                               >
                                 {problem.difficulty}
                               </Badge>
+                              <LogSolveButton
+                                problemKey={problem.key}
+                                problemTitle={problem.title}
+                              />
+                              <MenuButton 
+                                problemKey={problem.key}
+                                problemTitle={problem.title}
+                              />
                             </div>
                           </div>
                           {hasProgress && (
                             <div className="flex flex-row gap-2 items-center pl-8">
                               <Progress 
                                 className="w-1/6 md:w-1/5" 
-                                value={((progress.stage || 0) / 3) * 100}
+                                value={progressValue}
                               />
                               <p className="text-xs text-muted-foreground">
                                 {stageLabels[progress.stage] || `Stage ${progress.stage}`}

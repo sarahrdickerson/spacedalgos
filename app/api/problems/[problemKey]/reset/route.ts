@@ -32,36 +32,19 @@ export async function DELETE(
       return NextResponse.json({ error: "Problem not found" }, { status: 404 });
     }
 
-    // Delete all attempts for this user+problem
-    const { error: attemptsError } = await supabase
-      .from("user_problem_attempts")
-      .delete()
-      .eq("user_id", user.id)
-      .eq("problem_id", problem.id);
+    // Atomically reset attempts and progress for this user+problem via Postgres RPC
+    const { error: resetError } = await supabase.rpc("reset_user_problem", {
+      user_id: user.id,
+      problem_id: problem.id,
+    });
 
-    if (attemptsError) {
-      console.error("Error deleting attempts:", attemptsError);
+    if (resetError) {
+      console.error("Error resetting problem state:", resetError);
       return NextResponse.json(
-        { error: "Failed to delete attempts" },
+        { error: "Failed to reset problem state" },
         { status: 500 }
       );
     }
-
-    // Delete progress for this user+problem
-    const { error: progressError } = await supabase
-      .from("user_problem_progress")
-      .delete()
-      .eq("user_id", user.id)
-      .eq("problem_id", problem.id);
-
-    if (progressError) {
-      console.error("Error deleting progress:", progressError);
-      return NextResponse.json(
-        { error: "Failed to delete progress" },
-        { status: 500 }
-      );
-    }
-
     return NextResponse.json({
       success: true,
       message: `Progress and history reset for ${problem.title}`,

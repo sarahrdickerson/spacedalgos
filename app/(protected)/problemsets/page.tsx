@@ -6,7 +6,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Badge } from "@/components/ui/badge";
-import { ChevronDown, ExternalLink } from "lucide-react";
+import { ChevronDown, ExternalLink, History } from "lucide-react";
 import LogSolveButton from "./_components/log-solve-button";
 import { Spinner } from "@/components/ui/spinner";
 import { Progress } from "@/components/ui/progress";
@@ -39,21 +39,20 @@ const ProblemSetsPage = () => {
         let foundKey = data[0]?.key || "blind75"; // default to blind75 if no lists found
         // setProblemSets(data);
 
-        // Fetch the first problem list's items to display by default (blind75)
-        const itemsResponse = await fetch(
-          "/api/problems/problemlist-items?listKey=" +
-            encodeURIComponent(foundKey),
+        // Fetch the problem list with user progress
+        const progressResponse = await fetch(
+          "/api/problemlists/" + encodeURIComponent(foundKey) + "/progress"
         );
-        if (!itemsResponse.ok) {
-          throw new Error("Failed to load problem list items");
+        if (!progressResponse.ok) {
+          throw new Error("Failed to load problem list progress");
         }
-        const { list, items } = await itemsResponse.json();
+        const { list, problems } = await progressResponse.json();
 
-        if (!list || !Array.isArray(items)) {
-          throw new Error("Invalid problem list items payload");
+        if (!list || !Array.isArray(problems)) {
+          throw new Error("Invalid problem list progress payload");
         }
 
-        setActiveSet({ list, items });
+        setActiveSet({ list, problems });
         setError(null);
         setLoading(false);
       } catch (e) {
@@ -72,14 +71,14 @@ const ProblemSetsPage = () => {
   const groupedProblems = React.useMemo(() => {
     if (!activeSet) return {};
 
-    const groups: Record<string, Array<(typeof activeSet.items)[0]>> = {};
+    const groups: Record<string, Array<(typeof activeSet.problems)[0]>> = {};
 
-    activeSet.items.forEach((item: { problem: { category: any } }) => {
-      const category = item.problem.category;
+    activeSet.problems.forEach((problem: { category: any }) => {
+      const category = problem.category;
       if (!groups[category]) {
         groups[category] = [];
       }
-      groups[category].push(item);
+      groups[category].push(problem);
     });
 
     // Sort each group by order_index
@@ -133,50 +132,86 @@ const ProblemSetsPage = () => {
                 </CollapsibleTrigger>
                 <CollapsibleContent className="w-full">
                   <div className="flex flex-col gap-2 w-full p-4 pt-0">
-                    {problems.map((item) => (
-                      <div
-                        key={item.problem.key}
-                        className="flex flex-col p-3 rounded-lg hover:bg-accent transition-colors"
-                      >
-                        <div className="flex items-center justify-between p-3 w-full">
-                          <div className="flex items-center gap-3">
-                            <span className="text-muted-foreground text-sm">
-                              {item.order_index}
-                            </span>
-                            <a
-                              href={item.problem.leetcode_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="hover:underline font-medium flex flex-row gap-2 items-center"
-                            >
-                              {item.problem.title}{" "}
-                              <ExternalLink className="text-muted-foreground size-4" />
-                            </a>
+                    {problems.map((problem) => {
+                      const progress = problem.progress;
+                      const hasProgress = progress && progress.stage > 0;
+                      
+                      // Stage labels
+                      const stageLabels: Record<number, string> = {
+                        1: "Learning",
+                        2: "Reinforcing", 
+                        3: "Mastered"
+                      };
+                      
+                      // Calculate days until review
+                      let daysUntilReview: number | null = null;
+                      if (progress?.next_review_at) {
+                        const nextReview = new Date(progress.next_review_at);
+                        const now = new Date();
+                        const diffMs = nextReview.getTime() - now.getTime();
+                        daysUntilReview = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+                      }
+
+                      return (
+                        <div
+                          key={problem.key}
+                          className="flex flex-col p-3 rounded-lg hover:bg-accent transition-colors"
+                        >
+                          <div className="flex items-center justify-between p-3 w-full">
+                            <div className="flex items-center gap-3">
+                              <span className="text-muted-foreground text-sm">
+                                {problem.order_index}
+                              </span>
+                              <a
+                                href={problem.leetcode_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="hover:underline font-medium flex flex-row gap-2 items-center"
+                              >
+                                {problem.title}{" "}
+                                <ExternalLink className="text-muted-foreground size-4" />
+                              </a>
+                            </div>
+                            <div className="flex flex-row gap-2 items-center">
+                              <LogSolveButton
+                                problemKey={problem.key}
+                                problemTitle={problem.title}
+                              />
+                              <Badge
+                                className={
+                                  problem.difficulty === "Easy"
+                                    ? "bg-green-500/10 text-green-700 dark:text-green-400 hover:bg-green-500/20"
+                                    : problem.difficulty === "Medium"
+                                      ? "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 hover:bg-yellow-500/20"
+                                      : "bg-red-500/10 text-red-700 dark:text-red-400 hover:bg-red-500/20"
+                                }
+                              >
+                                {problem.difficulty}
+                              </Badge>
+                            </div>
                           </div>
-                          <div className="flex flex-row gap-2 items-center">
-                            <LogSolveButton
-                              problemKey={item.problem.key}
-                              problemTitle={item.problem.title}
-                            />
-                            <Badge
-                              className={
-                                item.problem.difficulty === "Easy"
-                                  ? "bg-green-500/10 text-green-700 dark:text-green-400 hover:bg-green-500/20"
-                                  : item.problem.difficulty === "Medium"
-                                    ? "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 hover:bg-yellow-500/20"
-                                    : "bg-red-500/10 text-red-700 dark:text-red-400 hover:bg-red-500/20"
-                              }
-                            >
-                              {item.problem.difficulty}
-                            </Badge>
-                          </div>
+                          {hasProgress && (
+                            <div className="flex flex-row gap-2 items-center pl-8">
+                              <Progress 
+                                className="w-1/6 md:w-1/5" 
+                                value={((progress.stage || 0) / 3) * 100}
+                              />
+                              <p className="text-xs text-muted-foreground">
+                                {stageLabels[progress.stage] || `Stage ${progress.stage}`}
+                                {daysUntilReview !== null && (
+                                  <> • {daysUntilReview > 0 
+                                    ? `Due in ${daysUntilReview}d` 
+                                    : daysUntilReview === 0 
+                                    ? 'Due today' 
+                                    : `Overdue by ${Math.abs(daysUntilReview)}d`
+                                  }</>
+                                )}
+                              </p>
+                            </div>
+                          )}
                         </div>
-                        <div className="flex flex-row gap-2 items-center pl-8">
-                          <Progress className="w-1/6 md:w-1/5" value={50}/>
-                          <p className="text-xs text-muted-foreground">Review • Due in 3d</p>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </CollapsibleContent>
               </Collapsible>

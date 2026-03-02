@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
-// Grade meaning (you can change):
-// 0 = fail, 1 = hard, 2 = ok, 3 = easy
-type Grade = 0 | 1 | 2 | 3;
+// Grade meaning:
+// 0 = again/fail, 1 = good, 2 = easy
+type Grade = 0 | 1 | 2;
 
 type Body = {
   grade: Grade;
@@ -40,7 +40,7 @@ function computeNextProgress(params: {
 
   const attempt_count = (prevAttemptCount ?? 0) + 1;
 
-  const isSuccess = grade >= 2;
+  const isSuccess = grade >= 1;
   const success_count = (prevSuccessCount ?? 0) + (isSuccess ? 1 : 0);
   const fail_count = (prevFailCount ?? 0) + (!isSuccess ? 1 : 0);
 
@@ -51,19 +51,16 @@ function computeNextProgress(params: {
   let stage = prevStage ?? 0;
 
   if (grade === 0) {
-    // fail: drop a stage, minimum 1 if they've started
+    // again/fail: drop a stage, minimum 1 if they've started
     if (stage >= 2) stage -= 1;
     else if (stage === 1) stage = 1;
     else stage = 1; // if first attempt is fail, we still consider them started
   } else if (grade === 1) {
-    // hard: keep stage (or start at 1)
-    stage = Math.max(1, stage || 1);
-  } else if (grade === 2) {
-    // ok: promote up to 3
+    // good: promote up to 3
     stage = Math.min(3, Math.max(1, stage || 1) + (stage >= 1 ? 1 : 0));
     // if stage was 0, becomes 1; if 1->2; if 2->3
     if (prevStage === null || prevStage === 0) stage = 1;
-  } else if (grade === 3) {
+  } else if (grade === 2) {
     // easy: promote faster
     if (!stage) stage = 1;
     else stage = Math.min(3, stage + 1);
@@ -75,12 +72,12 @@ function computeNextProgress(params: {
   // stage 3: longer
   // grade influences multiplier a bit
   const baseByStage = stage === 1 ? 2 : stage === 2 ? 5 : 12; // days
-  const mult = grade === 3 ? 1.4 : grade === 2 ? 1.0 : grade === 1 ? 0.6 : 0.3;
+  const mult = grade === 2 ? 1.5 : grade === 1 ? 1.0 : 0.3; // easy, good, or again
 
   // If we have a previous interval, grow it (for successes), shrink it (for fails)
   let interval_days: number;
   if (prevIntervalDays && prevIntervalDays > 0) {
-    if (grade >= 2)
+    if (grade >= 1)
       interval_days = Math.ceil(
         prevIntervalDays * (stage === 3 ? 1.6 : 1.3) * mult
       );
@@ -105,7 +102,7 @@ function computeNextProgress(params: {
 
 export async function POST(
   req: Request,
-  { params }: { params: { problemKey: string } }
+  { params }: { params: Promise<{ problemKey: string }> }
 ) {
   try {
     const supabase = await createClient();
@@ -120,7 +117,8 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const problemKey = decodeURIComponent(params.problemKey);
+    const { problemKey: problemKeyRaw } = await params;
+    const problemKey = decodeURIComponent(problemKeyRaw);
 
     // 2) Parse body
     const body = (await req.json()) as Body;
@@ -128,9 +126,9 @@ export async function POST(
     if (body.grade === undefined || body.grade === null) {
       return NextResponse.json({ error: "grade is required" }, { status: 400 });
     }
-    if (![0, 1, 2, 3].includes(body.grade)) {
+    if (![0, 1, 2].includes(body.grade)) {
       return NextResponse.json(
-        { error: "grade must be 0,1,2,3" },
+        { error: "grade must be 0 (again), 1 (good), or 2 (easy)" },
         { status: 400 }
       );
     }

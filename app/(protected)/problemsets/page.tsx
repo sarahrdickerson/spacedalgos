@@ -190,7 +190,7 @@ const ProblemSetsPage = () => {
                                 href={problem.leetcode_url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="hover:underline font-medium flex flex-row gap-2 items-center"
+                                className="hover:underline hover:cursor-pointer font-medium flex flex-row gap-2 items-center"
                               >
                                 {problem.title}{" "}
                                 <ExternalLinkIcon className="text-muted-foreground size-4" />

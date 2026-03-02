@@ -6,7 +6,7 @@ export async function GET(
   props: { params: Promise<{ problemKey: string }> }
 ) {
   const params = await props.params;
-  const { problemKey } = params;
+  const problemKey = decodeURIComponent(params.problemKey);
 
   try {
     const supabase = await createClient();
@@ -35,7 +35,7 @@ export async function GET(
     // Fetch all attempts for this user+problem
     const { data: attempts, error: attemptsError } = await supabase
       .from("user_problem_attempts")
-      .select("*")
+      .select("id, grade, time_bucket, note, attempted_at")
       .eq("user_id", user.id)
       .eq("problem_id", problem.id)
       .order("attempted_at", { ascending: false });

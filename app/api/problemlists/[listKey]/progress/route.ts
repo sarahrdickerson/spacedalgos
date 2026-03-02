@@ -99,6 +99,7 @@ export async function GET(
 
       return {
         ...problem,
+        leetcode_url: item.leetcode_url,
         order_index: item.order_index,
         list_tags: item.list_tags,
         progress: progress

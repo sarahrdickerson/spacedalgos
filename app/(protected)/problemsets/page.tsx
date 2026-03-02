@@ -24,6 +24,7 @@ const ProblemSetsPage = () => {
   const [activeSet, setActiveSet] = React.useState<any>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState<boolean>(true);
+  const [openCategories, setOpenCategories] = React.useState<Set<string>>(new Set());
 
   React.useEffect(() => {
     const loadProblemSets = async () => {
@@ -99,6 +100,23 @@ const ProblemSetsPage = () => {
     return groups;
   }, [activeSet]);
 
+  // Automatically open categories that have problems with progress
+  React.useEffect(() => {
+    if (!activeSet) return;
+
+    const categoriesToOpen = new Set<string>();
+    Object.entries(groupedProblems).forEach(([category, problems]) => {
+      const hasProgress = problems.some(
+        (problem) => problem.progress && problem.progress.stage > 0
+      );
+      if (hasProgress) {
+        categoriesToOpen.add(category);
+      }
+    });
+
+    setOpenCategories(categoriesToOpen);
+  }, [activeSet, groupedProblems]);
+
   return (
     <div className="flex-1 w-full flex flex-col gap-12">
       {loading && (
@@ -130,6 +148,18 @@ const ProblemSetsPage = () => {
               <Collapsible
                 key={category}
                 className="w-full border border-muted rounded-lg"
+                open={openCategories.has(category)}
+                onOpenChange={(isOpen) => {
+                  setOpenCategories((prev) => {
+                    const next = new Set(prev);
+                    if (isOpen) {
+                      next.add(category);
+                    } else {
+                      next.delete(category);
+                    }
+                    return next;
+                  });
+                }}
               >
                 <CollapsibleTrigger className="group flex items-center justify-between w-full p-4 text-lg font-semibold hover:bg-accent hover:rounded-sm transition-colors">
                   <div className="flex items-center gap-2">

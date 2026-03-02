@@ -3,6 +3,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -80,14 +81,14 @@ const MenuButton = ({ problemKey, problemTitle }: MenuButtonProps) => {
         throw new Error("Failed to reset progress");
       }
       
-      // Reload the page to update the UI
+      // Success - reload the page to update the UI
+      toast.success("Progress reset successfully");
       window.location.reload();
     } catch (error) {
       console.error("Error resetting progress:", error);
-      alert("Failed to reset progress. Please try again.");
-    } finally {
+      toast.error("Failed to reset progress. Please try again.");
       setResetting(false);
-      setIsResetConfirmOpen(false);
+      // Keep dialog open on error so user can retry
     }
   };
 

@@ -61,9 +61,6 @@ const LogSolveButton = ({ problemKey, problemTitle }: LogSolveButtonProps) => {
         throw new Error(errorData.error || "Failed to log attempt");
       }
 
-      const data = await response.json();
-      console.log("Attempt logged:", data);
-
       toast.success("Attempt logged successfully!");
 
       // Reset form and close dialog

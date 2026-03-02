@@ -12,6 +12,13 @@ import { Progress } from "@/components/ui/progress";
 import MenuButton from "./_components/menu-button";
 import { CaretDownIcon, ExternalLinkIcon } from "@radix-ui/react-icons";
 
+// Stage labels constant
+const stageLabels: Record<number, string> = {
+  1: "Learning",
+  2: "Reinforcing",
+  3: "Mastered",
+};
+
 const ProblemSetsPage = () => {
   //   const [problemSets, setProblemSets] = React.useState<any>(null); // TODO: uncomment in future to support multiple problem sets/lists and selection of which to view. For now we just fetch and show the first one (blind75) for simplicity
   const [activeSet, setActiveSet] = React.useState<any>(null);
@@ -133,24 +140,18 @@ const ProblemSetsPage = () => {
                 </CollapsibleTrigger>
                 <CollapsibleContent className="w-full">
                   <div className="flex flex-col gap-2 w-full p-4 pt-0">
-                    {problems.map((problem) => {
-                      const progress = problem.progress;
-                      const hasProgress = progress && progress.stage > 0;
-                      
-                      // Stage labels
-                      const stageLabels: Record<number, string> = {
-                        1: "Learning",
-                        2: "Reinforcing", 
-                        3: "Mastered"
-                      };
-                      
-                      // Calculate days until review and progress bar decay
-                      let daysUntilReview: number | null = null;
-                      let progressValue = ((progress?.stage || 0) / 3) * 100;
-                      
-                      if (progress?.next_review_at && progress?.interval_days && progress?.stage) {
-                        const nextReview = new Date(progress.next_review_at);
-                        const now = new Date();
+                    {(() => {
+                      const now = new Date();
+                      return problems.map((problem) => {
+                        const progress = problem.progress;
+                        const hasProgress = progress && progress.stage > 0;
+                        
+                        // Calculate days until review and progress bar decay
+                        let daysUntilReview: number | null = null;
+                        let progressValue = ((progress?.stage || 0) / 3) * 100;
+                        
+                        if (progress?.next_review_at && progress?.interval_days && progress?.stage) {
+                          const nextReview = new Date(progress.next_review_at);
                         const diffMs = nextReview.getTime() - now.getTime();
                         daysUntilReview = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
                         
@@ -171,7 +172,6 @@ const ProblemSetsPage = () => {
                         }
                       } else if (progress?.next_review_at) {
                         const nextReview = new Date(progress.next_review_at);
-                        const now = new Date();
                         const diffMs = nextReview.getTime() - now.getTime();
                         daysUntilReview = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
                       }
@@ -239,7 +239,8 @@ const ProblemSetsPage = () => {
                           )}
                         </div>
                       );
-                    })}
+                    });
+                    })()}
                   </div>
                 </CollapsibleContent>
               </Collapsible>

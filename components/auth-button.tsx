@@ -27,7 +27,7 @@ export async function AuthButton() {
         <Button variant="ghost" size="icon" className="rounded-full">
           <Avatar>
             <AvatarImage
-              src={user.picture ?? undefined}
+              src={user?.user_metadata?.avatar_url ?? undefined}
               alt={user.email ?? undefined}
             />
             <AvatarFallback>
@@ -36,7 +36,7 @@ export async function AuthButton() {
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-full sm:w-auto">
+      <DropdownMenuContent className="w-full sm:w-auto" align="end">
         <DropdownMenuGroup>
           <DropdownMenuLabel className="text-sm px-2">
             {user.email}

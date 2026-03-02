@@ -59,8 +59,8 @@
     --accent-foreground: 0.95 0.002 286;
     --destructive: 0.704 0.191 22.216;
     --destructive-foreground: 0.98 0 0;
-    --border: 1 0 0 / 10%;
-    --input: 1 0 0 / 15%;
+    --border: 0.22 0.006 285.885;
+    --input: 0.25 0.008 285.885;
     --ring: 0.552 0.016 285.938;
     --chart-1: 0.79 0.1 275;
     --chart-2: 0.68 0.16 277;
@@ -73,7 +73,7 @@
     --sidebar-primary-foreground: 0.96 0.02 272;
     --sidebar-accent: 0.274 0.006 286.033;
     --sidebar-accent-foreground: 0.95 0.002 286;
-    --sidebar-border: 1 0 0 / 10%;
+    --sidebar-border: 0.22 0.006 285.885;
     --sidebar-ring: 0.552 0.016 285.938;
   }
   .theme {

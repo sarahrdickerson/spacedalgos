@@ -6,7 +6,7 @@ export async function DELETE(
   props: { params: Promise<{ problemKey: string }> }
 ) {
   const params = await props.params;
-  const { problemKey } = params;
+  const problemKey = decodeURIComponent(params.problemKey);
 
   try {
     const supabase = await createClient();

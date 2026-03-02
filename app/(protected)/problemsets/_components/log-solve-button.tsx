@@ -21,6 +21,7 @@ import {
 import { ChevronDown } from "lucide-react";
 import React from "react";
 import { toast } from "sonner";
+import { PlusCircledIcon } from "@radix-ui/react-icons";
 
 type LogSolveButtonProps = {
   problemKey: string;
@@ -82,12 +83,12 @@ const LogSolveButton = ({ problemKey, problemTitle }: LogSolveButtonProps) => {
   return (
     <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline">Log Solve</Button>
+        <Button variant="outline"><PlusCircledIcon /> Log Attempt</Button>
       </DialogTrigger>
       <DialogContent>
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Log Solve — {problemTitle}</DialogTitle>
+            <DialogTitle>Log Attempt — {problemTitle}</DialogTitle>
           </DialogHeader>
           <div className="flex flex-col gap-6 py-4">
             <FieldGroup>

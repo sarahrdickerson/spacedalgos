@@ -39,7 +39,7 @@ export default {
         },
         destructive: {
           DEFAULT: "oklch(var(--destructive) / <alpha-value>)",
-          foreground: "var(--destructive-foreground)",
+          foreground: "oklch(var(--destructive-foreground) / <alpha-value>)",
         },
         border: "oklch(var(--border) / <alpha-value>)",
         input: "oklch(var(--input) / <alpha-value>)",

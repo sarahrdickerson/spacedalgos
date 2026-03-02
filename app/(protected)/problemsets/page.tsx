@@ -6,12 +6,11 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Badge } from "@/components/ui/badge";
-import { ChevronDown, ExternalLink, History } from "lucide-react";
 import LogSolveButton from "./_components/log-solve-button";
 import { Spinner } from "@/components/ui/spinner";
 import { Progress } from "@/components/ui/progress";
 import MenuButton from "./_components/menu-button";
-import { Button } from "@/components/ui/button";
+import { CaretDownIcon, ExternalLinkIcon } from "@radix-ui/react-icons";
 
 const ProblemSetsPage = () => {
   //   const [problemSets, setProblemSets] = React.useState<any>(null); // TODO: uncomment in future to support multiple problem sets/lists and selection of which to view. For now we just fetch and show the first one (blind75) for simplicity
@@ -130,7 +129,7 @@ const ProblemSetsPage = () => {
                     {category}
                     <Badge variant="secondary">{problems.length}</Badge>
                   </div>
-                  <ChevronDown className="h-5 w-5 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                  <CaretDownIcon className="h-5 w-5 transition-transform duration-200 group-data-[state=open]:rotate-180" />
                 </CollapsibleTrigger>
                 <CollapsibleContent className="w-full">
                   <div className="flex flex-col gap-2 w-full p-4 pt-0">
@@ -194,7 +193,7 @@ const ProblemSetsPage = () => {
                                 className="hover:underline font-medium flex flex-row gap-2 items-center"
                               >
                                 {problem.title}{" "}
-                                <ExternalLink className="text-muted-foreground size-4" />
+                                <ExternalLinkIcon className="text-muted-foreground size-4" />
                               </a>
                             </div>
                             <div className="flex flex-row gap-2 items-center">

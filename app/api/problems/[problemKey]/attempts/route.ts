@@ -45,9 +45,9 @@ function computeNextProgress(params: {
   const fail_count = (prevFailCount ?? 0) + (!isSuccess ? 1 : 0);
 
   // Stage rules:
-  // - First success puts you in stage 1
+  // - First attempt (any grade) puts you in stage 1
   // - Repeated successes promote to 2 then 3
-  // - Fail drops you down (but not below 1 if started)
+  // - Fail drops you down (but not below 1 once started)
   let stage = prevStage ?? 0;
 
   if (grade === 0) {
@@ -69,7 +69,7 @@ function computeNextProgress(params: {
   // Interval rules:
   // stage 1: short intervals
   // stage 2: medium
-  // stage 3: longer
+  // stage 3: longer with enhanced growth
   // grade influences multiplier a bit
   const baseByStage = stage === 1 ? 2 : stage === 2 ? 5 : 12; // days
   const mult = grade === 2 ? 1.5 : grade === 1 ? 1.0 : 0.3; // easy, good, or again
@@ -77,11 +77,18 @@ function computeNextProgress(params: {
   // If we have a previous interval, grow it (for successes), shrink it (for fails)
   let interval_days: number;
   if (prevIntervalDays && prevIntervalDays > 0) {
-    if (grade >= 1)
-      interval_days = Math.ceil(
-        prevIntervalDays * (stage === 3 ? 1.6 : 1.3) * mult
-      );
-    else interval_days = Math.max(1, Math.floor(prevIntervalDays * mult));
+    if (grade >= 1) {
+      // Success: grow the interval
+      // Stage 3 gets both 1.6x stage multiplier and 1.3x growth multiplier
+      if (stage === 3) {
+        interval_days = Math.ceil(prevIntervalDays * 1.6 * 1.3 * mult);
+      } else {
+        interval_days = Math.ceil(prevIntervalDays * 1.3 * mult);
+      }
+    } else {
+      // Failure: shrink the interval
+      interval_days = Math.max(1, Math.floor(prevIntervalDays * mult));
+    }
   } else {
     interval_days = Math.max(1, Math.round(baseByStage * mult));
   }

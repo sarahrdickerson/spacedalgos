@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/collapsible";
 import { Badge } from "@/components/ui/badge";
 import LogSolveButton from "./_components/log-solve-button";
-import { Spinner } from "@/components/ui/spinner";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import MenuButton from "./_components/menu-button";
 import { CaretDownIcon, ExternalLinkIcon } from "@radix-ui/react-icons";
@@ -30,7 +30,7 @@ const ProblemSetsPage = () => {
     const loadProblemSets = async () => {
       try {
         // Fetch problem lists from API
-        const response = await fetch("/api/problems/problemlists");
+        const response = await fetch("/api/problemlists");
         if (!response.ok) {
           throw new Error("Failed to load problem lists");
         }
@@ -120,10 +120,37 @@ const ProblemSetsPage = () => {
   return (
     <div className="flex-1 w-full flex flex-col gap-12">
       {loading && (
-        <div className="flex items-center justify-center py-12">
-          <div className="flex flex-col items-center gap-3">
-            <Spinner className="w-8 h-8 text-primary" />
-            <p className="text-muted-foreground">Loading problem sets...</p>
+        <div className="flex flex-col w-full gap-6">
+          <Skeleton className="h-8 w-48" />
+          <div className="flex flex-col gap-4 w-full">
+            {[1, 2, 3, 4].map((i) => (
+              <div
+                key={i}
+                className="w-full border border-muted rounded-lg p-4"
+              >
+                <div className="flex items-center justify-between w-full mb-4">
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-5 w-32" />
+                    <Skeleton className="h-5 w-8 rounded-full" />
+                  </div>
+                  <Skeleton className="h-5 w-5" />
+                </div>
+                <div className="flex flex-col gap-2 w-full">
+                  {[1, 2, 3].map((j) => (
+                    <div
+                      key={j}
+                      className="flex items-center justify-between w-full p-3 border border-muted rounded-md"
+                    >
+                      <div className="flex items-center gap-3 flex-1">
+                        <Skeleton className="h-4 w-48" />
+                        <Skeleton className="h-4 w-16 rounded-full" />
+                      </div>
+                      <Skeleton className="h-8 w-24" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}

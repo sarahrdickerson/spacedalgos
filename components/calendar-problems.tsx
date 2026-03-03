@@ -5,6 +5,7 @@ import { Calendar } from "@/components/ui/calendar"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
+import { LogAttemptDialog } from "@/components/log-attempt-dialog"
 
 interface DueProblem {
   id: string
@@ -38,6 +39,8 @@ export function CalendarProblems() {
   const [events, setEvents] = React.useState<CalendarEvent[]>([])
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
+  const [selectedEvent, setSelectedEvent] = React.useState<CalendarEvent | null>(null)
+  const [dialogOpen, setDialogOpen] = React.useState(false)
 
   React.useEffect(() => {
     const loadDueProblems = async () => {
@@ -109,6 +112,10 @@ export function CalendarProblems() {
                 overdueStyle
               )}
               title={`${event.title} - Stage ${event.stage}, Attempt #${event.attemptCount + 1}${event.daysOverdue > 0 ? ` (${event.daysOverdue}d overdue)` : ""}`}
+              onClick={() => {
+                setSelectedEvent(event)
+                setDialogOpen(true)
+              }}
             >
               {event.title} <span className="text-muted-foreground">#{event.attemptCount + 1}</span>
               {event.daysOverdue > 0 && (
@@ -188,11 +195,26 @@ export function CalendarProblems() {
   }
 
   return (
-    <div className="w-full p-6">
-      <Calendar 
-        minHeight="150px"
-        renderDay={renderDay}
-      />
-    </div>
+    <>
+      <div className="w-full p-6">
+        <Calendar 
+          minHeight="150px"
+          renderDay={renderDay}
+        />
+      </div>
+      
+      {selectedEvent && (
+        <LogAttemptDialog
+          problemKey={selectedEvent.problemKey}
+          problemTitle={selectedEvent.title}
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          onSuccess={() => {
+            // Reload due problems after logging attempt
+            window.location.reload()
+          }}
+        />
+      )}
+    </>
   )
 }

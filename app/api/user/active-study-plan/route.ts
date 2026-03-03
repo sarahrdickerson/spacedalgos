@@ -69,7 +69,49 @@ export async function GET() {
     );
   }
 }
+export async function DELETE() {
+  try {
+    const supabase = await createClient();
 
+    // 1) Auth
+    const {
+      data: { user },
+      error: userErr,
+    } = await supabase.auth.getUser();
+
+    if (userErr || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // 2) Clear active_list_id from user preferences
+    const { error: updateErr } = await supabase
+      .from("user_preferences")
+      .update({
+        active_list_id: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("user_id", user.id);
+
+    if (updateErr) {
+      console.error("Error clearing active study plan:", updateErr);
+      return NextResponse.json(
+        { error: "Failed to remove active study plan" },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: "Active study plan removed",
+    });
+  } catch (e: any) {
+    console.error(e);
+    return NextResponse.json(
+      { error: "Unexpected error removing active study plan" },
+      { status: 500 }
+    );
+  }
+}
 export async function POST(req: Request) {
   try {
     const supabase = await createClient();

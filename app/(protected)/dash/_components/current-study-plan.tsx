@@ -29,6 +29,7 @@ interface ProblemList {
   id: string;
   key: string;
   name: string;
+  description?: string;
   source?: string;
   version?: string;
 }
@@ -75,7 +76,7 @@ const CurrentStudyPlan = () => {
 
         // Fetch problem lists
         setListsLoading(true);
-        const listsResponse = await fetch("/api/problems/problemlists");
+        const listsResponse = await fetch("/api/problemlists");
         if (!listsResponse.ok) {
           throw new Error("Failed to fetch problem lists");
         }
@@ -230,7 +231,12 @@ const CurrentStudyPlan = () => {
                             <ComboboxItem key={item.id} value={item.name}>
                               <div className="flex flex-col">
                                 <span className="font-medium">{item.name}</span>
-                                {item.source && (
+                                {item.description && (
+                                  <span className="text-xs text-muted-foreground">
+                                    {item.description}
+                                  </span>
+                                )}
+                                {item.source && !item.description && (
                                   <span className="text-xs text-muted-foreground">
                                     {item.source}
                                   </span>
@@ -260,12 +266,60 @@ const CurrentStudyPlan = () => {
         <CardHeader>
           <CardTitle>{activeList.name}</CardTitle>
           <CardDescription>
-            Your current study plan for spaced repetition practice.
+            {activeList.description || "Your current active study plan"}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {stats ? (
             <div className="space-y-4">
+              {/* Completion Badge and Weekly Goal */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  {/* Completion Percentage Circle */}
+                  <div className="relative flex items-center justify-center">
+                    <svg className="w-16 h-16 -rotate-90">
+                      <circle
+                        cx="32"
+                        cy="32"
+                        r="28"
+                        stroke="currentColor"
+                        strokeWidth="6"
+                        fill="none"
+                        className="text-muted"
+                      />
+                      <circle
+                        cx="32"
+                        cy="32"
+                        r="28"
+                        stroke="currentColor"
+                        strokeWidth="6"
+                        fill="none"
+                        strokeDasharray={`${2 * Math.PI * 28}`}
+                        strokeDashoffset={`${2 * Math.PI * 28 * (1 - stats.mastered / stats.total)}`}
+                        className="text-green-600 dark:text-green-400 transition-all duration-500"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <span className="text-xl font-bold">
+                        {Math.round((stats.mastered / stats.total) * 100)}%
+                      </span>
+                    </div>
+                  </div>
+                  
+                  {/* Weekly Goal */}
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground">This Week</p>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                        {stats.dueToday}
+                      </span>
+                      <span className="text-sm text-muted-foreground">/ 7 goal</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* Progress Bar */}
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">

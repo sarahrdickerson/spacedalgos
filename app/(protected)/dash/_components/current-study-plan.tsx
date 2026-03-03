@@ -405,7 +405,11 @@ const CurrentStudyPlan = () => {
           )}
         </CardContent>
         <CardFooter className="flex flex-row justify-end gap-2">
-          <Link href="/problemsets"><Button variant="default">Review Problems <CaretRightIcon /></Button></Link>
+          <Button asChild variant="default">
+            <Link href="/problemsets">
+              Review Problems <CaretRightIcon />
+            </Link>
+          </Button>
           <Button variant="outline" size="icon"><DotsVerticalIcon /></Button>
           
         </CardFooter>

@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
 // GET /api/problems/[listKey]/items
-export async function GET(request: Request, context: { params: Promise<{ listKey: string }> }) {
+export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
     const listKey = url.searchParams.get("listKey")?.trim();

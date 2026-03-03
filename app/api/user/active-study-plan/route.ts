@@ -47,7 +47,7 @@ export async function GET() {
     // 3) Fetch the actual problem list details
     const { data: list, error: listErr } = await supabase
       .from("problem_lists")
-      .select("id, key, name, source, version")
+      .select("id, key, name, source, version, description")
       .eq("id", prefs.active_list_id)
       .single();
 

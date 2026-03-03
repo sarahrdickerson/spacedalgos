@@ -30,7 +30,7 @@ const ProblemSetsPage = () => {
     const loadProblemSets = async () => {
       try {
         // Fetch problem lists from API
-        const response = await fetch("/api/problems/problemlists");
+        const response = await fetch("/api/problemlists");
         if (!response.ok) {
           throw new Error("Failed to load problem lists");
         }

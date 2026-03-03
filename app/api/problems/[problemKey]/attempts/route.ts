@@ -125,7 +125,18 @@ export async function POST(
     }
 
     const { problemKey: problemKeyRaw } = await params;
-    const problemKey = decodeURIComponent(problemKeyRaw);
+    let problemKey: string;
+    try {
+      problemKey = decodeURIComponent(problemKeyRaw);
+    } catch (err) {
+      if (err instanceof URIError) {
+        return NextResponse.json(
+          { error: "Invalid problem key" },
+          { status: 400 }
+        );
+      }
+      throw err;
+    }
 
     // 2) Parse body
     const body = (await req.json()) as Body;

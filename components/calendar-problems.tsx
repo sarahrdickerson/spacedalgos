@@ -122,7 +122,7 @@ export function CalendarProblems({ data, loading }: CalendarProblemsProps) {
 
   if (loading) {
     return (
-      <div className="w-full p-6">
+      <div className="w-full">
         <div className="flex flex-col">
           {/* Header skeleton */}
           <div className="flex items-center justify-between pb-4">
@@ -178,7 +178,7 @@ export function CalendarProblems({ data, loading }: CalendarProblemsProps) {
 
   if (error) {
     return (
-      <div className="w-full p-6">
+      <div className="w-full">
         <p className="text-destructive">{error}</p>
       </div>
     )
@@ -186,7 +186,7 @@ export function CalendarProblems({ data, loading }: CalendarProblemsProps) {
 
   return (
     <>
-      <div className="w-full p-6">
+      <div className="w-full">
         <Calendar 
           minHeight="150px"
           renderDay={renderDay}

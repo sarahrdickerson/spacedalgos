@@ -17,10 +17,13 @@ import {
   ComboboxItem,
   ComboboxList,
 } from "@/components/ui/combobox";
-import { Spinner } from "@/components/ui/spinner";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
 import React from "react";
 import { toast } from "sonner";
+import { CaretRightIcon, DotsVerticalIcon } from "@radix-ui/react-icons";
+import Link from "next/link";
+import { Spinner } from "@/components/ui/spinner";
 
 interface ProblemList {
   id: string;
@@ -30,10 +33,19 @@ interface ProblemList {
   version?: string;
 }
 
+interface PlanStats {
+  total: number;
+  mastered: number;
+  dueToday: number;
+  inProgress: number;
+  notStarted: number;
+}
+
 const CurrentStudyPlan = () => {
   const [activeList, setActiveList] = React.useState<ProblemList | null>(null);
   const [problemLists, setProblemLists] = React.useState<ProblemList[]>([]);
   const [selectedList, setSelectedList] = React.useState<ProblemList | null>(null);
+  const [stats, setStats] = React.useState<PlanStats | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [listsLoading, setListsLoading] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
@@ -49,6 +61,17 @@ const CurrentStudyPlan = () => {
         }
         const activeData = await activeResponse.json();
         setActiveList(activeData.active_list);
+
+        // Fetch stats if there's an active list
+        if (activeData.active_list?.key) {
+          const statsResponse = await fetch(
+            `/api/problemlists/${activeData.active_list.key}/stats`
+          );
+          if (statsResponse.ok) {
+            const statsData = await statsResponse.json();
+            setStats(statsData);
+          }
+        }
 
         // Fetch problem lists
         setListsLoading(true);
@@ -102,6 +125,18 @@ const CurrentStudyPlan = () => {
       const data = await response.json();
       setActiveList(data.active_list);
       setSelectedList(null);
+      
+      // Fetch stats for the new active list
+      if (data.active_list?.key) {
+        const statsResponse = await fetch(
+          `/api/problemlists/${data.active_list.key}/stats`
+        );
+        if (statsResponse.ok) {
+          const statsData = await statsResponse.json();
+          setStats(statsData);
+        }
+      }
+      
       toast.success("Active study plan set successfully!");
     } catch (error) {
       console.error("Error setting active study plan:", error);
@@ -118,10 +153,22 @@ const CurrentStudyPlan = () => {
       <div className="w-full">
         <Card>
           <CardHeader>
-            <CardTitle>Current Study Plan</CardTitle>
+            <Skeleton className="h-6 w-32 mb-2" />
+            <Skeleton className="h-4 w-64" />
           </CardHeader>
-          <CardContent className="flex items-center justify-center py-8">
-            <Spinner className="w-6 h-6" />
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-4 w-12" />
+              </div>
+              <Skeleton className="h-3 w-full" />
+              <div className="flex gap-4">
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="h-3 w-20" />
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -211,27 +258,100 @@ const CurrentStudyPlan = () => {
     <div className="w-full">
       <Card>
         <CardHeader>
-          <CardTitle>Current Study Plan</CardTitle>
+          <CardTitle>{activeList.name}</CardTitle>
           <CardDescription>
-            Your active study plan for spaced repetition practice.
+            Your current study plan for spaced repetition practice.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-2">
-              <p className="text-sm text-muted-foreground">Plan Name</p>
-              <p className="font-medium">{activeList.name}</p>
-            </div>
-            {activeList.source && (
-              <div className="flex flex-col gap-2">
-                <p className="text-sm text-muted-foreground">Source</p>
-                <p className="font-medium">{activeList.source}</p>
+          {stats ? (
+            <div className="space-y-4">
+              {/* Progress Bar */}
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Progress</span>
+                  <span className="font-medium">
+                    {stats.mastered + stats.inProgress} / {stats.total}
+                  </span>
+                </div>
+                <div className="h-3 w-full bg-muted rounded-full overflow-hidden flex">
+                  {/* Mastered segment */}
+                  {stats.mastered > 0 && (
+                    <div
+                      className="bg-green-600 dark:bg-green-400"
+                      style={{
+                        width: `${(stats.mastered / stats.total) * 100}%`,
+                      }}
+                      title={`${stats.mastered} mastered`}
+                    />
+                  )}
+                  {/* In Progress segment */}
+                  {stats.inProgress > 0 && (
+                    <div
+                      className="bg-blue-600 dark:bg-blue-400"
+                      style={{
+                        width: `${(stats.inProgress / stats.total) * 100}%`,
+                      }}
+                      title={`${stats.inProgress} in progress`}
+                    />
+                  )}
+                  {/* Not Started segment (fills remaining space) */}
+                </div>
+                <div className="flex gap-4 text-xs">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 rounded-sm bg-green-600 dark:bg-green-400" />
+                    <span className="text-muted-foreground">
+                      Mastered ({stats.mastered})
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 rounded-sm bg-blue-600 dark:bg-blue-400" />
+                    <span className="text-muted-foreground">
+                      In Progress ({stats.inProgress})
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 rounded-sm bg-muted-foreground/30" />
+                    <span className="text-muted-foreground">
+                      New ({stats.notStarted})
+                    </span>
+                  </div>
+                </div>
               </div>
-            )}
-          </div>
+
+              {/* Key Stats */}
+              {stats.dueToday > 0 && (
+                <div className="flex items-baseline gap-2 pt-2 border-t">
+                  <span className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                    {stats.dueToday}
+                  </span>
+                  <span className="text-sm text-muted-foreground">
+                    problems due for review
+                  </span>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <Skeleton className="h-4 w-16" />
+                  <Skeleton className="h-4 w-12" />
+                </div>
+                <Skeleton className="h-3 w-full" />
+                <div className="flex gap-4">
+                  <Skeleton className="h-3 w-24" />
+                  <Skeleton className="h-3 w-24" />
+                  <Skeleton className="h-3 w-20" />
+                </div>
+              </div>
+            </div>
+          )}
         </CardContent>
-        <CardFooter>
-          <Button variant="outline">Change Study Plan</Button>
+        <CardFooter className="flex flex-row justify-end gap-2">
+          <Link href="/problemsets"><Button variant="default">Review Problems <CaretRightIcon /></Button></Link>
+          <Button variant="outline" size="icon"><DotsVerticalIcon /></Button>
+          
         </CardFooter>
       </Card>
     </div>

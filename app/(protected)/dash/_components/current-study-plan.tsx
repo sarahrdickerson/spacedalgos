@@ -23,7 +23,6 @@ import React from "react";
 import { toast } from "sonner";
 import { CaretRightIcon } from "@radix-ui/react-icons";
 import Link from "next/link";
-import { Spinner } from "@/components/ui/spinner";
 import CurrentPlanMenuButton from "./current-plan-menu-button";
 
 interface ProblemList {
@@ -96,7 +95,7 @@ const CurrentStudyPlan = ({ data, loading, error, onRefresh }: CurrentStudyPlanP
         throw new Error(errorData.error || "Failed to set active study plan");
       }
 
-      const data = await response.json();
+      await response.json();
       setSelectedList(null);
       
       // Refresh all dashboard data

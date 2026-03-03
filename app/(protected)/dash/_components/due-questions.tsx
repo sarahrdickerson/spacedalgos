@@ -49,15 +49,12 @@ const DueQuestions = ({ data, loading, onRefresh }: DueQuestionsProps) => {
   const dueProblems = data?.dueProblems || [];
   
   const { dueTodayProblems, dueThisWeekProblems, stats } = React.useMemo(() => {
-    if (!currentTime) {
+    // If no active list, return null stats to trigger empty state
+    if (!data?.activeList || !currentTime) {
       return {
         dueTodayProblems: [],
         dueThisWeekProblems: [],
-        stats: {
-          dueToday: 0,
-          dueThisWeek: 0,
-          currentStreak: data?.streak?.current_streak || 0,
-        }
+        stats: null
       };
     }
 
@@ -97,7 +94,7 @@ const DueQuestions = ({ data, loading, onRefresh }: DueQuestionsProps) => {
         currentStreak,
       }
     };
-  }, [dueProblems, data?.streak, currentTime]);
+  }, [dueProblems, data?.streak, data?.activeList, currentTime]);
 
   const handleSuccess = async () => {
     // Refresh all dashboard data

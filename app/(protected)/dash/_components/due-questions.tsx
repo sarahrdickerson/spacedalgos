@@ -136,17 +136,19 @@ const DueQuestions = () => {
         return reviewDate <= now;
       });
 
-      const dueThisWeek = problems.filter((p: any) => {
+      const dueThisWeekProblems = problems.filter((p: any) => {
         const nextReview = p.progress?.next_review_at;
         if (!nextReview) return false;
         const reviewDate = new Date(nextReview);
         return reviewDate > today && reviewDate <= weekFromNow;
-      }).length;
+      });
+      const dueThisWeek = dueThisWeekProblems.length;
 
       const currentStreak = 0;
 
       setStats({ dueToday: todayProblems.length, dueThisWeek, currentStreak });
       setDueTodayProblems(todayProblems);
+      setDueThisWeekProblems(dueThisWeekProblems);
     } catch (error) {
       console.error("Error refetching stats:", error);
     }

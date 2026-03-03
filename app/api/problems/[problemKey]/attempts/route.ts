@@ -222,6 +222,11 @@ export async function POST(
     const last_success_at =
       next.last_success_at ?? existingProgress?.last_success_at ?? null;
 
+    // Determine if problem was due BEFORE updating progress
+    const wasDue =
+      existingProgress?.next_review_at &&
+      new Date(existingProgress.next_review_at) <= now;
+
     // 6) Upsert progress
     const { data: progress, error: progressUpsertErr } = await supabase
       .from("user_problem_progress")
@@ -250,6 +255,9 @@ export async function POST(
       );
     }
 
+    // 7) Update daily activity and streak
+    await updateDailyActivityAndStreak(supabase, user.id, now, wasDue);
+
     return NextResponse.json({
       attempt,
       progress,
@@ -261,4 +269,107 @@ export async function POST(
       { status: 500 }
     );
   }
+}
+
+// Update daily activity table and calculate streak
+async function updateDailyActivityAndStreak(
+  supabase: any,
+  userId: string,
+  attemptDate: Date,
+  wasDue: boolean
+) {
+  const activityDate = attemptDate.toISOString().split("T")[0]; // YYYY-MM-DD
+
+  // Upsert daily activity
+  const { error: activityErr } = await supabase.rpc("upsert_daily_activity", {
+    p_user_id: userId,
+    p_activity_date: activityDate,
+    p_was_due: wasDue,
+  });
+
+  if (activityErr) {
+    console.error("Error updating daily activity:", activityErr);
+    return;
+  }
+
+  // Calculate streak
+  const { data: activities } = await supabase
+    .from("user_daily_activity")
+    .select("activity_date")
+    .eq("user_id", userId)
+    .order("activity_date", { ascending: false })
+    .limit(365); // Check last year
+
+  if (!activities || activities.length === 0) {
+    return;
+  }
+
+  // Calculate current streak
+  let currentStreak = 0;
+  const today = new Date().toISOString().split("T")[0];
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+
+  // Start from today or yesterday
+  let expectedDate = activities[0].activity_date >= yesterday ? activities[0].activity_date : null;
+  
+  if (!expectedDate) {
+    currentStreak = 0;
+  } else {
+    for (const activity of activities) {
+      if (activity.activity_date === expectedDate) {
+        currentStreak++;
+        // Move to previous day
+        const prevDate = new Date(expectedDate);
+        prevDate.setDate(prevDate.getDate() - 1);
+        expectedDate = prevDate.toISOString().split("T")[0];
+      } else {
+        break;
+      }
+    }
+  }
+
+  // Calculate longest streak
+  let longestStreak = 0;
+  let tempStreak = 1;
+  
+  for (let i = 0; i < activities.length - 1; i++) {
+    const currentDate = new Date(activities[i].activity_date);
+    const nextDate = new Date(activities[i + 1].activity_date);
+    const diffDays = Math.floor(
+      (currentDate.getTime() - nextDate.getTime()) / 86400000
+    );
+
+    if (diffDays === 1) {
+      tempStreak++;
+    } else {
+      longestStreak = Math.max(longestStreak, tempStreak);
+      tempStreak = 1;
+    }
+  }
+  longestStreak = Math.max(longestStreak, tempStreak);
+
+  // Update user preferences
+  const { data: prefs } = await supabase
+    .from("user_preferences")
+    .select("longest_streak")
+    .eq("user_id", userId)
+    .single();
+
+  const newLongestStreak = Math.max(
+    longestStreak,
+    currentStreak,
+    prefs?.longest_streak ?? 0
+  );
+
+  await supabase
+    .from("user_preferences")
+    .upsert(
+      {
+        user_id: userId,
+        current_streak: currentStreak,
+        longest_streak: newLongestStreak,
+        last_activity_date: activityDate,
+      },
+      { onConflict: "user_id" }
+    );
 }

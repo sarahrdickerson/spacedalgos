@@ -50,7 +50,6 @@ export function CalendarProblems() {
         }
         const data = await response.json()
 
-        console.log("Due problems data:", data)
         // Convert due problems to calendar events
         const calendarEvents: CalendarEvent[] = data.due_problems.map(
           (problem: DueProblem) => ({
@@ -84,11 +83,11 @@ export function CalendarProblems() {
   }
 
   const renderDay = (date: Date) => {
-    const events = getEventsForDate(date)
+    const dayEvents = getEventsForDate(date)
 
     return (
       <div className="flex flex-col gap-1">
-        {events.map((event) => {
+        {dayEvents.map((event) => {
           // Color by stage: 1 = Learning (yellow), 2 = Reinforcing (blue), 3 = Mastered (green)
           const stageColor =
             event.stage === 1
@@ -103,10 +102,11 @@ export function CalendarProblems() {
             : ""
 
           return (
-            <div
+            <button
               key={event.id}
+              type="button"
               className={cn(
-                "text-xs px-2 py-1 rounded cursor-pointer transition-colors",
+                "text-xs px-2 py-1 rounded transition-colors text-left w-full",
                 stageColor,
                 overdueStyle
               )}
@@ -122,7 +122,7 @@ export function CalendarProblems() {
                   +{event.daysOverdue}
                 </span>
               )}
-            </div>
+            </button>
           )
         })}
       </div>

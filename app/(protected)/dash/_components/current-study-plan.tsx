@@ -42,11 +42,18 @@ interface PlanStats {
   notStarted: number;
 }
 
+interface StreakData {
+  current_streak: number;
+  longest_streak: number;
+  last_activity_date: string | null;
+}
+
 const CurrentStudyPlan = () => {
   const [activeList, setActiveList] = React.useState<ProblemList | null>(null);
   const [problemLists, setProblemLists] = React.useState<ProblemList[]>([]);
   const [selectedList, setSelectedList] = React.useState<ProblemList | null>(null);
   const [stats, setStats] = React.useState<PlanStats | null>(null);
+  const [streak, setStreak] = React.useState<StreakData | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [listsLoading, setListsLoading] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
@@ -72,6 +79,13 @@ const CurrentStudyPlan = () => {
             const statsData = await statsResponse.json();
             setStats(statsData);
           }
+        }
+
+        // Fetch streak data
+        const streakResponse = await fetch("/api/user/streak");
+        if (streakResponse.ok) {
+          const streakData = await streakResponse.json();
+          setStreak(streakData);
         }
 
         // Fetch problem lists
@@ -307,14 +321,16 @@ const CurrentStudyPlan = () => {
                     </div>
                   </div>
                   
-                  {/* Weekly Goal */}
+                  {/* Streak */}
                   <div className="space-y-1">
-                    <p className="text-sm text-muted-foreground">This Week</p>
+                    <p className="text-sm text-muted-foreground">Current Streak</p>
                     <div className="flex items-baseline gap-1">
-                      <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                        {stats.dueToday}
+                      <span className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                        {streak?.current_streak ?? 0}
                       </span>
-                      <span className="text-sm text-muted-foreground">/ 7 goal</span>
+                      <span className="text-sm text-muted-foreground">
+                        {streak?.current_streak === 1 ? "day" : "days"} 🔥
+                      </span>
                     </div>
                   </div>
                 </div>

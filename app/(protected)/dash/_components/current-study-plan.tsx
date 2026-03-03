@@ -410,7 +410,7 @@ const CurrentStudyPlan = () => {
               Review Problems <CaretRightIcon />
             </Link>
           </Button>
-          <Button variant="outline" size="icon"><DotsVerticalIcon /></Button>
+          <Button variant="outline" size="icon" aria-label="Study plan actions"><DotsVerticalIcon /></Button>
           
         </CardFooter>
       </Card>

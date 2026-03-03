@@ -259,10 +259,36 @@ This document provides an overview of all API routes available in the applicatio
 ```
 
 **Spaced Repetition Logic:**
-- First attempt: Stage 1, 1-day interval
-- Successful attempts (grade ≥ 1): Progress through stages, increase interval
-- Failed attempts (grade = 0): Decrease stage (minimum 1), reset interval
-- Stage 3 with consistent success = Mastered
+
+**Stage Progression:**
+- **Stage 0 → 1**: First attempt (any grade)
+- **Stage 1 → 2**: Successful attempt (grade ≥ 1)
+- **Stage 2 → 3 (Mastered)**: Successful attempt (grade ≥ 1)
+- **Failure (grade = 0)**: Drop one stage (minimum stage 1)
+
+**Interval Calculation:**
+
+Base intervals by stage:
+- **Stage 1 (Learning)**: 2 days base
+- **Stage 2 (Reinforcing)**: 5 days base  
+- **Stage 3 (Mastered)**: 21 days base
+
+Grade multipliers:
+- **Grade 0 (Again/Fail)**: 0.3x multiplier, shrinks interval
+- **Grade 1 (Good)**: 1.0x multiplier
+- **Grade 2 (Easy)**: 1.5x multiplier
+
+Growth patterns:
+- **Stage 1-2**: Interval grows by 1.3x on success
+- **First time reaching Stage 3**: Minimum 21-day interval enforced (interval = max(prevInterval * 1.5, 21))
+- **Already at Stage 3**: Interval grows by 2.0x * 1.4x = 2.8x on success (exponential growth)
+
+**Examples:**
+- First attempt (grade 1): Stage 1, 2-day interval
+- Stage 1 → 2 (grade 1): Stage 2, ~3 days (2 * 1.3)
+- Stage 2 → 3 (grade 1): Stage 3, 21 days minimum
+- Stage 3 review (grade 1): Stage 3, ~59 days (21 * 2.8)
+- Stage 3 review again (grade 1): Stage 3, ~165 days (59 * 2.8)
 
 ---
 

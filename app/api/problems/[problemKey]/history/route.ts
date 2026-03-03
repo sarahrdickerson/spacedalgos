@@ -5,10 +5,21 @@ export async function GET(
   _request: Request,
   props: { params: Promise<{ problemKey: string }> }
 ) {
-  const params = await props.params;
-  const problemKey = decodeURIComponent(params.problemKey);
-
   try {
+    const params = await props.params;
+    let problemKey: string;
+
+    try {
+      problemKey = decodeURIComponent(params.problemKey);
+    } catch (err) {
+      if (err instanceof URIError) {
+        return NextResponse.json(
+          { error: "Invalid problem key" },
+          { status: 400 }
+        );
+      }
+      throw err;
+    }
     const supabase = await createClient();
 
     // Get user

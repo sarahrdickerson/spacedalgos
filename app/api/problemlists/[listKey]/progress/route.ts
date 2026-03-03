@@ -19,17 +19,29 @@ export async function GET(
     }
 
     const { listKey } = await params;
+    let decodedListKey: string;
+    try {
+      decodedListKey = decodeURIComponent(listKey);
+    } catch (err) {
+      if (err instanceof URIError) {
+        return NextResponse.json(
+          { error: "Invalid problem list key" },
+          { status: 400 }
+        );
+      }
+      throw err;
+    }
 
     // 2) Get the problem list by key
     const { data: problemList, error: listErr } = await supabase
       .from("problem_lists")
       .select("id, key, name")
-      .eq("key", listKey)
+      .eq("key", decodedListKey)
       .single();
 
     if (listErr || !problemList) {
       return NextResponse.json(
-        { error: `Problem list not found: ${listKey}` },
+        { error: `Problem list not found: ${decodedListKey}` },
         { status: 404 }
       );
     }

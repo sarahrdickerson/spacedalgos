@@ -295,14 +295,16 @@ const CurrentStudyPlan = () => {
                         strokeWidth="6"
                         fill="none"
                         strokeDasharray={`${2 * Math.PI * 28}`}
-                        strokeDashoffset={`${2 * Math.PI * 28 * (1 - stats.mastered / stats.total)}`}
+                        strokeDashoffset={`${
+                          2 * Math.PI * 28 * (stats.total > 0 ? 1 - stats.mastered / stats.total : 1)
+                        }`}
                         className="text-green-600 dark:text-green-400 transition-all duration-500"
                         strokeLinecap="round"
                       />
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
                       <span className="text-xl font-bold">
-                        {Math.round((stats.mastered / stats.total) * 100)}%
+                        {stats.total > 0 ? Math.round((stats.mastered / stats.total) * 100) : 0}%
                       </span>
                     </div>
                   </div>

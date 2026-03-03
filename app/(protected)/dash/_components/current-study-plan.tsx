@@ -21,7 +21,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
 import React from "react";
 import { toast } from "sonner";
-import { CaretRightIcon, DotsVerticalIcon } from "@radix-ui/react-icons";
+import { CaretRightIcon } from "@radix-ui/react-icons";
 import Link from "next/link";
 import { Spinner } from "@/components/ui/spinner";
 import CurrentPlanMenuButton from "./current-plan-menu-button";

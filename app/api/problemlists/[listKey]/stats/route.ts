@@ -7,7 +7,20 @@ export async function GET(
 ) {
   try {
     const supabase = await createClient();
-    const { listKey } = await context.params;
+    const { listKey: listKeyRaw } = await context.params;
+
+    let listKey: string;
+    try {
+      listKey = decodeURIComponent(listKeyRaw);
+    } catch (err) {
+      if (err instanceof URIError) {
+        return NextResponse.json(
+          { error: "Invalid problem list key" },
+          { status: 400 }
+        );
+      }
+      throw err;
+    }
 
     // 1) Auth
     const {

@@ -385,6 +385,7 @@ This document provides an overview of all API routes available in the applicatio
 **Response:**
 ```json
 {
+  "success": true,
   "active_list": {
     "id": "uuid",
     "key": "blind75",
@@ -392,6 +393,49 @@ This document provides an overview of all API routes available in the applicatio
     "source": "LeetCode",
     "version": "1.0",
     "description": "Curated list of 75 essential coding problems"
+  }
+}
+```
+
+---
+
+### Remove Active Study Plan
+
+**Endpoint:** `DELETE /api/user/active-study-plan`
+
+**Description:** Removes the authenticated user's active study plan (sets to null). Does not delete progress data.
+
+**Authentication:** Required
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Active study plan removed"
+}
+```
+
+---
+
+### Reset Problem List Progress
+
+**Endpoint:** `DELETE /api/problemlists/[listKey]/reset-progress`
+
+**Description:** Deletes all attempts and progress for every problem in the specified list for the authenticated user.
+
+**Authentication:** Required
+
+**URL Parameters:**
+- `listKey` - The unique key identifier for the problem list
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Progress reset for all problems in: Blind 75",
+  "deleted": {
+    "problem_count": 75,
+    "list_name": "Blind 75"
   }
 }
 ```

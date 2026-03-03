@@ -2,7 +2,6 @@
 
 import React from "react"
 import { Calendar } from "@/components/ui/calendar"
-import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
 import { LogAttemptDialog } from "@/components/log-attempt-dialog"

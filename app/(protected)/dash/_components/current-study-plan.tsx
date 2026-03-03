@@ -49,66 +49,24 @@ interface StreakData {
   last_activity_date: string | null;
 }
 
-const CurrentStudyPlan = () => {
-  const [activeList, setActiveList] = React.useState<ProblemList | null>(null);
-  const [problemLists, setProblemLists] = React.useState<ProblemList[]>([]);
+interface DashboardData {
+  activeList: ProblemList | null;
+  problemLists: ProblemList[];
+  stats: PlanStats | null;
+  streak: StreakData | null;
+  dueProblems: any[];
+}
+
+interface CurrentStudyPlanProps {
+  data: DashboardData | null;
+  loading: boolean;
+  error: string | null;
+  onRefresh: () => Promise<void>;
+}
+
+const CurrentStudyPlan = ({ data, loading, error, onRefresh }: CurrentStudyPlanProps) => {
   const [selectedList, setSelectedList] = React.useState<ProblemList | null>(null);
-  const [stats, setStats] = React.useState<PlanStats | null>(null);
-  const [streak, setStreak] = React.useState<StreakData | null>(null);
-  const [loading, setLoading] = React.useState(true);
-  const [listsLoading, setListsLoading] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
-
-  const fetchData = React.useCallback(async () => {
-    try {
-      // Fetch active study plan
-      const activeResponse = await fetch("/api/user/active-study-plan");
-      if (!activeResponse.ok) {
-        throw new Error("Failed to fetch active study plan");
-      }
-      const activeData = await activeResponse.json();
-      setActiveList(activeData.active_list);
-
-      // Fetch stats if there's an active list
-      if (activeData.active_list?.key) {
-        const statsResponse = await fetch(
-          `/api/problemlists/${activeData.active_list.key}/stats`
-        );
-        if (statsResponse.ok) {
-          const statsData = await statsResponse.json();
-          setStats(statsData);
-        }
-      }
-
-      // Fetch streak data
-      const streakResponse = await fetch("/api/user/streak");
-      if (streakResponse.ok) {
-        const streakData = await streakResponse.json();
-        setStreak(streakData);
-      }
-
-      // Fetch problem lists
-      setListsLoading(true);
-      const listsResponse = await fetch("/api/problemlists");
-      if (!listsResponse.ok) {
-        throw new Error("Failed to fetch problem lists");
-      }
-      const listsData = await listsResponse.json();
-      setProblemLists(Array.isArray(listsData?.data) ? listsData.data : []);
-      setListsLoading(false);
-      setLoading(false);
-    } catch (e) {
-      console.error(e);
-      setError("Failed to load study plan data");
-      setLoading(false);
-      setListsLoading(false);
-    }
-  }, []);
-
-  React.useEffect(() => {
-    fetchData();
-  }, [fetchData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -139,19 +97,10 @@ const CurrentStudyPlan = () => {
       }
 
       const data = await response.json();
-      setActiveList(data.active_list);
       setSelectedList(null);
       
-      // Fetch stats for the new active list
-      if (data.active_list?.key) {
-        const statsResponse = await fetch(
-          `/api/problemlists/${data.active_list.key}/stats`
-        );
-        if (statsResponse.ok) {
-          const statsData = await statsResponse.json();
-          setStats(statsData);
-        }
-      }
+      // Refresh all dashboard data
+      await onRefresh();
       
       toast.success("Active study plan set successfully!");
     } catch (error) {
@@ -206,6 +155,11 @@ const CurrentStudyPlan = () => {
     );
   }
 
+  const activeList = data?.activeList || null;
+  const problemLists = data?.problemLists || [];
+  const stats = data?.stats || null;
+  const streak = data?.streak || null;
+
   if (!activeList) {
     return (
       <div className="w-full">
@@ -222,15 +176,7 @@ const CurrentStudyPlan = () => {
               <div className="flex flex-row gap-4 items-end w-full justify-between">
                 <div className="flex flex-col gap-2 w-full">
                   <Label>Select Problem List</Label>
-                  {listsLoading ? (
-                    <div className="flex items-center gap-2 p-2">
-                      <Spinner className="w-4 h-4" />
-                      <span className="text-sm text-muted-foreground">
-                        Loading problem lists...
-                      </span>
-                    </div>
-                  ) : (
-                    <Combobox
+                  <Combobox
                       items={problemLists}
                       value={selectedList?.name ?? ""}
                       onValueChange={(value) => {
@@ -262,7 +208,6 @@ const CurrentStudyPlan = () => {
                         </ComboboxList>
                       </ComboboxContent>
                     </Combobox>
-                  )}
                 </div>
                 <Button type="submit" disabled={!selectedList || submitting}>
                 {submitting ? "Setting..." : "Set Active Study Plan"}
@@ -429,7 +374,7 @@ const CurrentStudyPlan = () => {
           </Button>
           <CurrentPlanMenuButton 
             problemList={activeList}
-            onPlanRemoved={fetchData}
+            onPlanRemoved={onRefresh}
           />
           
         </CardFooter>

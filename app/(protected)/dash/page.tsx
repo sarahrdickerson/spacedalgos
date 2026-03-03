@@ -1,33 +1,95 @@
-import { redirect } from "next/navigation";
+"use client";
 
-import { createClient } from "@/lib/supabase/server";
 import CurrentStudyPlan from "./_components/current-study-plan";
 import DueQuestions from "./_components/due-questions";
 import { CalendarProblems } from "@/components/calendar-problems";
-
-async function UserDetails() {
-  const supabase = await createClient();
-  const { data, error } = await supabase.auth.getClaims();
-
-  if (error || !data?.claims) {
-    redirect("/auth/login");
-  }
-
-  return JSON.stringify(data.claims, null, 2);
-}
+import React from "react";
 
 export default function DashPage() {
+  const [dashboardData, setDashboardData] = React.useState<any>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const fetchDashboardData = React.useCallback(async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch all data in parallel
+      const [activePlanRes, problemListsRes, streakRes] = await Promise.all([
+        fetch("/api/user/active-study-plan"),
+        fetch("/api/problemlists"),
+        fetch("/api/user/streak"),
+      ]);
+
+      if (!activePlanRes.ok) {
+        throw new Error("Failed to fetch active study plan");
+      }
+
+      const activePlanData = await activePlanRes.json();
+      const problemListsData = problemListsRes.ok
+        ? await problemListsRes.json()
+        : { data: [] };
+      const streakData = streakRes.ok ? await streakRes.json() : null;
+
+      // If there's an active list, fetch stats and due problems
+      let statsData = null;
+      let dueProblems = null;
+
+      if (activePlanData.active_list?.key) {
+        const [statsRes, dueRes] = await Promise.all([
+          fetch(`/api/problemlists/${activePlanData.active_list.key}/stats`),
+          fetch(`/api/problemlists/${activePlanData.active_list.key}/due`),
+        ]);
+
+        statsData = statsRes.ok ? await statsRes.json() : null;
+        dueProblems = dueRes.ok ? await dueRes.json() : null;
+      }
+
+      setDashboardData({
+        activeList: activePlanData.active_list,
+        problemLists: Array.isArray(problemListsData?.data)
+          ? problemListsData.data
+          : [],
+        stats: statsData,
+        streak: streakData,
+        dueProblems: dueProblems?.due_problems || [],
+      });
+      setError(null);
+    } catch (e) {
+      console.error(e);
+      setError("Failed to load dashboard data");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
+
   return (
     <div className="flex-1 w-full flex flex-col gap-12">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
         <div className="flex flex-col gap-2 items-start md:col-span-2">
-          <CurrentStudyPlan />
+          <CurrentStudyPlan
+            data={dashboardData}
+            loading={loading}
+            error={error}
+            onRefresh={fetchDashboardData}
+          />
         </div>
         <div className="flex flex-col gap-2 items-start">
-          <DueQuestions />
+          <DueQuestions
+            data={dashboardData}
+            loading={loading}
+            onRefresh={fetchDashboardData}
+          />
         </div>
       </div>
-        <CalendarProblems />
+      <CalendarProblems
+        data={dashboardData}
+        loading={loading}
+      />
     </div>
   );
 }

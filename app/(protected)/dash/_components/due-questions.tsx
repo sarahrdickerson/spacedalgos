@@ -20,138 +20,88 @@ interface Problem {
   };
 }
 
-const DueQuestions = () => {
-  const [stats, setStats] = React.useState<{
-    dueToday: number;
-    dueThisWeek: number;
-    currentStreak: number;
-  } | null>(null);
-  const [dueTodayProblems, setDueTodayProblems] = React.useState<Problem[]>([]);
-  const [dueThisWeekProblems, setDueThisWeekProblems] = React.useState<Problem[]>([]);
+interface DashboardData {
+  activeList: any;
+  problemLists: any[];
+  stats: any;
+  streak: any;
+  dueProblems: Problem[];
+}
+
+interface DueQuestionsProps {
+  data: DashboardData | null;
+  loading: boolean;
+  onRefresh: () => Promise<void>;
+}
+
+const DueQuestions = ({ data, loading, onRefresh }: DueQuestionsProps) => {
   const [selectedProblem, setSelectedProblem] = React.useState<Problem | null>(
     null,
   );
   const [dialogOpen, setDialogOpen] = React.useState(false);
-  const [loading, setLoading] = React.useState(true);
+  const [currentTime, setCurrentTime] = React.useState<Date | null>(null);
 
+  // Set current time on client side only
   React.useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        // Fetch active study plan first
-        const activeResponse = await fetch("/api/user/active-study-plan");
-        if (!activeResponse.ok) {
-          setLoading(false);
-          return;
-        }
-        const activeData = await activeResponse.json();
-
-        if (!activeData.active_list?.key) {
-          setLoading(false);
-          return;
-        }
-
-        // Fetch due problems for the active plan
-        const dueResponse = await fetch(
-          `/api/problemlists/${activeData.active_list.key}/due`,
-        );
-        if (!dueResponse.ok) {
-          setLoading(false);
-          return;
-        }
-
-        const dueData = await dueResponse.json();
-        const problems = dueData.due_problems || [];
-
-        const now = new Date();
-        const today = new Date(
-          now.getFullYear(),
-          now.getMonth(),
-          now.getDate(),
-        );
-        const weekFromNow = new Date(today);
-        weekFromNow.setDate(weekFromNow.getDate() + 7);
-
-        // Filter problems due today
-        const todayProblems = problems.filter((p: any) => {
-          const nextReview = p.progress?.next_review_at;
-          if (!nextReview) return false;
-          const reviewDate = new Date(nextReview);
-          return reviewDate <= now;
-        });
-
-        // Filter problems due this week
-        const thisWeekProblems = problems.filter((p: any) => {
-          const nextReview = p.progress?.next_review_at;
-          if (!nextReview) return false;
-          const reviewDate = new Date(nextReview);
-          return reviewDate > today && reviewDate <= weekFromNow;
-        });
-
-        // Calculate current streak (days reviewed consecutively)
-        // For now, we'll use a placeholder - you'd need to track review history
-        const currentStreak = 0; // TODO: Implement streak tracking
-
-        setStats({
-          dueToday: todayProblems.length,
-          dueThisWeek: thisWeekProblems.length,
-          currentStreak,
-        });
-        setDueTodayProblems(todayProblems);
-        setDueThisWeekProblems(thisWeekProblems);
-        setLoading(false);
-      } catch (error) {
-        console.error("Error fetching due questions stats:", error);
-        setLoading(false);
-      }
-    };
-
-    fetchStats();
+    setCurrentTime(new Date());
   }, []);
 
-  const handleSuccess = async () => {
-    // Refetch stats after successful attempt
-    try {
-      const activeResponse = await fetch("/api/user/active-study-plan");
-      if (!activeResponse.ok) return;
-      const activeData = await activeResponse.json();
-      if (!activeData.active_list?.key) return;
-
-      const dueResponse = await fetch(
-        `/api/problemlists/${activeData.active_list.key}/due`,
-      );
-      if (!dueResponse.ok) return;
-
-      const dueData = await dueResponse.json();
-      const problems = dueData.due_problems || [];
-
-      const now = new Date();
-      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const weekFromNow = new Date(today);
-      weekFromNow.setDate(weekFromNow.getDate() + 7);
-
-      const todayProblems = problems.filter((p: any) => {
-        const nextReview = p.progress?.next_review_at;
-        if (!nextReview) return false;
-        const reviewDate = new Date(nextReview);
-        return reviewDate <= now;
-      });
-
-      const dueThisWeekProblems = problems.filter((p: any) => {
-        const nextReview = p.progress?.next_review_at;
-        if (!nextReview) return false;
-        const reviewDate = new Date(nextReview);
-        return reviewDate > today && reviewDate <= weekFromNow;
-      });
-      const dueThisWeek = dueThisWeekProblems.length;
-
-      const currentStreak = 0;
-
-      setStats({ dueToday: todayProblems.length, dueThisWeek, currentStreak });
-      setDueTodayProblems(todayProblems);
-      setDueThisWeekProblems(dueThisWeekProblems);
-    } catch (error) {
-      console.error("Error refetching stats:", error);
+  const dueProblems = data?.dueProblems || [];
+  
+  const { dueTodayProblems, dueThisWeekProblems, stats } = React.useMemo(() => {
+    if (!currentTime) {
+      return {
+        dueTodayProblems: [],
+        dueThisWeekProblems: [],
+        stats: {
+          dueToday: 0,
+          dueThisWeek: 0,
+          currentStreak: data?.streak?.current_streak || 0,
+        }
+      };
     }
+
+    const now = currentTime;
+    const today = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
+    const weekFromNow = new Date(today);
+    weekFromNow.setDate(weekFromNow.getDate() + 7);
+
+    // Filter problems due today
+    const todayProblems = dueProblems.filter((p: any) => {
+      const nextReview = p.progress?.next_review_at;
+      if (!nextReview) return false;
+      const reviewDate = new Date(nextReview);
+      return reviewDate <= now;
+    });
+
+    // Filter problems due this week
+    const weekProblems = dueProblems.filter((p: any) => {
+      const nextReview = p.progress?.next_review_at;
+      if (!nextReview) return false;
+      const reviewDate = new Date(nextReview);
+      return reviewDate > today && reviewDate <= weekFromNow;
+    });
+
+    const currentStreak = data?.streak?.current_streak || 0;
+    
+    return {
+      dueTodayProblems: todayProblems,
+      dueThisWeekProblems: weekProblems,
+      stats: {
+        dueToday: todayProblems.length,
+        dueThisWeek: weekProblems.length,
+        currentStreak,
+      }
+    };
+  }, [dueProblems, data?.streak, currentTime]);
+
+  const handleSuccess = async () => {
+    // Refresh all dashboard data
+    await onRefresh();
   };
 
   if (loading) {

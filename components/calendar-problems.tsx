@@ -34,47 +34,38 @@ interface CalendarEvent {
   difficulty: "Easy" | "Medium" | "Hard"
 }
 
-export function CalendarProblems() {
-  const [events, setEvents] = React.useState<CalendarEvent[]>([])
-  const [loading, setLoading] = React.useState(true)
-  const [error, setError] = React.useState<string | null>(null)
+interface DashboardData {
+  activeList: any;
+  problemLists: any[];
+  stats: any;
+  streak: any;
+  dueProblems: DueProblem[];
+}
+
+interface CalendarProblemsProps {
+  data: DashboardData | null;
+  loading: boolean;
+}
+
+export function CalendarProblems({ data, loading }: CalendarProblemsProps) {
   const [selectedEvent, setSelectedEvent] = React.useState<CalendarEvent | null>(null)
   const [dialogOpen, setDialogOpen] = React.useState(false)
 
-  React.useEffect(() => {
-    const loadDueProblems = async () => {
-      try {
-        const response = await fetch("/api/problemlists/blind75/due")
-        if (!response.ok) {
-          throw new Error("Failed to load due problems")
-        }
-        const data = await response.json()
+  // Convert due problems to calendar events
+  const events: CalendarEvent[] = (data?.dueProblems || []).map(
+    (problem: DueProblem) => ({
+      id: problem.id,
+      title: problem.title,
+      problemKey: problem.key,
+      date: new Date(problem.progress.next_review_at),
+      stage: problem.progress.stage,
+      daysOverdue: problem.progress.days_overdue,
+      attemptCount: problem.progress.attempt_count,
+      difficulty: problem.difficulty as "Easy" | "Medium" | "Hard",
+    })
+  );
 
-        // Convert due problems to calendar events
-        const calendarEvents: CalendarEvent[] = data.due_problems.map(
-          (problem: DueProblem) => ({
-            id: problem.id,
-            title: problem.title,
-            problemKey: problem.key,
-            date: new Date(problem.progress.next_review_at),
-            stage: problem.progress.stage,
-            daysOverdue: problem.progress.days_overdue,
-            attemptCount: problem.progress.attempt_count,
-            difficulty: problem.difficulty as "Easy" | "Medium" | "Hard",
-          })
-        )
-
-        setEvents(calendarEvents)
-        setLoading(false)
-      } catch (e) {
-        console.error(e)
-        setError("Failed to load due problems")
-        setLoading(false)
-      }
-    }
-
-    loadDueProblems()
-  }, [])
+  const error = null;
 
   const getEventsForDate = (date: Date): CalendarEvent[] => {
     return events.filter(

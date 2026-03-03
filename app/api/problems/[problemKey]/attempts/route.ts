@@ -222,6 +222,11 @@ export async function POST(
     const last_success_at =
       next.last_success_at ?? existingProgress?.last_success_at ?? null;
 
+    // Determine if problem was due BEFORE updating progress
+    const wasDue =
+      existingProgress?.next_review_at &&
+      new Date(existingProgress.next_review_at) <= now;
+
     // 6) Upsert progress
     const { data: progress, error: progressUpsertErr } = await supabase
       .from("user_problem_progress")
@@ -251,7 +256,7 @@ export async function POST(
     }
 
     // 7) Update daily activity and streak
-    await updateDailyActivityAndStreak(supabase, user.id, now, problemId);
+    await updateDailyActivityAndStreak(supabase, user.id, now, wasDue);
 
     return NextResponse.json({
       attempt,
@@ -271,21 +276,9 @@ async function updateDailyActivityAndStreak(
   supabase: any,
   userId: string,
   attemptDate: Date,
-  problemId: string
+  wasDue: boolean
 ) {
   const activityDate = attemptDate.toISOString().split("T")[0]; // YYYY-MM-DD
-
-  // Check if problem was due
-  const { data: progressData } = await supabase
-    .from("user_problem_progress")
-    .select("next_review_at")
-    .eq("user_id", userId)
-    .eq("problem_id", problemId)
-    .single();
-
-  const wasDue =
-    progressData?.next_review_at &&
-    new Date(progressData.next_review_at) <= attemptDate;
 
   // Upsert daily activity
   const { error: activityErr } = await supabase.rpc("upsert_daily_activity", {

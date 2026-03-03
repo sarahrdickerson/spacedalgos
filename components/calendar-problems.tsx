@@ -65,8 +65,6 @@ export function CalendarProblems({ data, loading }: CalendarProblemsProps) {
     })
   );
 
-  const error = null;
-
   const getEventsForDate = (date: Date): CalendarEvent[] => {
     return events.filter(
       (event) => event.date.toDateString() === date.toDateString()
@@ -172,14 +170,6 @@ export function CalendarProblems({ data, loading }: CalendarProblemsProps) {
             </div>
           </div>
         </div>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="w-full">
-        <p className="text-destructive">{error}</p>
       </div>
     )
   }

@@ -4,11 +4,13 @@ import CurrentStudyPlan from "./_components/current-study-plan";
 import DueQuestions from "./_components/due-questions";
 import { CalendarProblems } from "@/components/calendar-problems";
 import React from "react";
+import { useRouter } from "next/navigation";
 
 export default function DashPage() {
   const [dashboardData, setDashboardData] = React.useState<any>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const router = useRouter();
 
   const fetchDashboardData = React.useCallback(async () => {
     try {
@@ -20,6 +22,12 @@ export default function DashPage() {
         fetch("/api/problemlists"),
         fetch("/api/user/streak"),
       ]);
+
+      // Check for authentication error
+      if (activePlanRes.status === 401) {
+        router.replace("/auth/login");
+        return;
+      }
 
       if (!activePlanRes.ok) {
         throw new Error("Failed to fetch active study plan");
@@ -61,7 +69,7 @@ export default function DashPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [router]);
 
   React.useEffect(() => {
     fetchDashboardData();

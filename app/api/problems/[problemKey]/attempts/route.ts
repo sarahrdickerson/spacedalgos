@@ -79,8 +79,8 @@ function computeNextProgress(params: {
   if (prevIntervalDays && prevIntervalDays > 0) {
     if (grade >= 1) {
       // Success: grow the interval
-      // Stage 3 gets both 1.6x stage multiplier and 1.3x growth multiplier
-      if (stage === 3) {
+      // Stage 3 bonus (1.6x) only applies when already at stage 3
+      if (prevStage === 3) {
         interval_days = Math.ceil(prevIntervalDays * 1.6 * 1.3 * mult);
       } else {
         interval_days = Math.ceil(prevIntervalDays * 1.3 * mult);

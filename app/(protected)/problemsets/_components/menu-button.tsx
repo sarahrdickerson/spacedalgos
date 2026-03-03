@@ -48,9 +48,11 @@ const MenuButton = ({ problemKey, problemTitle }: MenuButtonProps) => {
   const problemHistory = async () => {
     setIsHistoryOpen(true);
     setLoading(true);
-    
+
     try {
-      const response = await fetch(`/api/problems/${encodeURIComponent(problemKey)}/history`);
+      const response = await fetch(
+        `/api/problems/${encodeURIComponent(problemKey)}/history`,
+      );
       if (!response.ok) {
         throw new Error("Failed to fetch history");
       }
@@ -58,29 +60,29 @@ const MenuButton = ({ problemKey, problemTitle }: MenuButtonProps) => {
       setHistory(data.attempts || []);
     } catch (error) {
       console.error("Error fetching history:", error);
-      setHistory([]);
+      toast.error("Failed to load attempt history. Please try again.");
     } finally {
       setLoading(false);
     }
   };
-  
+
   const confirmReset = () => {
     setIsResetConfirmOpen(true);
   };
 
   const resetProblemProgress = async () => {
     setResetting(true);
-    
+
     try {
       const response = await fetch(
         `/api/problems/${encodeURIComponent(problemKey)}/reset`,
-        { method: "DELETE" }
+        { method: "DELETE" },
       );
-      
+
       if (!response.ok) {
         throw new Error("Failed to reset progress");
       }
-      
+
       // Success - reload the page to update the UI
       toast.success("Progress reset successfully");
       window.location.reload();
@@ -129,10 +131,18 @@ const MenuButton = ({ problemKey, problemTitle }: MenuButtonProps) => {
                   </colgroup>
                   <thead className="bg-muted/50">
                     <tr className="border-b">
-                      <th className="px-4 py-3 text-left text-sm font-medium">Date</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium">Grade</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium">Time</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium">Notes</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium">
+                        Date
+                      </th>
+                      <th className="px-4 py-3 text-left text-sm font-medium">
+                        Grade
+                      </th>
+                      <th className="px-4 py-3 text-left text-sm font-medium">
+                        Time
+                      </th>
+                      <th className="px-4 py-3 text-left text-sm font-medium">
+                        Notes
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -170,10 +180,18 @@ const MenuButton = ({ problemKey, problemTitle }: MenuButtonProps) => {
                   </colgroup>
                   <thead className="bg-muted/50">
                     <tr className="border-b">
-                      <th className="px-4 py-3 text-left text-sm font-medium">Date</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium">Grade</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium">Time</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium">Notes</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium">
+                        Date
+                      </th>
+                      <th className="px-4 py-3 text-left text-sm font-medium">
+                        Grade
+                      </th>
+                      <th className="px-4 py-3 text-left text-sm font-medium">
+                        Time
+                      </th>
+                      <th className="px-4 py-3 text-left text-sm font-medium">
+                        Notes
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -185,14 +203,24 @@ const MenuButton = ({ problemKey, problemTitle }: MenuButtonProps) => {
                         1: "text-yellow-600 dark:text-yellow-400",
                         2: "text-green-600 dark:text-green-400",
                       };
-                      
+
                       return (
-                        <tr key={attempt.id} className="border-b last:border-0 hover:bg-muted/30">
+                        <tr
+                          key={attempt.id}
+                          className="border-b last:border-0 hover:bg-muted/30"
+                        >
                           <td className="px-4 py-3 text-sm whitespace-nowrap">
-                            {date.toLocaleDateString()} {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            {date.toLocaleDateString()}{" "}
+                            {date.toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
                           </td>
-                          <td className={`px-4 py-3 text-sm font-medium ${gradeColors[attempt.grade as 0 | 1 | 2]}`}>
-                            {gradeLabels[attempt.grade as 0 | 1 | 2] || attempt.grade}
+                          <td
+                            className={`px-4 py-3 text-sm font-medium ${gradeColors[attempt.grade as 0 | 1 | 2]}`}
+                          >
+                            {gradeLabels[attempt.grade as 0 | 1 | 2] ||
+                              attempt.grade}
                           </td>
                           <td className="px-4 py-3 text-sm text-muted-foreground">
                             {attempt.time_bucket || "—"}
@@ -225,7 +253,8 @@ const MenuButton = ({ problemKey, problemTitle }: MenuButtonProps) => {
             </DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground py-2">
-            This will permanently delete all attempts and progress for this problem. This action cannot be undone.
+            This will permanently delete all attempts and progress for this
+            problem. This action cannot be undone.
           </p>
           <DialogFooter>
             <Button

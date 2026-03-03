@@ -1,7 +1,6 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { DialogTrigger } from "@/components/ui/dialog";
 import React from "react";
 import { PlusCircledIcon } from "@radix-ui/react-icons";
 import { LogAttemptDialog } from "@/components/log-attempt-dialog";

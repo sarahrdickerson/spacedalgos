@@ -81,12 +81,22 @@ export async function GET(
       .map((item: any) => item.problems?.id)
       .filter(Boolean);
 
-    const { data: progressData, error: progressErr } = await supabase
-      .from("user_problem_progress")
-      .select("*")
-      .eq("user_id", user.id)
-      .in("problem_id", problemIds);
+    let progressData: any[] | null;
+    let progressErr: any = null;
 
+    if (problemIds.length > 0) {
+      const { data, error } = await supabase
+        .from("user_problem_progress")
+        .select("*")
+        .eq("user_id", user.id)
+        .in("problem_id", problemIds);
+
+      progressData = data;
+      progressErr = error;
+    } else {
+      // No valid problem IDs, so there can be no progress rows.
+      progressData = [];
+    }
     if (progressErr) {
       return NextResponse.json(
         { error: progressErr.message },

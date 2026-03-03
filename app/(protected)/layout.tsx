@@ -16,7 +16,7 @@ export default function ProtectedLayout({
   return (
     <main className="min-h-screen flex flex-col items-center">
       <div className="flex-1 w-full flex flex-col gap-4 items-center">
-        <nav className="w-full flex justify-center border-b border-b-muted h-16">
+        <nav className="w-full flex justify-center border-b border-b-muted h-16 sticky top-0 z-50 bg-background/95 backdrop-blur">
           <div className="w-full max-w-6xl flex justify-between items-center p-3 px-5 text-sm">
             {/* Mobile Menubar */}
             <div className="flex flex-row justify-start md:hidden items-center gap-2">

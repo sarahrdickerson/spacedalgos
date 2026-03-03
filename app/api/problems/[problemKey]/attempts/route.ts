@@ -80,7 +80,7 @@ function computeNextProgress(params: {
     if (grade >= 1) {
       // Success: grow the interval
       // Stage 3 bonus (2.0x) applies when already at stage 3
-      // First time reaching stage 3: use minimum of calculated or base (21 days)
+      // First time reaching stage 3: ensure at least the base interval (21 days)
       if (prevStage === 3) {
         interval_days = Math.ceil(prevIntervalDays * 2.0 * 1.4 * mult);
       } else if (stage === 3 && prevStage !== 3) {

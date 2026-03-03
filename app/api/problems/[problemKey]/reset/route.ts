@@ -5,10 +5,20 @@ export async function DELETE(
   _request: Request,
   props: { params: Promise<{ problemKey: string }> }
 ) {
-  const params = await props.params;
-  const problemKey = decodeURIComponent(params.problemKey);
-
   try {
+    const params = await props.params;
+    let problemKey: string;
+    try {
+      problemKey = decodeURIComponent(params.problemKey);
+    } catch (e) {
+      if (e instanceof URIError) {
+        return NextResponse.json(
+          { error: "Invalid problem key" },
+          { status: 400 }
+        );
+      }
+      throw e;
+    }
     const supabase = await createClient();
 
     // Get user

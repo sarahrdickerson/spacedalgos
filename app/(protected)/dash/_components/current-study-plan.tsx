@@ -24,6 +24,7 @@ import { toast } from "sonner";
 import { CaretRightIcon, DotsVerticalIcon } from "@radix-ui/react-icons";
 import Link from "next/link";
 import { Spinner } from "@/components/ui/spinner";
+import CurrentPlanMenuButton from "./current-plan-menu-button";
 
 interface ProblemList {
   id: string;
@@ -59,55 +60,55 @@ const CurrentStudyPlan = () => {
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
-  React.useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // Fetch active study plan
-        const activeResponse = await fetch("/api/user/active-study-plan");
-        if (!activeResponse.ok) {
-          throw new Error("Failed to fetch active study plan");
-        }
-        const activeData = await activeResponse.json();
-        setActiveList(activeData.active_list);
-
-        // Fetch stats if there's an active list
-        if (activeData.active_list?.key) {
-          const statsResponse = await fetch(
-            `/api/problemlists/${activeData.active_list.key}/stats`
-          );
-          if (statsResponse.ok) {
-            const statsData = await statsResponse.json();
-            setStats(statsData);
-          }
-        }
-
-        // Fetch streak data
-        const streakResponse = await fetch("/api/user/streak");
-        if (streakResponse.ok) {
-          const streakData = await streakResponse.json();
-          setStreak(streakData);
-        }
-
-        // Fetch problem lists
-        setListsLoading(true);
-        const listsResponse = await fetch("/api/problemlists");
-        if (!listsResponse.ok) {
-          throw new Error("Failed to fetch problem lists");
-        }
-        const listsData = await listsResponse.json();
-        setProblemLists(Array.isArray(listsData?.data) ? listsData.data : []);
-        setListsLoading(false);
-        setLoading(false);
-      } catch (e) {
-        console.error(e);
-        setError("Failed to load study plan data");
-        setLoading(false);
-        setListsLoading(false);
+  const fetchData = React.useCallback(async () => {
+    try {
+      // Fetch active study plan
+      const activeResponse = await fetch("/api/user/active-study-plan");
+      if (!activeResponse.ok) {
+        throw new Error("Failed to fetch active study plan");
       }
-    };
+      const activeData = await activeResponse.json();
+      setActiveList(activeData.active_list);
 
-    fetchData();
+      // Fetch stats if there's an active list
+      if (activeData.active_list?.key) {
+        const statsResponse = await fetch(
+          `/api/problemlists/${activeData.active_list.key}/stats`
+        );
+        if (statsResponse.ok) {
+          const statsData = await statsResponse.json();
+          setStats(statsData);
+        }
+      }
+
+      // Fetch streak data
+      const streakResponse = await fetch("/api/user/streak");
+      if (streakResponse.ok) {
+        const streakData = await streakResponse.json();
+        setStreak(streakData);
+      }
+
+      // Fetch problem lists
+      setListsLoading(true);
+      const listsResponse = await fetch("/api/problemlists");
+      if (!listsResponse.ok) {
+        throw new Error("Failed to fetch problem lists");
+      }
+      const listsData = await listsResponse.json();
+      setProblemLists(Array.isArray(listsData?.data) ? listsData.data : []);
+      setListsLoading(false);
+      setLoading(false);
+    } catch (e) {
+      console.error(e);
+      setError("Failed to load study plan data");
+      setLoading(false);
+      setListsLoading(false);
+    }
   }, []);
+
+  React.useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -426,7 +427,10 @@ const CurrentStudyPlan = () => {
               Review Problems <CaretRightIcon />
             </Link>
           </Button>
-          <Button variant="outline" size="icon" aria-label="Study plan actions"><DotsVerticalIcon /></Button>
+          <CurrentPlanMenuButton 
+            problemList={activeList}
+            onPlanRemoved={fetchData}
+          />
           
         </CardFooter>
       </Card>

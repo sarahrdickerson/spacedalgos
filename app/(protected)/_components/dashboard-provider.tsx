@@ -3,12 +3,54 @@
 import { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
-interface DashboardData {
-  activeList: any;
-  problemLists: any[];
-  streak: any;
-  stats: any;
-  dueProblems: any[];
+export interface ProblemProgress {
+  stage: number;
+  next_review_at: string;
+  attempt_count: number;
+  interval_days: number;
+  days_overdue: number;
+}
+
+export interface Problem {
+  id: string;
+  key: string;
+  title: string;
+  category: string;
+  difficulty: string;
+  leetcode_url?: string;
+  order_index?: number;
+  progress?: ProblemProgress;
+}
+
+export interface ProblemList {
+  id: string;
+  key: string;
+  name: string;
+  description?: string;
+  source?: string;
+  version?: string;
+}
+
+export interface PlanStats {
+  total: number;
+  mastered: number;
+  dueToday: number;
+  inProgress: number;
+  notStarted: number;
+}
+
+export interface StreakData {
+  current_streak: number;
+  longest_streak: number;
+  last_activity_date: string | null;
+}
+
+export interface DashboardData {
+  activeList: ProblemList | null;
+  problemLists: ProblemList[];
+  streak: StreakData | null;
+  stats: PlanStats | null;
+  dueProblems: Problem[];
 }
 
 interface DashboardContextType {

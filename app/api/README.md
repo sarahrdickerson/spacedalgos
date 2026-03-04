@@ -280,15 +280,15 @@ Grade multipliers:
 
 Growth patterns:
 - **Stage 1-2**: Interval grows by 1.3x on success
-- **First time reaching Stage 3**: Minimum 21-day interval enforced (interval = max(prevInterval * 1.5, 21))
-- **Already at Stage 3**: Interval grows by 2.0x * 1.4x = 2.8x on success (exponential growth)
+- **First time reaching Stage 3**: `Math.ceil(prevInterval * 1.5 * mult)`, enforced minimum 21 days
+- **Already at Stage 3**: Interval grows by `Math.ceil(prevInterval * 2.0 * 1.4 * mult)` (2.8x for grade 1)
 
-**Examples:**
-- First attempt (grade 1): Stage 1, 2-day interval
-- Stage 1 → 2 (grade 1): Stage 2, ~3 days (2 * 1.3)
-- Stage 2 → 3 (grade 1): Stage 3, 21 days minimum
-- Stage 3 review (grade 1): Stage 3, ~59 days (21 * 2.8)
-- Stage 3 review again (grade 1): Stage 3, ~165 days (59 * 2.8)
+**Examples (grade 1):**
+- First attempt: Stage 1, 2-day interval
+- Stage 1 → 2: Stage 2, 3 days (ceil(2 * 1.3 * 1.0) = 3)
+- Stage 2 → 3: Stage 3, 21 days (max(ceil(3 * 1.5 * 1.0), 21) = 21)
+- Stage 3 review: Stage 3, 59 days (ceil(21 * 2.0 * 1.4 * 1.0) = 59)
+- Stage 3 review again: Stage 3, 166 days (ceil(59 * 2.0 * 1.4 * 1.0) = 166)
 
 ---
 

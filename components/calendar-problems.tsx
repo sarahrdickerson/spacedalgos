@@ -42,7 +42,7 @@ export function CalendarProblems({ data, loading, error }: CalendarProblemsProps
   }
   // Convert due problems to calendar events
   const events: CalendarEvent[] = (data?.dueProblems || [])
-    .filter((problem): problem is Problem & { progress: Required<Problem>['progress'] } => 
+    .filter((problem): problem is Problem & { progress: NonNullable<Problem["progress"]> } =>
       problem.progress !== undefined
     )
     .map((problem) => ({

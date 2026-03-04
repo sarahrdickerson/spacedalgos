@@ -45,12 +45,25 @@ interface DashboardData {
 interface CalendarProblemsProps {
   data: DashboardData | null;
   loading: boolean;
+  error?: unknown;
 }
 
-export function CalendarProblems({ data, loading }: CalendarProblemsProps) {
+export function CalendarProblems({ data, loading, error }: CalendarProblemsProps) {
   const [selectedEvent, setSelectedEvent] = React.useState<CalendarEvent | null>(null)
   const [dialogOpen, setDialogOpen] = React.useState(false)
 
+  // Handle error and missing-data states so the calendar does not silently render empty
+  if (error) {
+    // Normalize to an Error instance so React error boundaries can handle it
+    if (error instanceof Error) {
+      throw error
+    }
+    throw new Error(typeof error === "string" ? error : "An unknown error occurred while loading the dashboard")
+  }
+
+  if (!loading && !data) {
+    throw new Error("Failed to load dashboard data for the calendar")
+  }
   // Convert due problems to calendar events
   const events: CalendarEvent[] = (data?.dueProblems || []).map(
     (problem: DueProblem) => ({

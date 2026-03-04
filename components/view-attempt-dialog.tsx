@@ -31,24 +31,24 @@ interface ViewAttemptDialogProps {
   problemKey: string
   problemTitle: string
   attemptDate: string
-  grade: number
+  grade: Attempt["grade"]
   open: boolean
   onOpenChange: (open: boolean) => void
 }
 
-const gradeLabels: Record<number, string> = {
+const gradeLabels: Record<Attempt["grade"], string> = {
   0: "Again - Need to review",
   1: "Good - Solved with some effort",
   2: "Easy - Solved quickly",
 }
 
-const gradeText: Record<number, string> = {
+const gradeText: Record<Attempt["grade"], string> = {
   0: "Again/Hard",
   1: "Good",
   2: "Easy",
 }
 
-const gradeColors: Record<number, string> = {
+const gradeColors: Record<Attempt["grade"], string> = {
   0: "text-red-600 dark:text-red-400",
   1: "text-blue-600 dark:text-blue-400",
   2: "text-green-600 dark:text-green-400",

@@ -16,7 +16,7 @@ interface PastAttempt {
   difficulty: "Easy" | "Medium" | "Hard"
   category: string
   attempted_at: string
-  grade: number
+  grade: 0 | 1 | 2
   stage: number
   attempt_number: number
 }
@@ -44,7 +44,7 @@ interface CalendarEvent {
   date: Date
   isPast: boolean
   stage?: number
-  grade?: number
+  grade?: 0 | 1 | 2
   difficulty: "Easy" | "Medium" | "Hard"
   attemptNumber?: number
 }
@@ -380,16 +380,23 @@ export function CalendarProblems({ data, loading, error, onRefresh }: CalendarPr
         />
       )}
 
-      {selectedEvent && viewAttemptOpen && selectedEvent.isPast && (
-        <ViewAttemptDialog
-          problemKey={selectedEvent.problemKey}
-          problemTitle={selectedEvent.title}
-          attemptDate={selectedEvent.date.toISOString()}
-          grade={(selectedEvent.grade ?? 0) as 0 | 1 | 2}
-          open={viewAttemptOpen}
-          onOpenChange={setViewAttemptOpen}
-        />
-      )}
+      {selectedEvent && viewAttemptOpen && selectedEvent.isPast && (() => {
+        // Runtime validation: ensure grade is a valid value
+        const grade = selectedEvent.grade ?? 0
+        const validGrade: 0 | 1 | 2 = 
+          grade === 0 || grade === 1 || grade === 2 ? grade : 0
+        
+        return (
+          <ViewAttemptDialog
+            problemKey={selectedEvent.problemKey}
+            problemTitle={selectedEvent.title}
+            attemptDate={selectedEvent.date.toISOString()}
+            grade={validGrade}
+            open={viewAttemptOpen}
+            onOpenChange={setViewAttemptOpen}
+          />
+        )
+      })()}
     </>
   )
 }

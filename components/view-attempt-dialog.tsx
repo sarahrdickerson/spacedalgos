@@ -50,7 +50,7 @@ const gradeText: Record<Attempt["grade"], string> = {
 
 const gradeColors: Record<Attempt["grade"], string> = {
   0: "text-red-600 dark:text-red-400",
-  1: "text-blue-600 dark:text-blue-400",
+  1: "text-yellow-600 dark:text-yellow-400",
   2: "text-green-600 dark:text-green-400",
 }
 
@@ -148,11 +148,7 @@ export function ViewAttemptDialog({
 
   const formatTime = (timeBucket: string | null) => {
     if (!timeBucket) return "N/A"
-    const minutes = parseInt(timeBucket.replace("min", ""))
-    if (minutes < 60) return timeBucket
-    const hours = Math.floor(minutes / 60)
-    const mins = minutes % 60
-    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`
+    return timeBucket
   }
 
   return (

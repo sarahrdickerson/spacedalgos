@@ -160,7 +160,7 @@ export function ViewAttemptDialog({
 
         <div className="space-y-4">
           {/* Current attempt details */}
-          <div className="border rounded-lg p-4 bg-muted/30">
+          <div className="rounded-lg p-4 bg-muted/30">
             <div className="flex items-start justify-between mb-3">
               <div>
                 <div className="text-sm text-muted-foreground">Attempt Date</div>
@@ -229,7 +229,7 @@ export function ViewAttemptDialog({
                   {history.attempts.map((attempt, index) => (
                     <div
                       key={attempt.id}
-                      className="border rounded-lg p-3 text-sm space-y-2"
+                      className="bg-muted/30 rounded-lg p-3 text-sm space-y-2"
                     >
                       <div className="flex items-start justify-between">
                         <div>

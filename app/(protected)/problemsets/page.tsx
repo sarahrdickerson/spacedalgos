@@ -10,8 +10,7 @@ import LogSolveButton from "./_components/log-solve-button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import MenuButton from "./_components/menu-button";
-import { CaretDownIcon, ExternalLinkIcon, ShuffleIcon } from "@radix-ui/react-icons";
-import { Button } from "@/components/ui/button";
+import { CaretDownIcon, ExternalLinkIcon } from "@radix-ui/react-icons";
 import RandomProblemDropdown from "./_components/random-problem-dropdown";
 
 // Stage labels constant

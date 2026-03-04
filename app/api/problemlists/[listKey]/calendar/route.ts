@@ -115,19 +115,29 @@ export async function GET(
       }
     });
 
-    // Calculate attempt numbers for each attempt (grouped by problem)
-    const attemptsByProblem = new Map<string, any[]>();
+    // Build per-problem attempt count map for O(n) attempt numbering
+    const problemAttemptCounts = new Map<string, number>();
     attempts?.forEach((attempt: any) => {
-      if (!attemptsByProblem.has(attempt.problem_id)) {
-        attemptsByProblem.set(attempt.problem_id, []);
-      }
-      attemptsByProblem.get(attempt.problem_id)!.push(attempt);
+      problemAttemptCounts.set(
+        attempt.problem_id,
+        (problemAttemptCounts.get(attempt.problem_id) || 0) + 1
+      );
     });
 
-    // Format past attempts with attempt numbers
+    // Format past attempts with attempt numbers (O(n) - single pass with decrementing counter)
+    const problemCounters = new Map<string, number>();
     const pastAttempts = (attempts || []).map((attempt: any) => {
-      const problemAttempts = attemptsByProblem.get(attempt.problem_id) || [];
-      const attemptNumber = problemAttempts.length - problemAttempts.indexOf(attempt);
+      // Initialize counter to total count for this problem on first encounter
+      if (!problemCounters.has(attempt.problem_id)) {
+        problemCounters.set(
+          attempt.problem_id,
+          problemAttemptCounts.get(attempt.problem_id) || 0
+        );
+      }
+      
+      // Get current counter value and decrement for next iteration
+      const attemptNumber = problemCounters.get(attempt.problem_id)!;
+      problemCounters.set(attempt.problem_id, attemptNumber - 1);
       
       return {
         problem_id: attempt.problem_id,

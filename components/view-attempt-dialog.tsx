@@ -13,8 +13,8 @@ import { ChevronDown, ChevronUp } from "lucide-react"
 
 interface Attempt {
   id: string
-  grade: number
-  time_bucket: string
+  grade: 0 | 1 | 2
+  time_bucket: string | null
   note: string | null
   attempted_at: string
 }
@@ -67,34 +67,53 @@ export function ViewAttemptDialog({
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
 
-  const fetchHistory = React.useCallback(async () => {
+  const fetchHistory = React.useCallback(async (signal: AbortSignal) => {
     if (!problemKey) return
 
     setLoading(true)
     setError(null)
 
     try {
-      const response = await fetch(`/api/problems/${encodeURIComponent(problemKey)}/history`)
+      const response = await fetch(
+        `/api/problems/${encodeURIComponent(problemKey)}/history`,
+        { signal }
+      )
       if (!response.ok) {
         throw new Error("Failed to fetch attempt history")
       }
       const data = await response.json()
-      setHistory(data)
+      
+      // Only update state if request wasn't aborted
+      if (!signal.aborted) {
+        setHistory(data)
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error")
+      // Ignore abort errors
+      if (err instanceof Error && err.name === 'AbortError') {
+        return
+      }
+      if (!signal.aborted) {
+        setError(err instanceof Error ? err.message : "Unknown error")
+      }
     } finally {
-      setLoading(false)
+      if (!signal.aborted) {
+        setLoading(false)
+      }
     }
   }, [problemKey])
 
   const handleExpandToggle = () => {
-    if (!expanded && !history) {
-      fetchHistory()
-    }
-    setExpanded(!expanded)
+    setExpanded(prev => {
+      const nextExpanded = !prev
+      if (nextExpanded && !history) {
+        const abortController = new AbortController()
+        fetchHistory(abortController.signal)
+      }
+      return nextExpanded
+    })
   }
 
-  // Reset state when dialog closes
+  // Reset state when dialog closes and abort in-flight requests
   React.useEffect(() => {
     if (!open) {
       setExpanded(false)
@@ -102,6 +121,15 @@ export function ViewAttemptDialog({
       setError(null)
     }
   }, [open])
+
+  // Cleanup in-flight requests on unmount
+  React.useEffect(() => {
+    const abortController = new AbortController()
+    
+    return () => {
+      abortController.abort()
+    }
+  }, [problemKey])
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)

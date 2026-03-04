@@ -9,7 +9,10 @@ const LegendPopover = () => {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <button className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+        <button
+          type="button"
+          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
           <InfoCircledIcon className="w-4 h-4" />
           <span>Legend</span>
         </button>

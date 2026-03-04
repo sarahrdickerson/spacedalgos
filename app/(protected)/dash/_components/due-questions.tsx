@@ -34,8 +34,6 @@ const DueQuestions = ({ data, loading, onRefresh }: DueQuestionsProps) => {
     }
   }, [loading, data?.dueProblems]);
 
-  const dueProblems = data?.dueProblems || [];
-  
   const { dueTodayProblems, dueThisWeekProblems, stats } = React.useMemo(() => {
     // If no active list, return null stats to trigger empty state
     if (!data?.activeList || !currentTime) {
@@ -46,6 +44,7 @@ const DueQuestions = ({ data, loading, onRefresh }: DueQuestionsProps) => {
       };
     }
 
+    const dueProblems = data.dueProblems || [];
     const now = currentTime;
     const today = new Date(
       now.getFullYear(),
@@ -82,7 +81,7 @@ const DueQuestions = ({ data, loading, onRefresh }: DueQuestionsProps) => {
         currentStreak,
       }
     };
-  }, [dueProblems, data?.streak, data?.activeList, currentTime]);
+  }, [data?.dueProblems, data?.streak, data?.activeList, currentTime]);
 
   const handleSuccess = async () => {
     // Refresh all dashboard data

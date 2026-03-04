@@ -66,6 +66,8 @@ export function CalendarProblems({ data, loading, error, onRefresh }: CalendarPr
 
   // Fetch calendar data when active plan changes
   React.useEffect(() => {
+    const abortController = new AbortController()
+    
     const fetchCalendarData = async () => {
       if (!data?.activeList) {
         setCalendarData(null)
@@ -78,7 +80,8 @@ export function CalendarProblems({ data, loading, error, onRefresh }: CalendarPr
 
       try {
         const response = await fetch(
-          `/api/problemlists/${encodeURIComponent(data.activeList.key)}/calendar`
+          `/api/problemlists/${encodeURIComponent(data.activeList.key)}/calendar`,
+          { signal: abortController.signal }
         )
 
         if (!response.ok) {
@@ -86,15 +89,31 @@ export function CalendarProblems({ data, loading, error, onRefresh }: CalendarPr
         }
 
         const calData = await response.json()
-        setCalendarData(calData)
+        
+        // Only update state if request wasn't aborted
+        if (!abortController.signal.aborted) {
+          setCalendarData(calData)
+        }
       } catch (err) {
-        setCalendarError(err instanceof Error ? err.message : "Unknown error")
+        // Ignore abort errors
+        if (err instanceof Error && err.name === 'AbortError') {
+          return
+        }
+        if (!abortController.signal.aborted) {
+          setCalendarError(err instanceof Error ? err.message : "Unknown error")
+        }
       } finally {
-        setCalendarLoading(false)
+        if (!abortController.signal.aborted) {
+          setCalendarLoading(false)
+        }
       }
     }
 
     fetchCalendarData()
+    
+    return () => {
+      abortController.abort()
+    }
   }, [data?.activeList?.key])
 
   // Handle error state
@@ -351,7 +370,7 @@ export function CalendarProblems({ data, loading, error, onRefresh }: CalendarPr
           problemKey={selectedEvent.problemKey}
           problemTitle={selectedEvent.title}
           attemptDate={selectedEvent.date.toISOString()}
-          grade={selectedEvent.grade || 0}
+          grade={(selectedEvent.grade ?? 0) as 0 | 1 | 2}
           open={viewAttemptOpen}
           onOpenChange={setViewAttemptOpen}
         />

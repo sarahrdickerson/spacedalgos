@@ -66,6 +66,7 @@ export function ViewAttemptDialog({
   const [history, setHistory] = React.useState<AttemptHistory | null>(null)
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
+  const abortControllerRef = React.useRef<AbortController | null>(null)
 
   const fetchHistory = React.useCallback(async (signal: AbortSignal) => {
     if (!problemKey) return
@@ -106,8 +107,10 @@ export function ViewAttemptDialog({
     setExpanded(prev => {
       const nextExpanded = !prev
       if (nextExpanded && !history) {
-        const abortController = new AbortController()
-        fetchHistory(abortController.signal)
+        // Abort any existing request before starting a new one
+        abortControllerRef.current?.abort()
+        abortControllerRef.current = new AbortController()
+        fetchHistory(abortControllerRef.current.signal)
       }
       return nextExpanded
     })
@@ -116,6 +119,8 @@ export function ViewAttemptDialog({
   // Reset state when dialog closes and abort in-flight requests
   React.useEffect(() => {
     if (!open) {
+      abortControllerRef.current?.abort()
+      abortControllerRef.current = null
       setExpanded(false)
       setHistory(null)
       setError(null)
@@ -124,16 +129,15 @@ export function ViewAttemptDialog({
 
   // Cleanup in-flight requests on unmount
   React.useEffect(() => {
-    const abortController = new AbortController()
-    
     return () => {
-      abortController.abort()
+      abortControllerRef.current?.abort()
+      abortControllerRef.current = null
     }
-  }, [problemKey])
+  }, [])
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
-    return date.toLocaleDateString("en-US", {
+    return date.toLocaleString("en-US", {
       month: "short",
       day: "numeric",
       year: "numeric",

@@ -5,17 +5,48 @@ import { Calendar } from "@/components/ui/calendar"
 import { cn } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
 import { LogAttemptDialog } from "@/components/log-attempt-dialog"
-import { DashboardData, Problem } from "@/app/(protected)/_components/dashboard-provider"
+import { ViewAttemptDialog } from "@/components/view-attempt-dialog"
+import { DashboardData } from "@/app/(protected)/_components/dashboard-provider"
+import LegendPopover from "./calendar/legend-popover"
+
+interface PastAttempt {
+  problem_id: string
+  problem_key: string
+  problem_title: string
+  difficulty: "Easy" | "Medium" | "Hard"
+  category: string
+  attempted_at: string
+  grade: 0 | 1 | 2
+  stage: number
+  attempt_number: number
+}
+
+interface UpcomingReview {
+  problem_id: string
+  problem_key: string
+  problem_title: string
+  difficulty: "Easy" | "Medium" | "Hard"
+  category: string
+  next_review_at: string
+  stage: number
+  attempt_count: number
+}
+
+interface CalendarData {
+  past_attempts: PastAttempt[]
+  upcoming_reviews: UpcomingReview[]
+}
 
 interface CalendarEvent {
   id: string
   title: string
   problemKey: string
   date: Date
-  stage: number
-  daysOverdue: number
-  attemptCount: number
+  isPast: boolean
+  stage?: number
+  grade?: 0 | 1 | 2
   difficulty: "Easy" | "Medium" | "Hard"
+  attemptNumber?: number
 }
 
 interface CalendarProblemsProps {
@@ -28,6 +59,76 @@ interface CalendarProblemsProps {
 export function CalendarProblems({ data, loading, error, onRefresh }: CalendarProblemsProps) {
   const [selectedEvent, setSelectedEvent] = React.useState<CalendarEvent | null>(null)
   const [dialogOpen, setDialogOpen] = React.useState(false)
+  const [viewAttemptOpen, setViewAttemptOpen] = React.useState(false)
+  const [calendarData, setCalendarData] = React.useState<CalendarData | null>(null)
+  const [calendarLoading, setCalendarLoading] = React.useState(true)
+  const [calendarError, setCalendarError] = React.useState<string | null>(null)
+  const lastFetchedKeyRef = React.useRef<string | null>(null)
+  const abortControllerRef = React.useRef<AbortController | null>(null)
+
+  const fetchCalendarData = React.useCallback(async (forceRefresh = false) => {
+    const activeListKey = data?.activeList?.key
+
+    if (!activeListKey) {
+      setCalendarData(null)
+      setCalendarLoading(false)
+      lastFetchedKeyRef.current = null
+      return
+    }
+
+    // Skip fetch if we already have data for this list (unless forced)
+    if (!forceRefresh && lastFetchedKeyRef.current === activeListKey) {
+      return
+    }
+
+    // Abort any existing request
+    abortControllerRef.current?.abort()
+    abortControllerRef.current = new AbortController()
+    const signal = abortControllerRef.current.signal
+
+    setCalendarLoading(true)
+    setCalendarError(null)
+
+    try {
+      const response = await fetch(
+        `/api/problemlists/${encodeURIComponent(activeListKey)}/calendar`,
+        { signal }
+      )
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch calendar data")
+      }
+
+      const calData = await response.json()
+      
+      // Only update state if request wasn't aborted
+      if (!signal.aborted) {
+        setCalendarData(calData)
+        lastFetchedKeyRef.current = activeListKey
+      }
+    } catch (err) {
+      // Ignore abort errors
+      if (err instanceof Error && err.name === 'AbortError') {
+        return
+      }
+      if (!signal.aborted) {
+        setCalendarError(err instanceof Error ? err.message : "Unknown error")
+      }
+    } finally {
+      if (!signal.aborted) {
+        setCalendarLoading(false)
+      }
+    }
+  }, [data?.activeList?.key])
+
+  // Fetch calendar data when active plan changes
+  React.useEffect(() => {
+    fetchCalendarData()
+    
+    return () => {
+      abortControllerRef.current?.abort()
+    }
+  }, [fetchCalendarData])
 
   // Handle error state
   if (error) {
@@ -47,6 +148,25 @@ export function CalendarProblems({ data, loading, error, onRefresh }: CalendarPr
               Try again
             </button>
           )}
+        </div>
+      </div>
+    );
+  }
+
+  // Handle calendar error state
+  if (calendarError) {
+    return (
+      <div className="w-full">
+        <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-6 text-center">
+          <p className="text-sm text-destructive font-medium mb-3">
+            {calendarError}
+          </p>
+          <button
+            onClick={() => fetchCalendarData(true)}
+            className="text-sm text-muted-foreground hover:text-foreground underline"
+          >
+            Try again
+          </button>
         </div>
       </div>
     );
@@ -73,22 +193,35 @@ export function CalendarProblems({ data, loading, error, onRefresh }: CalendarPr
     );
   }
 
-  // Convert due problems to calendar events
-  const events: CalendarEvent[] = (data?.dueProblems || [])
-    .filter((problem): problem is Problem & { progress: NonNullable<Problem["progress"]> } =>
-      problem.progress !== undefined
-    )
-    .map((problem) => ({
-      id: problem.id,
-      title: problem.title,
-      problemKey: problem.key,
-      date: new Date(problem.progress.next_review_at),
-      stage: problem.progress.stage,
-      daysOverdue: problem.progress.days_overdue,
-      attemptCount: problem.progress.attempt_count,
-      difficulty: problem.difficulty as "Easy" | "Medium" | "Hard",
-    })
-  );
+  // Convert calendar data to events
+  const events: CalendarEvent[] = React.useMemo(() => {
+    if (!calendarData) return []
+
+    const pastEvents: CalendarEvent[] = calendarData.past_attempts.map((attempt) => ({
+      id: `past-${attempt.problem_id}-${attempt.attempted_at}`,
+      title: attempt.problem_title,
+      problemKey: attempt.problem_key,
+      date: new Date(attempt.attempted_at),
+      isPast: true,
+      grade: attempt.grade,
+      stage: attempt.stage,
+      difficulty: attempt.difficulty,
+      attemptNumber: attempt.attempt_number,
+    }))
+
+    const upcomingEvents: CalendarEvent[] = calendarData.upcoming_reviews.map((review) => ({
+      id: `upcoming-${review.problem_id}`,
+      title: review.problem_title,
+      problemKey: review.problem_key,
+      date: new Date(review.next_review_at),
+      isPast: false,
+      stage: review.stage,
+      difficulty: review.difficulty,
+      attemptNumber: review.attempt_count + 1,
+    }))
+
+    return [...pastEvents, ...upcomingEvents]
+  }, [calendarData])
 
   const getEventsForDate = (date: Date): CalendarEvent[] => {
     return events.filter(
@@ -102,48 +235,67 @@ export function CalendarProblems({ data, loading, error, onRefresh }: CalendarPr
     return (
       <div className="flex flex-col gap-1">
         {dayEvents.map((event) => {
-          // Color by stage: 1 = Learning (yellow), 2 = Reinforcing (blue), 3 = Mastered (green)
-          const stageColor =
-            event.stage === 1
-              ? "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 hover:bg-yellow-500/20"
-              : event.stage === 2
-                ? "bg-blue-500/10 text-blue-700 dark:text-blue-400 hover:bg-blue-500/20"
-                : "bg-green-500/10 text-green-700 dark:text-green-400 hover:bg-green-500/20"
+          if (event.isPast) {
+            // Past attempts - lighter/muted styling based on stage BEFORE the attempt
+            const stageColor = 
+              event.stage === 3
+                ? "bg-green-500/5 text-green-700/60 dark:text-green-400/60 hover:bg-green-500/10"
+                : event.stage === 2
+                  ? "bg-blue-500/5 text-blue-700/60 dark:text-blue-400/60 hover:bg-blue-500/10"
+                  : event.stage === 1
+                    ? "bg-yellow-500/5 text-yellow-700/60 dark:text-yellow-400/60 hover:bg-yellow-500/10"
+                    : "bg-gray-500/5 text-gray-700/60 dark:text-gray-400/60 hover:bg-gray-500/10"
 
-          // If overdue, add red tint
-          const overdueStyle = event.daysOverdue > 0
-            ? "ring-1 ring-red-500/50"
-            : ""
+            return (
+              <button
+                key={event.id}
+                type="button"
+                className={cn(
+                  "text-xs px-2 py-1 rounded text-left w-full opacity-60 transition-colors cursor-pointer",
+                  stageColor
+                )}
+                title={`${event.title} - Stage ${event.stage || 0} attempt (Grade ${event.grade})`}
+                onClick={() => {
+                  setSelectedEvent(event)
+                  setViewAttemptOpen(true)
+                }}
+              >
+                {event.title} <span className="text-muted-foreground">#{event.attemptNumber}</span>
+              </button>
+            )
+          } else {
+            // Upcoming reviews - normal styling by stage
+            const stageColor =
+              event.stage === 1
+                ? "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 hover:bg-yellow-500/20"
+                : event.stage === 2
+                  ? "bg-blue-500/10 text-blue-700 dark:text-blue-400 hover:bg-blue-500/20"
+                  : "bg-green-500/10 text-green-700 dark:text-green-400 hover:bg-green-500/20"
 
-          return (
-            <button
-              key={event.id}
-              type="button"
-              className={cn(
-                "text-xs px-2 py-1 rounded transition-colors text-left w-full",
-                stageColor,
-                overdueStyle
-              )}
-              title={`${event.title} - Stage ${event.stage}, Attempt #${event.attemptCount + 1}${event.daysOverdue > 0 ? ` (${event.daysOverdue}d overdue)` : ""}`}
-              onClick={() => {
-                setSelectedEvent(event)
-                setDialogOpen(true)
-              }}
-            >
-              {event.title} <span className="text-muted-foreground">#{event.attemptCount + 1}</span>
-              {event.daysOverdue > 0 && (
-                <span className="ml-1 text-red-600 dark:text-red-400 font-semibold">
-                  +{event.daysOverdue}
-                </span>
-              )}
-            </button>
-          )
+            return (
+              <button
+                key={event.id}
+                type="button"
+                className={cn(
+                  "text-xs px-2 py-1 rounded transition-colors text-left w-full",
+                  stageColor
+                )}
+                title={`${event.title} - Stage ${event.stage} (Due for review)`}
+                onClick={() => {
+                  setSelectedEvent(event)
+                  setDialogOpen(true)
+                }}
+              >
+                {event.title} <span className="text-muted-foreground">#{event.attemptNumber}</span>
+              </button>
+            )
+          }
         })}
       </div>
     )
   }
 
-  if (loading) {
+  if (loading || calendarLoading) {
     return (
       <div className="w-full">
         <div className="flex flex-col">
@@ -201,25 +353,50 @@ export function CalendarProblems({ data, loading, error, onRefresh }: CalendarPr
 
   return (
     <>
-      <div className="w-full">
+      <div className="w-full space-y-4">
+        {/* Legend in Popover */}
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold">Repetition Calendar</h3>
+          <LegendPopover />
+        </div>
+
         <Calendar 
           minHeight="150px"
           renderDay={renderDay}
         />
       </div>
       
-      {selectedEvent && (
+      {selectedEvent && dialogOpen && !selectedEvent.isPast && (
         <LogAttemptDialog
           problemKey={selectedEvent.problemKey}
           problemTitle={selectedEvent.title}
           open={dialogOpen}
           onOpenChange={setDialogOpen}
-          onSuccess={() => {
-            // Refresh dashboard data after logging attempt
-            onRefresh?.();
+          onSuccess={async () => {
+            // Refresh both dashboard and calendar data after logging attempt
+            await onRefresh?.();
+            await fetchCalendarData(true);
           }}
         />
       )}
+
+      {selectedEvent && viewAttemptOpen && selectedEvent.isPast && (() => {
+        // Runtime validation: ensure grade is a valid value
+        const grade = selectedEvent.grade ?? 0
+        const validGrade: 0 | 1 | 2 = 
+          grade === 0 || grade === 1 || grade === 2 ? grade : 0
+        
+        return (
+          <ViewAttemptDialog
+            problemKey={selectedEvent.problemKey}
+            problemTitle={selectedEvent.title}
+            attemptDate={selectedEvent.date.toISOString()}
+            grade={validGrade}
+            open={viewAttemptOpen}
+            onOpenChange={setViewAttemptOpen}
+          />
+        )
+      })()}
     </>
   )
 }

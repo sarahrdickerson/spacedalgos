@@ -44,9 +44,10 @@ export default function DashPage() {
       let dueProblems = null;
 
       if (activePlanData.active_list?.key) {
+        const encodedKey = encodeURIComponent(activePlanData.active_list.key);
         const [statsRes, dueRes] = await Promise.all([
-          fetch(`/api/problemlists/${activePlanData.active_list.key}/stats`),
-          fetch(`/api/problemlists/${activePlanData.active_list.key}/due`),
+          fetch(`/api/problemlists/${encodedKey}/stats`),
+          fetch(`/api/problemlists/${encodedKey}/due`),
         ]);
 
         statsData = statsRes.ok ? await statsRes.json() : null;

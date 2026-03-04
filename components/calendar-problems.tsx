@@ -22,9 +22,10 @@ interface CalendarProblemsProps {
   data: DashboardData | null;
   loading: boolean;
   error?: unknown;
+  onRefresh?: () => Promise<void>;
 }
 
-export function CalendarProblems({ data, loading, error }: CalendarProblemsProps) {
+export function CalendarProblems({ data, loading, error, onRefresh }: CalendarProblemsProps) {
   const [selectedEvent, setSelectedEvent] = React.useState<CalendarEvent | null>(null)
   const [dialogOpen, setDialogOpen] = React.useState(false)
 
@@ -38,12 +39,14 @@ export function CalendarProblems({ data, loading, error }: CalendarProblemsProps
           <p className="text-sm text-destructive font-medium mb-3">
             {errorMessage}
           </p>
-          <button
-            onClick={() => window.location.reload()}
-            className="text-sm text-muted-foreground hover:text-foreground underline"
-          >
-            Reload page
-          </button>
+          {onRefresh && (
+            <button
+              onClick={() => onRefresh()}
+              className="text-sm text-muted-foreground hover:text-foreground underline"
+            >
+              Try again
+            </button>
+          )}
         </div>
       </div>
     );
@@ -57,12 +60,14 @@ export function CalendarProblems({ data, loading, error }: CalendarProblemsProps
           <p className="text-sm text-muted-foreground mb-3">
             Failed to load dashboard data
           </p>
-          <button
-            onClick={() => window.location.reload()}
-            className="text-sm text-muted-foreground hover:text-foreground underline"
-          >
-            Try again
-          </button>
+          {onRefresh && (
+            <button
+              onClick={() => onRefresh()}
+              className="text-sm text-muted-foreground hover:text-foreground underline"
+            >
+              Try again
+            </button>
+          )}
         </div>
       </div>
     );
@@ -210,8 +215,8 @@ export function CalendarProblems({ data, loading, error }: CalendarProblemsProps
           open={dialogOpen}
           onOpenChange={setDialogOpen}
           onSuccess={() => {
-            // Reload due problems after logging attempt
-            window.location.reload()
+            // Refresh dashboard data after logging attempt
+            onRefresh?.();
           }}
         />
       )}

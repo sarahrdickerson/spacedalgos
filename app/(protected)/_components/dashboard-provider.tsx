@@ -94,12 +94,18 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
         return;
       }
 
+      // Check for API failures
       if (!activePlanRes.ok) {
         throw new Error('Failed to fetch active study plan');
       }
 
+      if (!problemListsRes.ok) {
+        throw new Error('Failed to fetch problem lists');
+      }
+
+      // Streak is optional - don't fail if it's unavailable
       const activePlanData = await activePlanRes.json();
-      const problemListsData = problemListsRes.ok ? await problemListsRes.json() : { data: [] };
+      const problemListsData = await problemListsRes.json();
       const streakData = streakRes.ok ? await streakRes.json() : null;
 
       // Fetch dependent data if there's an active list
@@ -113,8 +119,16 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
           fetch(`/api/problemlists/${encodedKey}/due`),
         ]);
 
-        stats = statsRes.ok ? await statsRes.json() : null;
-        const dueData = dueRes.ok ? await dueRes.json() : null;
+        if (!statsRes.ok) {
+          throw new Error('Failed to fetch study plan statistics');
+        }
+
+        if (!dueRes.ok) {
+          throw new Error('Failed to fetch due problems');
+        }
+
+        stats = await statsRes.json();
+        const dueData = await dueRes.json();
         dueProblems = dueData?.due_problems || [];
       }
 

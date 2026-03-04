@@ -95,7 +95,7 @@ export function CalendarProblems({ data, loading, error, onRefresh }: CalendarPr
     }
 
     fetchCalendarData()
-  }, [data?.activeList])
+  }, [data?.activeList?.key])
 
   // Handle error state
   if (error) {

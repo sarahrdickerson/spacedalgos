@@ -1,33 +1,38 @@
-import { redirect } from "next/navigation";
+"use client";
 
-import { createClient } from "@/lib/supabase/server";
 import CurrentStudyPlan from "./_components/current-study-plan";
 import DueQuestions from "./_components/due-questions";
 import { CalendarProblems } from "@/components/calendar-problems";
-
-async function UserDetails() {
-  const supabase = await createClient();
-  const { data, error } = await supabase.auth.getClaims();
-
-  if (error || !data?.claims) {
-    redirect("/auth/login");
-  }
-
-  return JSON.stringify(data.claims, null, 2);
-}
+import { useDashboard } from "../_components/dashboard-provider";
 
 export default function DashPage() {
+  const { data, loading, error, refreshData } = useDashboard();
+
   return (
     <div className="flex-1 w-full flex flex-col gap-12">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
         <div className="flex flex-col gap-2 items-start md:col-span-2">
-          <CurrentStudyPlan />
+          <CurrentStudyPlan
+            data={data}
+            loading={loading}
+            error={error}
+            onRefresh={refreshData}
+          />
         </div>
         <div className="flex flex-col gap-2 items-start">
-          <DueQuestions />
+          <DueQuestions
+            data={data}
+            loading={loading}
+            onRefresh={refreshData}
+          />
         </div>
       </div>
-        <CalendarProblems />
+      <CalendarProblems
+        data={data}
+        loading={loading}
+        error={error}
+        onRefresh={refreshData}
+      />
     </div>
   );
 }

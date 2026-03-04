@@ -259,10 +259,36 @@ This document provides an overview of all API routes available in the applicatio
 ```
 
 **Spaced Repetition Logic:**
-- First attempt: Stage 1, 1-day interval
-- Successful attempts (grade ≥ 1): Progress through stages, increase interval
-- Failed attempts (grade = 0): Decrease stage (minimum 1), reset interval
-- Stage 3 with consistent success = Mastered
+
+**Stage Progression:**
+- **Stage 0 → 1**: First attempt (any grade)
+- **Stage 1 → 2**: Successful attempt (grade ≥ 1)
+- **Stage 2 → 3 (Mastered)**: Successful attempt (grade ≥ 1)
+- **Failure (grade = 0)**: Drop one stage (minimum stage 1)
+
+**Interval Calculation:**
+
+Base intervals by stage:
+- **Stage 1 (Learning)**: 2 days base
+- **Stage 2 (Reinforcing)**: 5 days base  
+- **Stage 3 (Mastered)**: 21 days base
+
+Grade multipliers:
+- **Grade 0 (Again/Fail)**: 0.3x multiplier, shrinks interval
+- **Grade 1 (Good)**: 1.0x multiplier
+- **Grade 2 (Easy)**: 1.5x multiplier
+
+Growth patterns:
+- **Stage 1-2**: Interval grows by 1.3x on success
+- **First time reaching Stage 3**: `Math.ceil(prevInterval * 1.5 * mult)`, enforced minimum 21 days
+- **Already at Stage 3**: Interval grows by `Math.ceil(prevInterval * 2.0 * 1.4 * mult)` (2.8x for grade 1)
+
+**Examples (grade 1):**
+- First attempt: Stage 1, 2-day interval
+- Stage 1 → 2: Stage 2, 3 days (ceil(2 * 1.3 * 1.0) = 3)
+- Stage 2 → 3: Stage 3, 21 days (max(ceil(3 * 1.5 * 1.0), 21) = 21)
+- Stage 3 review: Stage 3, 59 days (ceil(21 * 2.0 * 1.4 * 1.0) = 59)
+- Stage 3 review again: Stage 3, 166 days (ceil(59 * 2.0 * 1.4 * 1.0) = 166)
 
 ---
 

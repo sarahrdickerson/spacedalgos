@@ -5,23 +5,7 @@ import { Calendar } from "@/components/ui/calendar"
 import { cn } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
 import { LogAttemptDialog } from "@/components/log-attempt-dialog"
-
-interface DueProblem {
-  id: string
-  key: string
-  title: string
-  difficulty: string
-  category: string
-  leetcode_url: string
-  order_index: number
-  progress: {
-    stage: number
-    next_review_at: string
-    attempt_count: number
-    interval_days: number
-    days_overdue: number
-  }
-}
+import { DashboardData, Problem } from "@/app/(protected)/_components/dashboard-provider"
 
 interface CalendarEvent {
   id: string
@@ -34,47 +18,77 @@ interface CalendarEvent {
   difficulty: "Easy" | "Medium" | "Hard"
 }
 
-export function CalendarProblems() {
-  const [events, setEvents] = React.useState<CalendarEvent[]>([])
-  const [loading, setLoading] = React.useState(true)
-  const [error, setError] = React.useState<string | null>(null)
+interface CalendarProblemsProps {
+  data: DashboardData | null;
+  loading: boolean;
+  error?: unknown;
+  onRefresh?: () => Promise<void>;
+}
+
+export function CalendarProblems({ data, loading, error, onRefresh }: CalendarProblemsProps) {
   const [selectedEvent, setSelectedEvent] = React.useState<CalendarEvent | null>(null)
   const [dialogOpen, setDialogOpen] = React.useState(false)
 
-  React.useEffect(() => {
-    const loadDueProblems = async () => {
-      try {
-        const response = await fetch("/api/problemlists/blind75/due")
-        if (!response.ok) {
-          throw new Error("Failed to load due problems")
-        }
-        const data = await response.json()
+  // Handle error state
+  if (error) {
+    const errorMessage = error instanceof Error ? error.message : typeof error === "string" ? error : "An unknown error occurred while loading the dashboard";
+    
+    return (
+      <div className="w-full">
+        <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-6 text-center">
+          <p className="text-sm text-destructive font-medium mb-3">
+            {errorMessage}
+          </p>
+          {onRefresh && (
+            <button
+              onClick={() => onRefresh()}
+              className="text-sm text-muted-foreground hover:text-foreground underline"
+            >
+              Try again
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
 
-        // Convert due problems to calendar events
-        const calendarEvents: CalendarEvent[] = data.due_problems.map(
-          (problem: DueProblem) => ({
-            id: problem.id,
-            title: problem.title,
-            problemKey: problem.key,
-            date: new Date(problem.progress.next_review_at),
-            stage: problem.progress.stage,
-            daysOverdue: problem.progress.days_overdue,
-            attemptCount: problem.progress.attempt_count,
-            difficulty: problem.difficulty as "Easy" | "Medium" | "Hard",
-          })
-        )
+  // Handle missing data (but not loading)
+  if (!loading && !data) {
+    return (
+      <div className="w-full">
+        <div className="rounded-lg border border-muted bg-muted/10 p-6 text-center">
+          <p className="text-sm text-muted-foreground mb-3">
+            Failed to load dashboard data
+          </p>
+          {onRefresh && (
+            <button
+              onClick={() => onRefresh()}
+              className="text-sm text-muted-foreground hover:text-foreground underline"
+            >
+              Try again
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
 
-        setEvents(calendarEvents)
-        setLoading(false)
-      } catch (e) {
-        console.error(e)
-        setError("Failed to load due problems")
-        setLoading(false)
-      }
-    }
-
-    loadDueProblems()
-  }, [])
+  // Convert due problems to calendar events
+  const events: CalendarEvent[] = (data?.dueProblems || [])
+    .filter((problem): problem is Problem & { progress: NonNullable<Problem["progress"]> } =>
+      problem.progress !== undefined
+    )
+    .map((problem) => ({
+      id: problem.id,
+      title: problem.title,
+      problemKey: problem.key,
+      date: new Date(problem.progress.next_review_at),
+      stage: problem.progress.stage,
+      daysOverdue: problem.progress.days_overdue,
+      attemptCount: problem.progress.attempt_count,
+      difficulty: problem.difficulty as "Easy" | "Medium" | "Hard",
+    })
+  );
 
   const getEventsForDate = (date: Date): CalendarEvent[] => {
     return events.filter(
@@ -131,7 +145,7 @@ export function CalendarProblems() {
 
   if (loading) {
     return (
-      <div className="w-full p-6">
+      <div className="w-full">
         <div className="flex flex-col">
           {/* Header skeleton */}
           <div className="flex items-center justify-between pb-4">
@@ -185,17 +199,9 @@ export function CalendarProblems() {
     )
   }
 
-  if (error) {
-    return (
-      <div className="w-full p-6">
-        <p className="text-destructive">{error}</p>
-      </div>
-    )
-  }
-
   return (
     <>
-      <div className="w-full p-6">
+      <div className="w-full">
         <Calendar 
           minHeight="150px"
           renderDay={renderDay}
@@ -209,8 +215,8 @@ export function CalendarProblems() {
           open={dialogOpen}
           onOpenChange={setDialogOpen}
           onSuccess={() => {
-            // Reload due problems after logging attempt
-            window.location.reload()
+            // Refresh dashboard data after logging attempt
+            onRefresh?.();
           }}
         />
       )}

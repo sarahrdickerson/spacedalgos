@@ -71,7 +71,7 @@ function computeNextProgress(params: {
   // stage 2: medium
   // stage 3: longer with enhanced growth
   // grade influences multiplier a bit
-  const baseByStage = stage === 1 ? 2 : stage === 2 ? 5 : 12; // days
+  const baseByStage = stage === 1 ? 2 : stage === 2 ? 5 : 21; // days
   const mult = grade === 2 ? 1.5 : grade === 1 ? 1.0 : 0.3; // easy, good, or again
 
   // If we have a previous interval, grow it (for successes), shrink it (for fails)
@@ -79,9 +79,14 @@ function computeNextProgress(params: {
   if (prevIntervalDays && prevIntervalDays > 0) {
     if (grade >= 1) {
       // Success: grow the interval
-      // Stage 3 bonus (1.6x) only applies when already at stage 3
+      // Stage 3 bonus (2.0x) applies when already at stage 3
+      // First time reaching stage 3: ensure at least the base interval (21 days)
       if (prevStage === 3) {
-        interval_days = Math.ceil(prevIntervalDays * 1.6 * 1.3 * mult);
+        interval_days = Math.ceil(prevIntervalDays * 2.0 * 1.4 * mult);
+      } else if (stage === 3 && prevStage !== 3) {
+        // Just reached mastered from stage 2: ensure minimum 21 day interval
+        const calculated = Math.ceil(prevIntervalDays * 1.5 * mult);
+        interval_days = Math.max(calculated, baseByStage);
       } else {
         interval_days = Math.ceil(prevIntervalDays * 1.3 * mult);
       }

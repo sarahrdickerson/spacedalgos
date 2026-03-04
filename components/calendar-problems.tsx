@@ -7,12 +7,6 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { LogAttemptDialog } from "@/components/log-attempt-dialog"
 import { ViewAttemptDialog } from "@/components/view-attempt-dialog"
 import { DashboardData } from "@/app/(protected)/_components/dashboard-provider"
-import { InfoIcon } from "lucide-react"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
 import LegendPopover from "./calendar/legend-popover"
 
 interface PastAttempt {

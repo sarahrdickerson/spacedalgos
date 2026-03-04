@@ -203,6 +203,55 @@ This document provides an overview of all API routes available in the applicatio
 
 ---
 
+### Get Calendar Data
+
+**Endpoint:** `GET /api/problemlists/[listKey]/calendar`
+
+**Description:** Fetches calendar data for a specific problem list, including past attempts and upcoming reviews for the authenticated user.
+
+**Authentication:** Required
+
+**URL Parameters:**
+- `listKey` - The unique key identifier for the problem list
+
+**Response:**
+```json
+{
+  "past_attempts": [
+    {
+      "problem_id": "uuid",
+      "problem_key": "two-sum",
+      "problem_title": "Two Sum",
+      "difficulty": "Easy",
+      "category": "Array",
+      "attempted_at": "2026-03-03T10:30:00Z",
+      "grade": 1,
+      "stage": 2,
+      "attempt_number": 3
+    }
+  ],
+  "upcoming_reviews": [
+    {
+      "problem_id": "uuid",
+      "problem_key": "two-sum",
+      "problem_title": "Two Sum",
+      "difficulty": "Easy",
+      "category": "Array",
+      "next_review_at": "2026-03-06T00:00:00Z",
+      "stage": 2,
+      "attempt_count": 3
+    }
+  ]
+}
+```
+
+**Notes:**
+- `past_attempts` are ordered by `attempted_at` descending (most recent first)
+- `attempt_number` is calculated efficiently in O(n) time using a decrementing counter
+- `upcoming_reviews` only includes problems with scheduled review dates
+
+---
+
 ## Problems
 
 ### Log Problem Attempt

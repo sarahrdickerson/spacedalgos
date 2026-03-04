@@ -180,25 +180,7 @@ export async function POST(
 
     const problemId = problemRow.id;
 
-    // 4) Insert attempt row
-    const { data: attempt, error: attemptErr } = await supabase
-      .from("user_problem_attempts")
-      .insert({
-        user_id: user.id,
-        problem_id: problemId,
-        attempted_at: now.toISOString(),
-        grade: body.grade,
-        time_bucket: body.time_bucket ?? null,
-        note: body.note ?? null,
-      })
-      .select("*")
-      .single();
-
-    if (attemptErr) {
-      return NextResponse.json({ error: attemptErr.message }, { status: 500 });
-    }
-
-    // 5) Read existing progress (if any)
+    // 4) Read existing progress (if any) BEFORE inserting attempt
     const { data: existingProgress, error: progressReadErr } = await supabase
       .from("user_problem_progress")
       .select("*")
@@ -212,6 +194,30 @@ export async function POST(
         { status: 500 }
       );
     }
+
+    // Record the stage BEFORE this attempt (for history tracking)
+    const stageBeforeAttempt = existingProgress?.stage ?? 0;
+
+    // 5) Insert attempt row with the stage before this attempt
+    const { data: attempt, error: attemptErr } = await supabase
+      .from("user_problem_attempts")
+      .insert({
+        user_id: user.id,
+        problem_id: problemId,
+        attempted_at: now.toISOString(),
+        grade: body.grade,
+        time_bucket: body.time_bucket ?? null,
+        note: body.note ?? null,
+        stage: stageBeforeAttempt,
+      })
+      .select("*")
+      .single();
+
+    if (attemptErr) {
+      return NextResponse.json({ error: attemptErr.message }, { status: 500 });
+    }
+
+    // 6) Compute next progress based on existing progress
 
     const next = computeNextProgress({
       prevStage: existingProgress?.stage ?? null,
@@ -232,7 +238,7 @@ export async function POST(
       existingProgress?.next_review_at &&
       new Date(existingProgress.next_review_at) <= now;
 
-    // 6) Upsert progress
+    // 7) Upsert progress
     const { data: progress, error: progressUpsertErr } = await supabase
       .from("user_problem_progress")
       .upsert(
@@ -260,7 +266,7 @@ export async function POST(
       );
     }
 
-    // 7) Update daily activity and streak
+    // 8) Update daily activity and streak
     await updateDailyActivityAndStreak(supabase, user.id, now, wasDue);
 
     return NextResponse.json({

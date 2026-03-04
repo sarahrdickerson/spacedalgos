@@ -63,6 +63,7 @@ export function CalendarProblems({ data, loading, error, onRefresh }: CalendarPr
   const [calendarData, setCalendarData] = React.useState<CalendarData | null>(null)
   const [calendarLoading, setCalendarLoading] = React.useState(true)
   const [calendarError, setCalendarError] = React.useState<string | null>(null)
+  const lastFetchedKeyRef = React.useRef<string | null>(null)
 
   // Fetch calendar data when active plan changes
   React.useEffect(() => {
@@ -72,6 +73,12 @@ export function CalendarProblems({ data, loading, error, onRefresh }: CalendarPr
       if (!data?.activeList) {
         setCalendarData(null)
         setCalendarLoading(false)
+        lastFetchedKeyRef.current = null
+        return
+      }
+
+      // Skip fetch if we already have data for this list
+      if (lastFetchedKeyRef.current === data.activeList.key && calendarData) {
         return
       }
 
@@ -93,6 +100,7 @@ export function CalendarProblems({ data, loading, error, onRefresh }: CalendarPr
         // Only update state if request wasn't aborted
         if (!abortController.signal.aborted) {
           setCalendarData(calData)
+          lastFetchedKeyRef.current = data.activeList.key
         }
       } catch (err) {
         // Ignore abort errors

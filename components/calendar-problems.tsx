@@ -28,18 +28,46 @@ export function CalendarProblems({ data, loading, error }: CalendarProblemsProps
   const [selectedEvent, setSelectedEvent] = React.useState<CalendarEvent | null>(null)
   const [dialogOpen, setDialogOpen] = React.useState(false)
 
-  // Handle error and missing-data states so the calendar does not silently render empty
+  // Handle error state
   if (error) {
-    // Normalize to an Error instance so React error boundaries can handle it
-    if (error instanceof Error) {
-      throw error
-    }
-    throw new Error(typeof error === "string" ? error : "An unknown error occurred while loading the dashboard")
+    const errorMessage = error instanceof Error ? error.message : typeof error === "string" ? error : "An unknown error occurred while loading the dashboard";
+    
+    return (
+      <div className="w-full">
+        <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-6 text-center">
+          <p className="text-sm text-destructive font-medium mb-3">
+            {errorMessage}
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="text-sm text-muted-foreground hover:text-foreground underline"
+          >
+            Reload page
+          </button>
+        </div>
+      </div>
+    );
   }
 
+  // Handle missing data (but not loading)
   if (!loading && !data) {
-    throw new Error("Failed to load dashboard data for the calendar")
+    return (
+      <div className="w-full">
+        <div className="rounded-lg border border-muted bg-muted/10 p-6 text-center">
+          <p className="text-sm text-muted-foreground mb-3">
+            Failed to load dashboard data
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="text-sm text-muted-foreground hover:text-foreground underline"
+          >
+            Try again
+          </button>
+        </div>
+      </div>
+    );
   }
+
   // Convert due problems to calendar events
   const events: CalendarEvent[] = (data?.dueProblems || [])
     .filter((problem): problem is Problem & { progress: NonNullable<Problem["progress"]> } =>

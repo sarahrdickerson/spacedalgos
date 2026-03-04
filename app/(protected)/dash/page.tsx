@@ -30,6 +30,7 @@ export default function DashPage() {
       <CalendarProblems
         data={data}
         loading={loading}
+        error={error}
       />
     </div>
   );

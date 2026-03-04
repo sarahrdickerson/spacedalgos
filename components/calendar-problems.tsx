@@ -64,65 +64,71 @@ export function CalendarProblems({ data, loading, error, onRefresh }: CalendarPr
   const [calendarLoading, setCalendarLoading] = React.useState(true)
   const [calendarError, setCalendarError] = React.useState<string | null>(null)
   const lastFetchedKeyRef = React.useRef<string | null>(null)
+  const abortControllerRef = React.useRef<AbortController | null>(null)
+
+  const fetchCalendarData = React.useCallback(async (forceRefresh = false) => {
+    const activeListKey = data?.activeList?.key
+
+    if (!activeListKey) {
+      setCalendarData(null)
+      setCalendarLoading(false)
+      lastFetchedKeyRef.current = null
+      return
+    }
+
+    // Skip fetch if we already have data for this list (unless forced)
+    if (!forceRefresh && lastFetchedKeyRef.current === activeListKey) {
+      return
+    }
+
+    // Abort any existing request
+    abortControllerRef.current?.abort()
+    abortControllerRef.current = new AbortController()
+    const signal = abortControllerRef.current.signal
+
+    setCalendarLoading(true)
+    setCalendarError(null)
+
+    try {
+      const response = await fetch(
+        `/api/problemlists/${encodeURIComponent(activeListKey)}/calendar`,
+        { signal }
+      )
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch calendar data")
+      }
+
+      const calData = await response.json()
+      
+      // Only update state if request wasn't aborted
+      if (!signal.aborted) {
+        setCalendarData(calData)
+        lastFetchedKeyRef.current = activeListKey
+      }
+    } catch (err) {
+      // Ignore abort errors
+      if (err instanceof Error && err.name === 'AbortError') {
+        return
+      }
+      if (!signal.aborted) {
+        setCalendarError(err instanceof Error ? err.message : "Unknown error")
+      }
+    } finally {
+      if (!signal.aborted) {
+        setCalendarLoading(false)
+      }
+    }
+  }, [data?.activeList?.key])
 
   // Fetch calendar data when active plan changes
   React.useEffect(() => {
-    const abortController = new AbortController()
-    
-    const fetchCalendarData = async () => {
-      if (!data?.activeList) {
-        setCalendarData(null)
-        setCalendarLoading(false)
-        lastFetchedKeyRef.current = null
-        return
-      }
-
-      // Skip fetch if we already have data for this list
-      if (lastFetchedKeyRef.current === data.activeList.key && calendarData) {
-        return
-      }
-
-      setCalendarLoading(true)
-      setCalendarError(null)
-
-      try {
-        const response = await fetch(
-          `/api/problemlists/${encodeURIComponent(data.activeList.key)}/calendar`,
-          { signal: abortController.signal }
-        )
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch calendar data")
-        }
-
-        const calData = await response.json()
-        
-        // Only update state if request wasn't aborted
-        if (!abortController.signal.aborted) {
-          setCalendarData(calData)
-          lastFetchedKeyRef.current = data.activeList.key
-        }
-      } catch (err) {
-        // Ignore abort errors
-        if (err instanceof Error && err.name === 'AbortError') {
-          return
-        }
-        if (!abortController.signal.aborted) {
-          setCalendarError(err instanceof Error ? err.message : "Unknown error")
-        }
-      } finally {
-        if (!abortController.signal.aborted) {
-          setCalendarLoading(false)
-        }
-      }
-    }
-
     fetchCalendarData()
     
     return () => {
-      abortController.abort()
+      abortControllerRef.current?.abort()
     }
-  }, [data?.activeList?.key])
+  }, [fetchCalendarData])
 
   // Handle error state
   if (error) {
@@ -366,9 +372,10 @@ export function CalendarProblems({ data, loading, error, onRefresh }: CalendarPr
           problemTitle={selectedEvent.title}
           open={dialogOpen}
           onOpenChange={setDialogOpen}
-          onSuccess={() => {
-            // Refresh dashboard data after logging attempt
-            onRefresh?.();
+          onSuccess={async () => {
+            // Refresh both dashboard and calendar data after logging attempt
+            await onRefresh?.();
+            await fetchCalendarData(true);
           }}
         />
       )}

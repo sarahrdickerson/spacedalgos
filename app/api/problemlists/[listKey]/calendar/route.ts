@@ -76,6 +76,7 @@ export async function GET(
     }
 
     // Fetch all attempts for these problems
+    // TODO: limit by time range for better performance once we setup time bounds for study plan
     const { data: attempts, error: attemptsError } = await supabase
       .from("user_problem_attempts")
       .select("problem_id, attempted_at, grade, stage")

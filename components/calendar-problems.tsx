@@ -5,23 +5,7 @@ import { Calendar } from "@/components/ui/calendar"
 import { cn } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
 import { LogAttemptDialog } from "@/components/log-attempt-dialog"
-
-interface DueProblem {
-  id: string
-  key: string
-  title: string
-  difficulty: string
-  category: string
-  leetcode_url: string
-  order_index: number
-  progress: {
-    stage: number
-    next_review_at: string
-    attempt_count: number
-    interval_days: number
-    days_overdue: number
-  }
-}
+import { DashboardData, Problem } from "@/app/(protected)/_components/dashboard-provider"
 
 interface CalendarEvent {
   id: string
@@ -34,14 +18,6 @@ interface CalendarEvent {
   difficulty: "Easy" | "Medium" | "Hard"
 }
 
-interface DashboardData {
-  activeList: any;
-  problemLists: any[];
-  stats: any;
-  streak: any;
-  dueProblems: DueProblem[];
-}
-
 interface CalendarProblemsProps {
   data: DashboardData | null;
   loading: boolean;
@@ -52,8 +28,11 @@ export function CalendarProblems({ data, loading }: CalendarProblemsProps) {
   const [dialogOpen, setDialogOpen] = React.useState(false)
 
   // Convert due problems to calendar events
-  const events: CalendarEvent[] = (data?.dueProblems || []).map(
-    (problem: DueProblem) => ({
+  const events: CalendarEvent[] = (data?.dueProblems || [])
+    .filter((problem): problem is Problem & { progress: Required<Problem>['progress'] } => 
+      problem.progress !== undefined
+    )
+    .map((problem) => ({
       id: problem.id,
       title: problem.title,
       problemKey: problem.key,

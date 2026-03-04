@@ -1,17 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-
-interface Problem {
-  id: string;
-  key: string;
-  title: string;
-  category: string;
-  difficulty: string;
-  progress?: {
-    stage: number;
-    next_review_at: string;
-  };
-}
+import { Problem } from "../../_components/dashboard-provider";
 
 interface DueQuestionCardProps {
   problems: Problem[];

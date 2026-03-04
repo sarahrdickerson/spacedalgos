@@ -24,37 +24,7 @@ import { toast } from "sonner";
 import { CaretRightIcon } from "@radix-ui/react-icons";
 import Link from "next/link";
 import CurrentPlanMenuButton from "./current-plan-menu-button";
-
-interface ProblemList {
-  id: string;
-  key: string;
-  name: string;
-  description?: string;
-  source?: string;
-  version?: string;
-}
-
-interface PlanStats {
-  total: number;
-  mastered: number;
-  dueToday: number;
-  inProgress: number;
-  notStarted: number;
-}
-
-interface StreakData {
-  current_streak: number;
-  longest_streak: number;
-  last_activity_date: string | null;
-}
-
-interface DashboardData {
-  activeList: ProblemList | null;
-  problemLists: ProblemList[];
-  stats: PlanStats | null;
-  streak: StreakData | null;
-  dueProblems: any[];
-}
+import { DashboardData, ProblemList } from "../../_components/dashboard-provider";
 
 interface CurrentStudyPlanProps {
   data: DashboardData | null;

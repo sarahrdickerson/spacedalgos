@@ -7,26 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LogAttemptDialog } from "@/components/log-attempt-dialog";
 import { DueQuestionCard } from "./due-question-card";
 import React from "react";
-
-interface Problem {
-  id: string;
-  key: string;
-  title: string;
-  category: string;
-  difficulty: string;
-  progress?: {
-    stage: number;
-    next_review_at: string;
-  };
-}
-
-interface DashboardData {
-  activeList: any;
-  problemLists: any[];
-  stats: any;
-  streak: any;
-  dueProblems: Problem[];
-}
+import { DashboardData, Problem } from "../../_components/dashboard-provider";
 
 interface DueQuestionsProps {
   data: DashboardData | null;
@@ -41,10 +22,17 @@ const DueQuestions = ({ data, loading, onRefresh }: DueQuestionsProps) => {
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [currentTime, setCurrentTime] = React.useState<Date | null>(null);
 
-  // Set current time on client side only
+  // Set current time on client side only, and update when data refreshes
   React.useEffect(() => {
     setCurrentTime(new Date());
   }, []);
+
+  // Update currentTime when dashboard data is refreshed
+  React.useEffect(() => {
+    if (!loading && data?.dueProblems) {
+      setCurrentTime(new Date());
+    }
+  }, [loading, data?.dueProblems]);
 
   const dueProblems = data?.dueProblems || [];
   
@@ -68,7 +56,7 @@ const DueQuestions = ({ data, loading, onRefresh }: DueQuestionsProps) => {
     weekFromNow.setDate(weekFromNow.getDate() + 7);
 
     // Filter problems due today
-    const todayProblems = dueProblems.filter((p: any) => {
+    const todayProblems = dueProblems.filter((p: Problem) => {
       const nextReview = p.progress?.next_review_at;
       if (!nextReview) return false;
       const reviewDate = new Date(nextReview);
@@ -76,7 +64,7 @@ const DueQuestions = ({ data, loading, onRefresh }: DueQuestionsProps) => {
     });
 
     // Filter problems due this week
-    const weekProblems = dueProblems.filter((p: any) => {
+    const weekProblems = dueProblems.filter((p: Problem) => {
       const nextReview = p.progress?.next_review_at;
       if (!nextReview) return false;
       const reviewDate = new Date(nextReview);

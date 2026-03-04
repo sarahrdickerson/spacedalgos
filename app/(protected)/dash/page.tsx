@@ -4,17 +4,9 @@ import CurrentStudyPlan from "./_components/current-study-plan";
 import DueQuestions from "./_components/due-questions";
 import { CalendarProblems } from "@/components/calendar-problems";
 import { useDashboard } from "../_components/dashboard-provider";
-import { useEffect } from "react";
 
 export default function DashPage() {
-  const { data, loading, error, refreshData, initialized } = useDashboard();
-
-  // Trigger initial fetch when component mounts
-  useEffect(() => {
-    if (!initialized) {
-      refreshData();
-    }
-  }, [initialized, refreshData]);
+  const { data, loading, error, refreshData } = useDashboard();
 
   return (
     <div className="flex-1 w-full flex flex-col gap-12">

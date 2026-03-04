@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 import { useRouter } from "next/navigation";
 
 export interface ProblemProgress {
@@ -57,7 +57,6 @@ interface DashboardContextType {
   data: DashboardData | null;
   loading: boolean;
   error: string | null;
-  initialized: boolean;
   refreshData: () => Promise<void>;
 }
 
@@ -74,14 +73,10 @@ export function useDashboard() {
 export function DashboardProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [initialized, setInitialized] = useState(false);
 
   const fetchDashboardData = useCallback(async () => {
-    if (!initialized) {
-      setInitialized(true);
-    }
     try {
       setLoading(true);
       setError(null);
@@ -153,13 +148,16 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [router, initialized]);
+  }, [router]);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
 
   const value = {
     data,
     loading,
     error,
-    initialized,
     refreshData: fetchDashboardData,
   };
 

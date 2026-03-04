@@ -6,6 +6,7 @@ import { Suspense } from "react";
 import StartPracticeButton from "@/components/start-practice-button";
 import { MobileNav } from "@/components/mobile-nav";
 import { NavLink } from "@/components/nav-link";
+import { DashboardProvider } from "./_components/dashboard-provider";
 
 export default function ProtectedLayout({
   children,
@@ -50,9 +51,11 @@ export default function ProtectedLayout({
             </div>
           </div>
         </nav>
-        <div className="flex-1 flex flex-col gap-20 w-full max-w-6xl p-5">
-          {children}
-        </div>
+        <DashboardProvider>
+          <div className="flex-1 flex flex-col gap-20 w-full max-w-6xl p-5">
+            {children}
+          </div>
+        </DashboardProvider>
 
         <footer className="w-full flex items-center justify-center border-t border-t-muted mx-auto text-center text-xs gap-8 py-16">
           <p>

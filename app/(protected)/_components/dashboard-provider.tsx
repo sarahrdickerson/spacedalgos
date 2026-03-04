@@ -57,6 +57,7 @@ interface DashboardContextType {
   data: DashboardData | null;
   loading: boolean;
   error: string | null;
+  initialized: boolean;
   refreshData: () => Promise<void>;
 }
 
@@ -73,10 +74,14 @@ export function useDashboard() {
 export function DashboardProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [initialized, setInitialized] = useState(false);
 
   const fetchDashboardData = useCallback(async () => {
+    if (!initialized) {
+      setInitialized(true);
+    }
     try {
       setLoading(true);
       setError(null);
@@ -148,17 +153,13 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [router]);
-
-  // Fetch data on mount
-  useEffect(() => {
-    fetchDashboardData();
-  }, [fetchDashboardData]);
+  }, [router, initialized]);
 
   const value = {
     data,
     loading,
     error,
+    initialized,
     refreshData: fetchDashboardData,
   };
 

@@ -1,5 +1,4 @@
 import { DeployButton } from "@/components/deploy-button";
-import { EnvVarWarning } from "@/components/env-var-warning";
 import { AuthButton } from "@/components/auth-button";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import Link from "next/link";
@@ -7,13 +6,23 @@ import { Suspense } from "react";
 import StartPracticeButton from "@/components/start-practice-button";
 import { MobileNav } from "@/components/mobile-nav";
 import { NavLink } from "@/components/nav-link";
-import { DashboardProvider } from "./_components/dashboard-provider";
+import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 
-export default function ProtectedLayout({
+export default async function ProtectedLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+
+  if (error || !user) {
+    redirect("/auth/login");
+  }
 
   return (
     <main className="min-h-screen flex flex-col items-center">
@@ -53,11 +62,9 @@ export default function ProtectedLayout({
             </div>
           </div>
         </nav>
-        <DashboardProvider>
-          <div className="flex-1 flex flex-col gap-20 w-full max-w-6xl p-5">
-            {children}
-          </div>
-        </DashboardProvider>
+        <div className="flex-1 flex flex-col gap-20 w-full max-w-6xl p-5">
+          {children}
+        </div>
 
         <footer className="w-full flex items-center justify-center border-t border-t-muted mx-auto text-center text-xs gap-8 py-16">
           <p>

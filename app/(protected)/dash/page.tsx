@@ -31,6 +31,7 @@ export default function DashPage() {
         data={data}
         loading={loading}
         error={error}
+        onRefresh={refreshData}
       />
     </div>
   );

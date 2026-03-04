@@ -10,7 +10,9 @@ import LogSolveButton from "./_components/log-solve-button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import MenuButton from "./_components/menu-button";
-import { CaretDownIcon, ExternalLinkIcon } from "@radix-ui/react-icons";
+import { CaretDownIcon, ExternalLinkIcon, ShuffleIcon } from "@radix-ui/react-icons";
+import { Button } from "@/components/ui/button";
+import RandomProblemDropdown from "./_components/random-problem-dropdown";
 
 // Stage labels constant
 const stageLabels: Record<number, string> = {
@@ -118,6 +120,39 @@ const ProblemSetsPage = () => {
 
     setOpenCategories(categoriesToOpen);
   }, [activeSet, groupedProblems]);
+  const handleRandomProblem = (filterType: 'all' | 'weak' | 'unattempted') => {
+    if (!activeSet?.problems || activeSet.problems.length === 0) return;
+
+    let filteredProblems = activeSet.problems;
+
+    if (filterType === 'weak') {
+      // Weak = stage 1 or 2 (learning or reinforcing)
+      filteredProblems = activeSet.problems.filter(
+        (p: any) => p.progress?.stage === 1 || p.progress?.stage === 2
+      );
+    } else if (filterType === 'unattempted') {
+      // Unattempted = no progress or stage 0
+      filteredProblems = activeSet.problems.filter(
+        (p: any) => !p.progress || p.progress.stage === 0
+      );
+    }
+
+    if (filteredProblems.length === 0) {
+      // Could show a toast notification here
+      return;
+    }
+
+    const randomProblem = filteredProblems[
+      Math.floor(Math.random() * filteredProblems.length)
+    ];
+
+    if (randomProblem?.leetcode_url) {
+      window.open(randomProblem.leetcode_url, '_blank');
+    }
+
+    setOpenCategories((prev) => new Set(prev).add(randomProblem.category));
+
+  };
 
   return (
     <div className="flex-1 w-full flex flex-col gap-12">
@@ -169,9 +204,16 @@ const ProblemSetsPage = () => {
       )}
       {!loading && activeSet && (
         <div className="flex flex-col w-full gap-6">
-          <h1 className="text-2xl font-bold">
-            {activeSet.list.name ?? activeSet.list.key}
-          </h1>
+          <div className="flex flex-row justify-between w-full">
+            <h1 className="text-2xl font-bold">
+              {activeSet.list.name ?? activeSet.list.key}
+            </h1>
+            <RandomProblemDropdown 
+              onRandomAll={() => handleRandomProblem('all')}
+              onRandomWeak={() => handleRandomProblem('weak')}
+              onRandomUnattempted={() => handleRandomProblem('unattempted')}
+            />
+          </div>
           <div className="flex flex-col gap-4 w-full">
             {Object.entries(groupedProblems).map(([category, problems]) => {
               // Calculate category progress weighted by stage

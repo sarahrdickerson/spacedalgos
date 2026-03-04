@@ -90,6 +90,9 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
 
       // Check for auth errors
       if (activePlanRes.status === 401 || problemListsRes.status === 401 || streakRes.status === 401) {
+        // Clear any previously loaded protected data before redirecting
+        setData(null);
+        setError(null);
         router.replace('/auth/login');
         return;
       }

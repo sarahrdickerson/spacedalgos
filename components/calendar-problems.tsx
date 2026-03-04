@@ -162,7 +162,7 @@ export function CalendarProblems({ data, loading, error, onRefresh }: CalendarPr
             {calendarError}
           </p>
           <button
-            onClick={() => window.location.reload()}
+            onClick={() => fetchCalendarData(true)}
             className="text-sm text-muted-foreground hover:text-foreground underline"
           >
             Try again

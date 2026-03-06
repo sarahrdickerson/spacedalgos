@@ -183,6 +183,23 @@ export async function POST(req: Request) {
     const resolvedNewPerDay    = new_per_day    ?? presetValues[pace].new_per_day;
     const resolvedReviewPerDay = review_per_day ?? presetValues[pace].review_per_day;
 
+    // Validate resolved counts: must be finite positive integers
+    const isValidCount = (v: unknown): v is number =>
+      typeof v === "number" && Number.isFinite(v) && Number.isInteger(v) && v >= 1;
+
+    if (!isValidCount(resolvedNewPerDay)) {
+      return NextResponse.json(
+        { error: "new_per_day must be a positive integer" },
+        { status: 400 }
+      );
+    }
+    if (!isValidCount(resolvedReviewPerDay)) {
+      return NextResponse.json(
+        { error: "review_per_day must be a positive integer" },
+        { status: 400 }
+      );
+    }
+
     // 3) Validate that the problem list exists
     const { data: list, error: listErr } = await supabase
       .from("problem_lists")

@@ -18,7 +18,11 @@ function addDays(date: Date, days: number) {
   return d;
 }
 
-// Very simple spaced-rep logic (tweak later)
+// Interval caps — prevent runaway growth
+const MAX_INTERVAL_GOOD = 30; // Grade 1: caps at monthly maintenance
+const MAX_INTERVAL_EASY = 90; // Grade 2: caps at quarterly maintenance
+
+// Spaced repetition logic
 function computeNextProgress(params: {
   prevStage: number | null;
   prevIntervalDays: number | null;
@@ -44,58 +48,39 @@ function computeNextProgress(params: {
   const success_count = (prevSuccessCount ?? 0) + (isSuccess ? 1 : 0);
   const fail_count = (prevFailCount ?? 0) + (!isSuccess ? 1 : 0);
 
-  // Stage rules:
-  // - First attempt (any grade) puts you in stage 1
-  // - Repeated successes promote to 2 then 3
-  // - Fail drops you down (but not below 1 once started)
+  // Stage drives the UI label (Learning / Reinforcing / Mastered) — not intervals.
+  // Grade 0 drops one stage (min 1); Grade 1/2 advances one stage (max 3).
+  // First attempt (prevStage null/0) always lands at stage 1 regardless of grade.
   let stage = prevStage ?? 0;
-
   if (grade === 0) {
-    // again/fail: drop a stage, minimum 1 if they've started
-    if (stage >= 2) stage -= 1;
-    else if (stage === 1) stage = 1;
-    else stage = 1; // if first attempt is fail, we still consider them started
-  } else if (grade === 1) {
-    // good: promote up to 3
-    stage = Math.min(3, Math.max(1, stage || 1) + (stage >= 1 ? 1 : 0));
-    // if stage was 0, becomes 1; if 1->2; if 2->3
-    if (prevStage === null || prevStage === 0) stage = 1;
-  } else if (grade === 2) {
-    // easy: promote faster
-    if (!stage) stage = 1;
-    else stage = Math.min(3, stage + 1);
+    stage = Math.max(1, stage - 1);
+  } else {
+    stage = Math.min(3, Math.max(1, stage + 1));
   }
 
-  // Interval rules:
-  // stage 1: short intervals
-  // stage 2: medium
-  // stage 3: longer with enhanced growth
-  // grade influences multiplier a bit
-  const baseByStage = stage === 1 ? 2 : stage === 2 ? 5 : 21; // days
-  const mult = grade === 2 ? 1.5 : grade === 1 ? 1.0 : 0.3; // easy, good, or again
-
-  // If we have a previous interval, grow it (for successes), shrink it (for fails)
+  // Interval calculation — grows purely from the previous interval and the grade.
+  // Stages no longer affect the multiplier (eliminates the old 4.2x runaway at stage 3).
+  //
+  //   First attempt        → 1 day  (always review next day to confirm memory)
+  //   Grade 0 (fail)       → ×0.25, min 1 day   (same/next-day repair)
+  //   Grade 1 (good)       → ×2.0,  cap 30 days  (monthly maintenance once stable)
+  //   Grade 2 (easy)       → ×2.3,  cap 90 days  (quarterly maintenance once stable)
+  //
+  // Approximate sequences produced:
+  //   Easy:  1 → 3 → 7 → 17 → 40 → 90 (cap) → 90 → …
+  //   Good:  1 → 2 → 4 → 8  → 16 → 30 (cap) → 30 → …
+  //   Fail:  current × 0.25 → min 1 day (next-day repair for short intervals)
   let interval_days: number;
-  if (prevIntervalDays && prevIntervalDays > 0) {
-    if (grade >= 1) {
-      // Success: grow the interval
-      // Stage 3 bonus (2.0x) applies when already at stage 3
-      // First time reaching stage 3: ensure at least the base interval (21 days)
-      if (prevStage === 3) {
-        interval_days = Math.ceil(prevIntervalDays * 2.0 * 1.4 * mult);
-      } else if (stage === 3 && prevStage !== 3) {
-        // Just reached mastered from stage 2: ensure minimum 21 day interval
-        const calculated = Math.ceil(prevIntervalDays * 1.5 * mult);
-        interval_days = Math.max(calculated, baseByStage);
-      } else {
-        interval_days = Math.ceil(prevIntervalDays * 1.3 * mult);
-      }
-    } else {
-      // Failure: shrink the interval
-      interval_days = Math.max(1, Math.floor(prevIntervalDays * mult));
-    }
+  if (!prevIntervalDays || prevIntervalDays <= 0) {
+    // First attempt: always review the next day
+    interval_days = 1;
+  } else if (grade === 0) {
+    interval_days = Math.max(1, Math.floor(prevIntervalDays * 0.25));
+  } else if (grade === 1) {
+    interval_days = Math.min(MAX_INTERVAL_GOOD, Math.ceil(prevIntervalDays * 2.0));
   } else {
-    interval_days = Math.max(1, Math.round(baseByStage * mult));
+    // grade === 2
+    interval_days = Math.min(MAX_INTERVAL_EASY, Math.ceil(prevIntervalDays * 2.3));
   }
 
   const next_review_at = addDays(now, interval_days).toISOString();

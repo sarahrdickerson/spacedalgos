@@ -8,144 +8,97 @@ This application uses a spaced repetition algorithm to help users retain algorit
 
 When logging a solve attempt, users choose one of three grades:
 
-| Grade | Label | Meaning | Effect |
-|-------|-------|---------|--------|
-| **0** | ❌ Again | Failed to solve or struggled significantly even with hints | Decreases stage, shortens interval (0.3x multiplier) |
-| **1** | 👍 Good | Solved with some effort or needed hints | Normal progression, standard interval (1.0x multiplier) |
-| **2** | ✅ Easy | Solved confidently without hints | Faster progression, longer interval (1.5x multiplier) |
+| Grade | Label | Meaning |
+|-------|-------|---------|
+| **0** | ❌ Again | Failed to solve or needed the solution |
+| **1** | 👍 Good | Solved but slow, messy, or needed hints |
+| **2** | ✅ Easy | Solved cleanly without hints |
 
 ## Stages
 
-Problems progress through three stages representing mastery level:
+Stages are a UI label showing conceptual mastery level. They do **not** affect the interval calculation.
 
-| Stage | Label | Base Interval | Description |
-|-------|-------|---------------|-------------|
-| **1** | 🌱 Learning | ~2 days | Just learning the problem, short review cycles |
-| **2** | 🔄 Reinforcing | ~5 days | Solidifying understanding, medium review cycles |
-| **3** | ✅ Mastered | ~12 days | Confident mastery, long review cycles |
+| Stage | Label | Description |
+|-------|-------|-------------|
+| **1** | 🌱 Learning | Just starting the problem |
+| **2** | 🔄 Reinforcing | Building understanding |
+| **3** | ✅ Mastered | Confident mastery |
 
-### Stage Progression Logic
+### Stage Progression
 
-#### Moving Up Stages
-
-- **Grade 1 (Good)**: Advances by 1 stage
-  - Stage 1 → Stage 2
-  - Stage 2 → Stage 3
-  - Stage 3 → Stays at Stage 3
-
-- **Grade 2 (Easy)**: Advances by 1 stage (faster growth via interval multiplier)
-  - Stage 1 → Stage 2
-  - Stage 2 → Stage 3
-  - Stage 3 → Stays at Stage 3
-
-#### Moving Down Stages
-
-- **Grade 0 (Again)**: Drops by 1 stage (minimum Stage 1)
-  - Stage 3 → Stage 2
-  - Stage 2 → Stage 1
-  - Stage 1 → Stays at Stage 1
-
-**Note**: First attempt always starts at Stage 1, even if failed.
+- **Grade 1 or 2 (success)**: advance one stage (max 3). First attempt always → Stage 1.
+- **Grade 0 (fail)**: drop one stage (min 1). First attempt always → Stage 1.
 
 ## Interval Calculations
 
-The interval (days until next review) is calculated using:
+Intervals grow purely from the **previous interval × a grade multiplier**, with a hard cap to prevent unbounded growth.
 
-```
-interval = base_interval × stage_multiplier × grade_multiplier
-```
+### First Attempt
 
-### Base Intervals by Stage
+Always **1 day** — regardless of grade. Reviewing the next day confirms the memory is forming before extending the interval.
 
-- Stage 1: **2 days**
-- Stage 2: **5 days**
-- Stage 3: **12 days**
+### Subsequent Attempts
 
-### Grade Multipliers
+| Grade | Multiplier | Cap | Approximate sequence |
+|-------|-----------|-----|----------------------|
+| **0 (Again)** | ×0.25, min 1 day | — | Shrinks to ~¼ of current (same/next-day repair) |
+| **1 (Good)** | ×2.0 | 30 days | 1 → 2 → 4 → 8 → 16 → 30 → 30 → … |
+| **2 (Easy)** | ×2.3 | 90 days | 1 → 3 → 7 → 17 → 40 → 90 → 90 → … |
 
-- Grade 0 (Again): **0.3x** - Review very soon
-- Grade 1 (Good): **1.0x** - Standard interval
-- Grade 2 (Easy): **1.5x** - Extended interval
+Once an interval hits its cap it stays there, functioning as maintenance review (monthly for Good, quarterly for Easy).
 
-### Interval Growth
+### Fail behaviour
 
-For subsequent reviews (after the first attempt), the interval grows based on previous interval:
+`floor(prevInterval × 0.25)`, minimum 1 day:
 
-- **Success (Grade 1 or 2)**: `previous_interval × 1.3 × grade_multiplier`
-  - Stage 3 applies an additional 1.6x multiplier
-  
-- **Failure (Grade 0)**: `previous_interval × 0.3` (shrinks interval)
-
-**Minimum interval**: 1 day (intervals are always at least 1 day)
+| Was at | After fail |
+|--------|-----------|
+| 1 day  | 1 day (same/next-day repair) |
+| 4 days | 1 day |
+| 7 days | 1 day |
+| 30 days | 7 days |
+| 90 days | 22 days |
 
 ## Example Scenarios
 
-### Scenario 1: Steady Progress
+### Scenario 1: Clean solves (all Easy)
 
-1. **First attempt** - Grade 1 (Good)
-   - Stage: 0 → 1
-   - Interval: 2 days
-   - Next review: 2 days from now
+| Attempt | Grade | Interval |
+|---------|-------|----------|
+| 1st | Easy | 1 day |
+| 2nd | Easy | 3 days |
+| 3rd | Easy | 7 days |
+| 4th | Easy | 17 days |
+| 5th | Easy | 40 days |
+| 6th+ | Easy | 90 days (maintenance) |
 
-2. **Second attempt** - Grade 1 (Good)
-   - Stage: 1 → 2
-   - Interval: 2 × 1.3 × 1.0 = 2.6 → 3 days
-   - Next review: 3 days from now
+### Scenario 2: Steady progress (all Good)
 
-3. **Third attempt** - Grade 1 (Good)
-   - Stage: 2 → 3
-   - Interval: 3 × 1.3 × 1.0 = 3.9 → 4 days
-   - Next review: 4 days from now
+| Attempt | Grade | Interval |
+|---------|-------|----------|
+| 1st | Good | 1 day |
+| 2nd | Good | 2 days |
+| 3rd | Good | 4 days |
+| 4th | Good | 8 days |
+| 5th | Good | 16 days |
+| 6th+ | Good | 30 days (maintenance) |
 
-4. **Fourth attempt** - Grade 1 (Good)
-   - Stage: 3 (stays)
-   - Interval: 4 × 1.6 × 1.3 × 1.0 = 8.32 → 9 days
-   - Next review: 9 days from now
+### Scenario 3: Failure and recovery
 
-### Scenario 2: Quick Mastery
-
-1. **First attempt** - Grade 2 (Easy)
-   - Stage: 0 → 1
-   - Interval: 2 × 1.5 = 3 days
-   - Next review: 3 days from now
-
-2. **Second attempt** - Grade 2 (Easy)
-   - Stage: 1 → 2
-   - Interval: 3 × 1.3 × 1.5 = 5.85 → 6 days
-   - Next review: 6 days from now
-
-3. **Third attempt** - Grade 2 (Easy)
-   - Stage: 2 → 3
-   - Interval: 6 × 1.3 × 1.5 = 11.7 → 12 days
-   - Next review: 12 days from now
-
-### Scenario 3: Struggle and Recovery
-
-1. **First attempt** - Grade 1 (Good)
-   - Stage: 0 → 1
-   - Interval: 2 days
-   - Next review: 2 days from now
-
-2. **Second attempt** - Grade 1 (Good)
-   - Stage: 1 → 2
-   - Interval: 2 × 1.3 = 2.6 → 3 days
-   - Next review: 3 days from now
-
-3. **Third attempt** - Grade 0 (Again) - Forgot!
-   - Stage: 2 → 1 (dropped)
-   - Interval: 3 × 0.3 = 0.9 → 1 day
-   - Next review: 1 day from now
-
-4. **Fourth attempt** - Grade 1 (Good) - Reviewed quickly
-   - Stage: 1 → 2
-   - Interval: 1 × 1.3 = 1.3 → 2 days
-   - Next review: 2 days from now
+| Attempt | Grade | Interval | Note |
+|---------|-------|----------|------|
+| 1st | Good | 1 day | |
+| 2nd | Good | 2 days | |
+| 3rd | Good | 4 days | |
+| 4th | Again | 1 day | repair |
+| 5th | Good | 2 days | restarting growth |
+| 6th | Good | 4 days | |
 
 ## Statistics Tracked
 
 For each problem, the system tracks:
 
-- **stage**: Current mastery stage (1-3)
+- **stage**: Current mastery stage (1–3)
 - **last_attempt_at**: Timestamp of most recent attempt
 - **last_success_at**: Timestamp of most recent successful attempt (Grade ≥ 1)
 - **next_review_at**: Scheduled next review date
@@ -154,50 +107,21 @@ For each problem, the system tracks:
 - **fail_count**: Number of failed attempts (Grade 0)
 - **interval_days**: Current interval in days
 
-## Best Practices
+## Tuning Parameters
 
-### For Users
+Located in `/app/api/problems/[problemKey]/attempts/route.ts` in `computeNextProgress`:
 
-1. **Be honest with grading**: Choose the grade that accurately reflects your performance
-   - Don't mark "Easy" just to skip reviews - you'll forget and have to re-learn
-   - Don't mark "Again" unnecessarily - it resets your progress
-
-2. **Review on schedule**: Try to review problems close to their due date
-   - Overdue problems indicate gaps in retention
-   - Early reviews don't reinforce learning as effectively
-
-3. **Trust the algorithm**: The spaced repetition system is designed to optimize retention
-   - Longer intervals feel uncomfortable but are backed by research
-   - Short intervals at the start help build initial understanding
-
-### For Developers
-
-1. **Tuning parameters**: The base intervals and multipliers can be adjusted
-   - Located in `/app/api/problems/[problemKey]/attempts/route.ts`
-   - Test changes with sample data before deploying
-
-2. **Stage count**: Currently fixed at 3 stages
-   - Could be expanded to 4-5 stages for more granular progression
-   - Would require updating UI labels and database constraints
-
-3. **Interval caps**: Consider adding maximum intervals
-   - Example: Cap Stage 3 at 30 days to prevent extremely long gaps
-   - Balances retention with regular practice
+| Constant | Value | Purpose |
+|----------|-------|---------|
+| `MAX_INTERVAL_GOOD` | 30 days | Cap for Grade 1 — monthly maintenance |
+| `MAX_INTERVAL_EASY` | 90 days | Cap for Grade 2 — quarterly maintenance |
+| Grade 1 multiplier | ×2.0 | Growth rate for "good" solves |
+| Grade 2 multiplier | ×2.3 | Growth rate for "easy" solves |
+| Grade 0 multiplier | ×0.25 | Shrink rate for fails |
 
 ## Algorithm Credits
 
 Inspired by:
 - **SuperMemo SM-2**: Original spaced repetition algorithm
 - **Anki**: Popular spaced repetition software
-- **RemNote**: Modern knowledge management with spaced repetition
 
-## Future Enhancements
-
-Potential improvements to the system:
-
-1. **Ease factor**: Track how easy/hard each problem is individually
-2. **Lapse tracking**: Count how many times a problem was marked "Again"
-3. **Optimal review time**: Suggest best time of day based on user patterns
-4. **Category-specific intervals**: Different intervals for different problem types
-5. **Confidence ratings**: Allow users to rate confidence separately from performance
-6. **Review queue**: Prioritize overdue problems in suggested practice sessions

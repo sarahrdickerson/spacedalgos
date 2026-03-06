@@ -30,10 +30,10 @@ export default function ProtectedLayout({
                 spaced algos
               </Link>
               <NavLink href="/dash">
-                study plans
+                dashboard
               </NavLink>
-              <NavLink href="/problemsets">
-                problem sets
+              <NavLink href="/problems">
+                problems
               </NavLink>
             </div>
 

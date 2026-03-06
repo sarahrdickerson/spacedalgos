@@ -21,7 +21,7 @@ const stageLabels: Record<number, string> = {
   3: "Mastered",
 };
 
-const ProblemSetsPage = () => {
+const ProblemsPage = () => {
   const { data: dashboardData, loading, error } = useDashboard();
   const activeList = dashboardData?.activeList ?? null;
   const problems = dashboardData?.allProblems ?? [];
@@ -353,4 +353,4 @@ const ProblemSetsPage = () => {
   );
 };
 
-export default ProblemSetsPage;
+export default ProblemsPage;

@@ -29,7 +29,7 @@ export function MobileNav() {
           </NavLink>
         </div>
         <div onClick={() => setOpen(false)} className="w-full flex items-center">
-          <NavLink href="/problemsets" variant="mobile">
+          <NavLink href="/problems" variant="mobile">
             problem sets
           </NavLink>
         </div>

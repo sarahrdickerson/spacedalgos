@@ -48,7 +48,6 @@ export async function GET() {
     let currentStreak = prefs?.current_streak ?? 0;
     const lastActivity = prefs?.last_activity_date ?? null;
     if (lastActivity) {
-      const todayStr = new Date().toISOString().split("T")[0];
       const yesterdayStr = new Date(Date.now() - 86_400_000)
         .toISOString()
         .split("T")[0];

@@ -50,7 +50,7 @@ const CurrentStudyPlan = ({
   >("normal"); // TODO: add custom pace option in the future
   const [submitting, setSubmitting] = React.useState(false);
 
-  // Show greyed out sterak icon if streak has not been updated today
+  // Show greyed out streak icon if streak has not been updated today
   // Else show colored icon
   const streakActiveToday = React.useMemo(() => {
     const lastActivity = data?.streak?.last_activity_date;

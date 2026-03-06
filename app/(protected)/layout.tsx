@@ -30,20 +30,15 @@ export default function ProtectedLayout({
                 spaced algos
               </Link>
               <NavLink href="/dash">
-                study plans
+                dashboard
               </NavLink>
-              <NavLink href="/problemsets">
-                problem sets
+              <NavLink href="/problems">
+                problems
               </NavLink>
             </div>
 
             {/* User Actions */}
             <div className="flex items-center gap-2">
-              <div className="hidden md:block">
-                <Suspense>
-                  <StartPracticeButton />
-                </Suspense>
-              </div>
               <ThemeSwitcher />
               <Suspense>
                 <AuthButton />

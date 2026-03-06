@@ -5,9 +5,13 @@ import { useRouter } from "next/navigation";
 
 export interface ProblemProgress {
   stage: number;
-  next_review_at: string;
+  next_review_at: string | null;
+  last_attempt_at: string | null;
+  last_success_at: string | null;
   attempt_count: number;
-  interval_days: number;
+  success_count: number;
+  fail_count: number;
+  interval_days: number | null;
   days_overdue: number;
 }
 
@@ -19,7 +23,17 @@ export interface Problem {
   difficulty: string;
   leetcode_url?: string;
   order_index?: number;
-  progress?: ProblemProgress;
+  is_new?: boolean;
+  projected_date?: string | null; // ISO date string for upcoming projected new problems
+  progress?: ProblemProgress | null;
+}
+
+export interface StudyPlan {
+  pace: string;
+  new_per_day: number;
+  review_per_day: number;
+  start_date: string | null;
+  target_end_date: string | null;
 }
 
 export interface ProblemList {
@@ -51,6 +65,8 @@ export interface DashboardData {
   streak: StreakData | null;
   stats: PlanStats | null;
   dueProblems: Problem[];
+  allProblems: Problem[];
+  studyPlan: StudyPlan | null;
 }
 
 interface DashboardContextType {
@@ -113,13 +129,15 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
 
       // Fetch dependent data if there's an active list
       let stats = null;
-      let dueProblems = [];
+      let dueProblems: Problem[] = [];
+      let allProblems: Problem[] = [];
 
       if (activePlanData.active_list?.key) {
         const encodedKey = encodeURIComponent(activePlanData.active_list.key);
-        const [statsRes, dueRes] = await Promise.all([
+        const [statsRes, dueRes, progressRes] = await Promise.all([
           fetch(`/api/problemlists/${encodedKey}/stats`),
           fetch(`/api/problemlists/${encodedKey}/due`),
+          fetch(`/api/problemlists/${encodedKey}/progress`),
         ]);
 
         if (!statsRes.ok) {
@@ -130,9 +148,15 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
           throw new Error('Failed to fetch due problems');
         }
 
+        if (!progressRes.ok) {
+          throw new Error('Failed to fetch problem list');
+        }
+
         stats = await statsRes.json();
         const dueData = await dueRes.json();
+        const progressData = await progressRes.json();
         dueProblems = dueData?.due_problems || [];
+        allProblems = Array.isArray(progressData?.problems) ? progressData.problems : [];
       }
 
       setData({
@@ -141,6 +165,8 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
         streak: streakData,
         stats,
         dueProblems,
+        allProblems,
+        studyPlan: activePlanData.study_plan ?? null,
       });
     } catch (err) {
       console.error('Error fetching dashboard data:', err);

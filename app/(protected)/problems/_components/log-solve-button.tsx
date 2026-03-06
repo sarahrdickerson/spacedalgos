@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import React from "react";
 import { PlusCircledIcon } from "@radix-ui/react-icons";
 import { LogAttemptDialog } from "@/components/log-attempt-dialog";
+import { useDashboard } from "../../_components/dashboard-provider";
 
 type LogSolveButtonProps = {
   problemKey: string;
@@ -12,6 +13,7 @@ type LogSolveButtonProps = {
 
 const LogSolveButton = ({ problemKey, problemTitle }: LogSolveButtonProps) => {
   const [dialogOpen, setDialogOpen] = React.useState<boolean>(false);
+  const { refreshData } = useDashboard();
 
   return (
     <>
@@ -23,6 +25,7 @@ const LogSolveButton = ({ problemKey, problemTitle }: LogSolveButtonProps) => {
         problemTitle={problemTitle}
         open={dialogOpen}
         onOpenChange={setDialogOpen}
+        onSuccess={refreshData}
       />
     </>
   );

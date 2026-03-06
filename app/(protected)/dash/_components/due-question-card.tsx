@@ -32,17 +32,23 @@ export function DueQuestionCard({
                     </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <Badge
-                      className={
-                        problem.difficulty === "Easy"
-                          ? "bg-green-500/10 text-green-700 dark:text-green-400 hover:bg-green-500/20"
-                          : problem.difficulty === "Medium"
-                            ? "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 hover:bg-yellow-500/20"
-                            : "bg-red-500/10 text-red-700 dark:text-red-400 hover:bg-red-500/20"
-                      }
-                    >
-                      {problem.difficulty}
-                    </Badge>
+                    {problem.is_new ? (
+                      <Badge className="bg-blue-500/10 text-blue-700 dark:text-blue-400 hover:bg-blue-500/20">
+                        New
+                      </Badge>
+                    ) : (
+                      <Badge
+                        className={
+                          problem.difficulty === "Easy"
+                            ? "bg-green-500/10 text-green-700 dark:text-green-400 hover:bg-green-500/20"
+                            : problem.difficulty === "Medium"
+                              ? "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 hover:bg-yellow-500/20"
+                              : "bg-red-500/10 text-red-700 dark:text-red-400 hover:bg-red-500/20"
+                        }
+                      >
+                        {problem.difficulty}
+                      </Badge>
+                    )}
                   </div>
                 </div>
               </button>

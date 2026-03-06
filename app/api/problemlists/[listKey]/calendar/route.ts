@@ -49,6 +49,7 @@ export async function GET(
       .from("problem_list_items")
       .select(`
         problem_id,
+        order_index,
         problems (
           id,
           key,
@@ -57,7 +58,8 @@ export async function GET(
           category
         )
       `)
-      .eq("list_id", list.id);
+      .eq("list_id", list.id)
+      .order("order_index", { ascending: true });
 
     if (itemsError) {
       return NextResponse.json(
@@ -72,6 +74,7 @@ export async function GET(
       return NextResponse.json({
         past_attempts: [],
         upcoming_reviews: [],
+        projected_new: [],
       });
     }
 
@@ -92,13 +95,12 @@ export async function GET(
       );
     }
 
-    // Fetch progress for upcoming reviews
+    // Fetch ALL progress rows (for seen-problem tracking + upcoming reviews)
     const { data: progress, error: progressError } = await supabase
       .from("user_problem_progress")
       .select("problem_id, next_review_at, stage, attempt_count")
       .eq("user_id", user.id)
-      .in("problem_id", problemIds)
-      .not("next_review_at", "is", null);
+      .in("problem_id", problemIds);
 
     if (progressError) {
       console.error("Error fetching progress:", progressError);
@@ -153,21 +155,106 @@ export async function GET(
       };
     });
 
-    // Format upcoming reviews
-    const upcomingReviews = (progress || []).map((prog: any) => ({
-      problem_id: prog.problem_id,
-      problem_key: problemMap.get(prog.problem_id)?.key,
-      problem_title: problemMap.get(prog.problem_id)?.title,
-      difficulty: problemMap.get(prog.problem_id)?.difficulty,
-      category: problemMap.get(prog.problem_id)?.category,
-      next_review_at: prog.next_review_at,
-      stage: prog.stage,
-      attempt_count: prog.attempt_count,
-    }));
+    // Format upcoming reviews (only problems with a scheduled next_review_at)
+    const upcomingReviews = (progress || [])
+      .filter((prog: any) => prog.next_review_at != null)
+      .map((prog: any) => ({
+        problem_id: prog.problem_id,
+        problem_key: problemMap.get(prog.problem_id)?.key,
+        problem_title: problemMap.get(prog.problem_id)?.title,
+        difficulty: problemMap.get(prog.problem_id)?.difficulty,
+        category: problemMap.get(prog.problem_id)?.category,
+        next_review_at: prog.next_review_at,
+        stage: prog.stage,
+        attempt_count: prog.attempt_count,
+      }));
+
+    // Projected new problems: unseen problems assigned to future calendar days
+    const { data: studyPlan } = await supabase
+      .from("user_study_plans")
+      .select("new_per_day")
+      .eq("user_id", user.id)
+      .eq("list_id", list.id)
+      .eq("is_active", true)
+      .maybeSingle();
+
+    const newPerDay = studyPlan?.new_per_day ?? 0;
+    const seenProblemIds = new Set((progress ?? []).map((p: any) => p.problem_id));
+
+    const unseenItems = (listItems ?? [])
+      .filter((item: any) => !seenProblemIds.has(item.problem_id))
+      // already ordered by order_index ASC from the query
+      ;
+
+    const projectedNew: any[] = [];
+    if (newPerDay > 0 && unseenItems.length > 0) {
+      // Check if any reviews are overdue (same rule as /due route)
+      const now = new Date();
+      const todayMidnightUTC = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+      ).toISOString();
+      const hasOverdueReviews = (progress ?? []).some(
+        (p: any) => p.next_review_at && p.next_review_at < todayMidnightUTC
+      );
+
+      // When no overdue reviews the first new_per_day unseen problems are in today's
+      // due queue — emit them with is_today_new so the client can pin them to today's
+      // local date, then project the remainder from tomorrow onward.
+      let projectionStartIndex = 0;
+      if (!hasOverdueReviews) {
+        const todayItems = unseenItems.slice(0, newPerDay);
+        todayItems.forEach((item: any) => {
+          const problem = problemMap.get(item.problem_id);
+          projectedNew.push({
+            problem_id: item.problem_id,
+            problem_key: problem?.key,
+            problem_title: problem?.title,
+            difficulty: problem?.difficulty,
+            category: problem?.category,
+            projected_date: null,
+            is_today_new: true,
+            order_index: item.order_index,
+          });
+        });
+        projectionStartIndex = newPerDay;
+      }
+
+      const itemsToProject = unseenItems.slice(projectionStartIndex);
+      const tomorrow = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1)
+      );
+
+      let problemIndex = 0;
+      let dayOffset = 0;
+
+      while (problemIndex < itemsToProject.length) {
+        const date = new Date(tomorrow);
+        date.setUTCDate(tomorrow.getUTCDate() + dayOffset);
+        const dateStr = date.toISOString().split("T")[0];
+
+        for (let i = 0; i < newPerDay && problemIndex < itemsToProject.length; i++) {
+          const item = itemsToProject[problemIndex] as any;
+          const problem = problemMap.get(item.problem_id);
+          projectedNew.push({
+            problem_id: item.problem_id,
+            problem_key: problem?.key,
+            problem_title: problem?.title,
+            difficulty: problem?.difficulty,
+            category: problem?.category,
+            projected_date: dateStr,
+            is_today_new: false,
+            order_index: item.order_index,
+          });
+          problemIndex++;
+        }
+        dayOffset++;
+      }
+    }
 
     return NextResponse.json({
       past_attempts: pastAttempts,
       upcoming_reviews: upcomingReviews,
+      projected_new: projectedNew,
     });
   } catch (e) {
     console.error("Error in calendar endpoint:", e);

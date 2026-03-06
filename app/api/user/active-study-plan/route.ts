@@ -26,6 +26,7 @@ export async function GET() {
     if (prefsErr && prefsErr.code === "PGRST116") {
       return NextResponse.json({
         active_list: null,
+        study_plan: null,
       });
     }
 
@@ -41,6 +42,7 @@ export async function GET() {
     if (!prefs?.active_list_id) {
       return NextResponse.json({
         active_list: null,
+        study_plan: null,
       });
     }
 
@@ -55,11 +57,22 @@ export async function GET() {
       console.error("Error fetching problem list:", listErr);
       return NextResponse.json({
         active_list: null,
+        study_plan: null,
       });
     }
 
+    // 4) Fetch pace settings from user_study_plans
+    const { data: studyPlan } = await supabase
+      .from("user_study_plans")
+      .select("pace, new_per_day, review_per_day, start_date, target_end_date")
+      .eq("user_id", user.id)
+      .eq("list_id", prefs.active_list_id)
+      .eq("is_active", true)
+      .maybeSingle();
+
     return NextResponse.json({
       active_list: list,
+      study_plan: studyPlan ?? null,
     });
   } catch (e: any) {
     console.error(e);

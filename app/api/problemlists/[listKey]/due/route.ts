@@ -110,8 +110,24 @@ export async function GET(
       });
     }
 
-    // 6) Return all problems with progress (for calendar display)
-    const dueProblems = items
+    // 6) Fetch the user's study plan for new-problem scheduling
+    const { data: studyPlan } = await supabase
+      .from("user_study_plans")
+      .select("new_per_day")
+      .eq("user_id", user.id)
+      .eq("list_id", problemList.id)
+      .eq("is_active", true)
+      .maybeSingle();
+
+    const newPerDay = studyPlan?.new_per_day ?? 0;
+
+    // 7) Build the review queue (all problems that have a progress row)
+    const now = new Date();
+    const todayMidnightUTC = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+    ).toISOString();
+
+    const reviewProblems = items
       .map((item: any) => {
         const problem = item.problems;
         if (!problem) return null;
@@ -121,7 +137,6 @@ export async function GET(
 
         // Calculate days until/overdue
         const nextReview = new Date(progress.next_review_at);
-        const now = new Date();
         const diffMs = nextReview.getTime() - now.getTime();
         const daysUntil = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 
@@ -145,6 +160,33 @@ export async function GET(
         };
       })
       .filter(Boolean);
+
+    // 8) Check if any reviews are overdue (scheduled before today's midnight UTC)
+    const hasOverdueReviews = (dueProgressData ?? []).some(
+      (p: any) => p.next_review_at && p.next_review_at < todayMidnightUTC
+    );
+
+    // 9) Add new problems only when all reviews are caught up
+    let newProblems: any[] = [];
+    if (newPerDay > 0 && !hasOverdueReviews) {
+      const seenProblemIds = new Set(
+        (dueProgressData ?? []).map((p: any) => p.problem_id)
+      );
+      const unseenItems = items
+        .filter((item: any) => item.problems && !seenProblemIds.has(item.problems.id))
+        .slice(0, newPerDay);
+
+      newProblems = unseenItems.map((item: any) => ({
+        ...item.problems,
+        leetcode_url: `https://leetcode.com/problems/${item.problems.leetcode_slug}/`,
+        order_index: item.order_index,
+        list_tags: item.list_tags,
+        is_new: true,
+        progress: null,
+      }));
+    }
+
+    const dueProblems = [...reviewProblems, ...newProblems];
 
     return NextResponse.json({
       list: problemList,

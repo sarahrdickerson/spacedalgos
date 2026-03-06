@@ -353,7 +353,7 @@ const CurrentStudyPlan = ({ data, loading, error, onRefresh }: CurrentStudyPlanP
         </CardContent>
         <CardFooter className="flex flex-row justify-end gap-2">
           <Button asChild variant="default">
-            <Link href="/problemsets">
+            <Link href="/problems">
               Review Problems <CaretRightIcon />
             </Link>
           </Button>

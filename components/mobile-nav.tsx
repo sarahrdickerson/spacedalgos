@@ -21,16 +21,16 @@ export function MobileNav() {
           spaced algos
         </SheetTitle>
         <SheetDescription className="sr-only">
-          Navigate between study plans and problem sets
+          Navigate between dashboard and problems
         </SheetDescription>
         <div onClick={() => setOpen(false)} className="w-full flex items-center">
           <NavLink href="/dash" variant="mobile">
-            study plans
+            dashboard
           </NavLink>
         </div>
         <div onClick={() => setOpen(false)} className="w-full flex items-center">
-          <NavLink href="/problemsets" variant="mobile">
-            problem sets
+          <NavLink href="/problems" variant="mobile">
+            problems
           </NavLink>
         </div>
       </SheetContent>

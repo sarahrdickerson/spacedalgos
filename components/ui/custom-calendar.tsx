@@ -5,21 +5,21 @@ import { cn } from "@/lib/utils"
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
-interface CalendarProps extends React.ComponentProps<"div"> {
+interface CustomCalendarProps extends React.ComponentProps<"div"> {
   month?: Date
   onMonthChange?: (date: Date) => void
   renderDay?: (date: Date) => React.ReactNode
   minHeight?: string
 }
 
-function Calendar({
+function CustomCalendar({
   className,
   month = new Date(),
   onMonthChange,
   renderDay,
   minHeight = "120px",
   ...props
-}: CalendarProps) {
+}: CustomCalendarProps) {
   const [currentMonth, setCurrentMonth] = React.useState(month)
 
   const handlePreviousMonth = () => {
@@ -140,13 +140,13 @@ function Calendar({
   )
 }
 
-interface CalendarDayProps {
+interface CustomCalendarDayProps {
   date: Date | null
   minHeight: string
   renderDay?: (date: Date) => React.ReactNode
 }
 
-function CalendarDay({ date, minHeight, renderDay }: CalendarDayProps) {
+function CalendarDay({ date, minHeight, renderDay }: CustomCalendarDayProps) {
   const isToday = date
     ? date.toDateString() === new Date().toDateString()
     : false
@@ -185,4 +185,4 @@ function CalendarDay({ date, minHeight, renderDay }: CalendarDayProps) {
   )
 }
 
-export { Calendar }
+export { CustomCalendar }

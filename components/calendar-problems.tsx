@@ -1,13 +1,13 @@
 "use client"
 
 import React from "react"
-import { Calendar } from "@/components/ui/calendar"
 import { cn } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
 import { LogAttemptDialog } from "@/components/log-attempt-dialog"
 import { ViewAttemptDialog } from "@/components/view-attempt-dialog"
 import { DashboardData } from "@/app/(protected)/_components/dashboard-provider"
 import LegendPopover from "./calendar/legend-popover"
+import { CustomCalendar } from "./ui/custom-calendar"
 
 interface PastAttempt {
   problem_id: string
@@ -32,9 +32,21 @@ interface UpcomingReview {
   attempt_count: number
 }
 
+interface ProjectedNew {
+  problem_id: string
+  problem_key: string
+  problem_title: string
+  difficulty: "Easy" | "Medium" | "Hard"
+  category: string
+  projected_date: string | null
+  is_today_new: boolean
+  order_index: number
+}
+
 interface CalendarData {
   past_attempts: PastAttempt[]
   upcoming_reviews: UpcomingReview[]
+  projected_new: ProjectedNew[]
 }
 
 interface CalendarEvent {
@@ -43,6 +55,7 @@ interface CalendarEvent {
   problemKey: string
   date: Date
   isPast: boolean
+  isProjected?: boolean
   stage?: number
   grade?: 0 | 1 | 2
   difficulty: "Easy" | "Medium" | "Hard"
@@ -130,6 +143,65 @@ export function CalendarProblems({ data, loading, error, onRefresh }: CalendarPr
     }
   }, [fetchCalendarData])
 
+  const handleRefresh = React.useCallback(async () => {
+    await Promise.all([
+      onRefresh?.(),
+      fetchCalendarData(true),
+    ])
+  }, [onRefresh, fetchCalendarData])
+
+  // Convert calendar data to events — must live before any conditional returns (Rules of Hooks)
+  const events: CalendarEvent[] = React.useMemo(() => {
+    if (!calendarData) return []
+
+    const pastEvents: CalendarEvent[] = calendarData.past_attempts.map((attempt) => ({
+      id: `past-${attempt.problem_id}-${attempt.attempted_at}`,
+      title: attempt.problem_title,
+      problemKey: attempt.problem_key,
+      date: new Date(attempt.attempted_at),
+      isPast: true,
+      grade: attempt.grade,
+      stage: attempt.stage,
+      difficulty: attempt.difficulty,
+      attemptNumber: attempt.attempt_number,
+    }))
+
+    const upcomingEvents: CalendarEvent[] = calendarData.upcoming_reviews.map((review) => ({
+      id: `upcoming-${review.problem_id}`,
+      title: review.problem_title,
+      problemKey: review.problem_key,
+      date: new Date(review.next_review_at),
+      isPast: false,
+      stage: review.stage,
+      difficulty: review.difficulty,
+      attemptNumber: review.attempt_count + 1,
+    }))
+
+    // Parse projected_date as local date (YYYY-MM-DD) to avoid UTC-midnight timezone shift.
+    // is_today_new items carry no date string — resolve to client's local today instead.
+    const projectedEvents: CalendarEvent[] = (calendarData.projected_new ?? []).map((proj) => {
+      let date: Date
+      if (proj.is_today_new) {
+        const now = new Date()
+        date = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+      } else {
+        const [y, m, d] = proj.projected_date!.split("-").map(Number)
+        date = new Date(y, m - 1, d)
+      }
+      return {
+        id: `projected-${proj.problem_id}`,
+        title: proj.problem_title,
+        problemKey: proj.problem_key,
+        date,
+        isPast: false,
+        isProjected: true,
+        difficulty: proj.difficulty,
+      }
+    })
+
+    return [...pastEvents, ...upcomingEvents, ...projectedEvents]
+  }, [calendarData])
+
   // Handle error state
   if (error) {
     const errorMessage = error instanceof Error ? error.message : typeof error === "string" ? error : "An unknown error occurred while loading the dashboard";
@@ -142,7 +214,7 @@ export function CalendarProblems({ data, loading, error, onRefresh }: CalendarPr
           </p>
           {onRefresh && (
             <button
-              onClick={() => onRefresh()}
+              onClick={() => handleRefresh()}
               className="text-sm text-muted-foreground hover:text-foreground underline"
             >
               Try again
@@ -182,7 +254,7 @@ export function CalendarProblems({ data, loading, error, onRefresh }: CalendarPr
           </p>
           {onRefresh && (
             <button
-              onClick={() => onRefresh()}
+              onClick={() => handleRefresh()}
               className="text-sm text-muted-foreground hover:text-foreground underline"
             >
               Try again
@@ -192,36 +264,6 @@ export function CalendarProblems({ data, loading, error, onRefresh }: CalendarPr
       </div>
     );
   }
-
-  // Convert calendar data to events
-  const events: CalendarEvent[] = React.useMemo(() => {
-    if (!calendarData) return []
-
-    const pastEvents: CalendarEvent[] = calendarData.past_attempts.map((attempt) => ({
-      id: `past-${attempt.problem_id}-${attempt.attempted_at}`,
-      title: attempt.problem_title,
-      problemKey: attempt.problem_key,
-      date: new Date(attempt.attempted_at),
-      isPast: true,
-      grade: attempt.grade,
-      stage: attempt.stage,
-      difficulty: attempt.difficulty,
-      attemptNumber: attempt.attempt_number,
-    }))
-
-    const upcomingEvents: CalendarEvent[] = calendarData.upcoming_reviews.map((review) => ({
-      id: `upcoming-${review.problem_id}`,
-      title: review.problem_title,
-      problemKey: review.problem_key,
-      date: new Date(review.next_review_at),
-      isPast: false,
-      stage: review.stage,
-      difficulty: review.difficulty,
-      attemptNumber: review.attempt_count + 1,
-    }))
-
-    return [...pastEvents, ...upcomingEvents]
-  }, [calendarData])
 
   const getEventsForDate = (date: Date): CalendarEvent[] => {
     return events.filter(
@@ -261,6 +303,22 @@ export function CalendarProblems({ data, loading, error, onRefresh }: CalendarPr
                 }}
               >
                 {event.title} <span className="text-muted-foreground">#{event.attemptNumber}</span>
+              </button>
+            )
+          } else if (event.isProjected) {
+            // Projected new problems — dashed outline, violet/muted, clickable to log first attempt
+            return (
+              <button
+                key={event.id}
+                type="button"
+                className="text-xs px-2 py-1 rounded text-left w-full border border-dashed border-violet-400/50 bg-violet-500/5 text-violet-700/60 dark:text-violet-400/60 hover:bg-violet-500/10 transition-colors"
+                title={`${event.title} — projected new problem (click to start)`}
+                onClick={() => {
+                  setSelectedEvent(event)
+                  setDialogOpen(true)
+                }}
+              >
+                {event.title}
               </button>
             )
           } else {
@@ -360,7 +418,7 @@ export function CalendarProblems({ data, loading, error, onRefresh }: CalendarPr
           <LegendPopover />
         </div>
 
-        <Calendar 
+        <CustomCalendar 
           minHeight="150px"
           renderDay={renderDay}
         />
@@ -372,11 +430,7 @@ export function CalendarProblems({ data, loading, error, onRefresh }: CalendarPr
           problemTitle={selectedEvent.title}
           open={dialogOpen}
           onOpenChange={setDialogOpen}
-          onSuccess={async () => {
-            // Refresh both dashboard and calendar data after logging attempt
-            await onRefresh?.();
-            await fetchCalendarData(true);
-          }}
+          onSuccess={handleRefresh}
         />
       )}
 

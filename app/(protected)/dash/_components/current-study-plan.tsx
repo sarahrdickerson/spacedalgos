@@ -24,7 +24,10 @@ import { toast } from "sonner";
 import { CaretRightIcon } from "@radix-ui/react-icons";
 import Link from "next/link";
 import CurrentPlanMenuButton from "./current-plan-menu-button";
-import { DashboardData, ProblemList } from "../../_components/dashboard-provider";
+import {
+  DashboardData,
+  ProblemList,
+} from "../../_components/dashboard-provider";
 
 interface CurrentStudyPlanProps {
   data: DashboardData | null;
@@ -33,9 +36,53 @@ interface CurrentStudyPlanProps {
   onRefresh: () => Promise<void>;
 }
 
-const CurrentStudyPlan = ({ data, loading, error, onRefresh }: CurrentStudyPlanProps) => {
-  const [selectedList, setSelectedList] = React.useState<ProblemList | null>(null);
+const CurrentStudyPlan = ({
+  data,
+  loading,
+  error,
+  onRefresh,
+}: CurrentStudyPlanProps) => {
+  const [selectedList, setSelectedList] = React.useState<ProblemList | null>(
+    null,
+  );
+  const [selectedPace, setSelectedPace] = React.useState<
+    "leisurely" | "normal" | "accelerated"
+  >("normal"); // TODO: add custom pace option in the future
   const [submitting, setSubmitting] = React.useState(false);
+
+  // Auto-select the first available list when the list loads
+  const problemListsRef = React.useRef(data?.problemLists);
+  React.useEffect(() => {
+    const lists = data?.problemLists;
+    if (lists && lists.length > 0 && !selectedList) {
+      setSelectedList(lists[0]);
+    }
+    problemListsRef.current = lists;
+  }, [data?.problemLists, selectedList]);
+
+  // Show greyed out streak icon if streak has not been updated today
+  // Else show colored icon
+  const streakActiveToday = React.useMemo(() => {
+    const lastActivity = data?.streak?.last_activity_date;
+    if (!lastActivity) return false;
+    const todayStr = new Date().toISOString().split("T")[0];
+    return lastActivity >= todayStr;
+  }, [data?.streak?.last_activity_date]);
+
+  // Estimated first-pass completion date based on unseen problems and daily new quota
+  const estCompletionLabel = React.useMemo(() => {
+    const plan = data?.studyPlan;
+    const s = data?.stats;
+    if (!plan || !s || s.notStarted <= 0) return null;
+    const daysLeft = Math.ceil(s.notStarted / plan.new_per_day);
+    const est = new Date();
+    est.setDate(est.getDate() + daysLeft);
+    return est.toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  }, [data?.studyPlan, data?.stats]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,6 +102,7 @@ const CurrentStudyPlan = ({ data, loading, error, onRefresh }: CurrentStudyPlanP
         },
         body: JSON.stringify({
           list_id: selectedList.id,
+          pace: selectedPace,
         }),
       });
 
@@ -66,16 +114,19 @@ const CurrentStudyPlan = ({ data, loading, error, onRefresh }: CurrentStudyPlanP
       }
 
       await response.json();
-      setSelectedList(null);
-      
+      setSelectedList(problemListsRef.current?.[0] ?? null);
+      setSelectedPace("normal");
+
       // Refresh all dashboard data
       await onRefresh();
-      
+
       toast.success("Active study plan set successfully!");
     } catch (error) {
       console.error("Error setting active study plan:", error);
       toast.error(
-        error instanceof Error ? error.message : "Failed to set active study plan"
+        error instanceof Error
+          ? error.message
+          : "Failed to set active study plan",
       );
     } finally {
       setSubmitting(false);
@@ -128,61 +179,118 @@ const CurrentStudyPlan = ({ data, loading, error, onRefresh }: CurrentStudyPlanP
   const problemLists = data?.problemLists || [];
   const stats = data?.stats || null;
   const streak = data?.streak || null;
+  const studyPlan = data?.studyPlan || null;
 
   if (!activeList) {
     return (
       <div className="w-full">
         <Card>
           <CardHeader>
-            <CardTitle>Current Study Plan</CardTitle>
+            <CardTitle>Create a Study Plan</CardTitle>
             <CardDescription>
-              You haven't set an active study plan yet. Choose a problem list to
-              start practicing.
+              You haven't set a study plan yet. Choose a problem list and pace
+              to start practicing.
             </CardDescription>
           </CardHeader>
           <form onSubmit={handleSubmit}>
             <CardContent>
-              <div className="flex flex-row gap-4 items-end w-full justify-between">
-                <div className="flex flex-col gap-2 w-full">
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-2">
                   <Label>Select Problem List</Label>
                   <Combobox
-                      items={problemLists}
-                      value={selectedList?.name ?? ""}
-                      onValueChange={(value) => {
-                        const list = problemLists.find(l => l.name === value);
-                        setSelectedList(list ?? null);
-                      }}
-                    >
-                      <ComboboxInput placeholder="Select a problem list" />
-                      <ComboboxContent>
-                        <ComboboxEmpty>No problem lists found.</ComboboxEmpty>
-                        <ComboboxList>
-                          {(item: ProblemList) => (
-                            <ComboboxItem key={item.id} value={item.name}>
-                              <div className="flex flex-col">
-                                <span className="font-medium">{item.name}</span>
-                                {item.description && (
-                                  <span className="text-xs text-muted-foreground">
-                                    {item.description}
-                                  </span>
-                                )}
-                                {item.source && !item.description && (
-                                  <span className="text-xs text-muted-foreground">
-                                    {item.source}
-                                  </span>
-                                )}
-                              </div>
-                            </ComboboxItem>
-                          )}
-                        </ComboboxList>
-                      </ComboboxContent>
-                    </Combobox>
+                    items={problemLists}
+                    value={selectedList?.name ?? ""}
+                    onValueChange={(value) => {
+                      const list = problemLists.find((l) => l.name === value);
+                      setSelectedList(list ?? null);
+                    }}
+                  >
+                    <ComboboxInput placeholder="Select a problem list" />
+                    <ComboboxContent>
+                      <ComboboxEmpty>No problem lists found.</ComboboxEmpty>
+                      <ComboboxList>
+                        {(item: ProblemList) => (
+                          <ComboboxItem key={item.id} value={item.name}>
+                            <div className="flex flex-col">
+                              <span className="font-medium">{item.name}</span>
+                              {item.description && (
+                                <span className="text-xs text-muted-foreground">
+                                  {item.description}
+                                </span>
+                              )}
+                              {item.source && !item.description && (
+                                <span className="text-xs text-muted-foreground">
+                                  {item.source}
+                                </span>
+                              )}
+                            </div>
+                          </ComboboxItem>
+                        )}
+                      </ComboboxList>
+                    </ComboboxContent>
+                  </Combobox>
                 </div>
-                <Button type="submit" disabled={!selectedList || submitting}>
-                {submitting ? "Setting..." : "Set Active Study Plan"}
-              </Button>
+                <div className="flex flex-col gap-2">
+                  <Label id="pace-group-label">Daily Pace</Label>
+                  <div
+                    role="radiogroup"
+                    aria-labelledby="pace-group-label"
+                    className="grid grid-cols-3 gap-2"
+                  >
+                    {(
+                      [
+                        {
+                          value: "leisurely",
+                          label: "Leisurely ⏳",
+                          sub: "1 new · 2 review",
+                        },
+                        {
+                          value: "normal",
+                          label: "Normal 🚶‍♀️‍➡️",
+                          sub: "2 new · 4 review",
+                        },
+                        {
+                          value: "accelerated",
+                          label: "Accelerated 🏎️💨",
+                          sub: "3 new · 6 review",
+                        },
+                      ] as const
+                    ).map(({ value, label, sub }) => (
+                      <label
+                        key={value}
+                        aria-label={`${label} — ${sub}`}
+                        className={`flex flex-col items-center rounded-lg border p-3 text-sm transition-colors cursor-pointer ${
+                          selectedPace === value
+                            ? "border-primary bg-primary/5 text-primary"
+                            : "border-muted hover:border-muted-foreground/50 text-muted-foreground"
+                        }`}
+                      >
+                        {/* Native radio: keyboard + screen-reader behaviour for free */}
+                        <input
+                          type="radio"
+                          name="pace"
+                          value={value}
+                          checked={selectedPace === value}
+                          onChange={() => setSelectedPace(value)}
+                          className="sr-only"
+                        />
+                        <span className="font-medium">{label}</span>
+                        <span className="text-xs mt-0.5 opacity-70">{sub}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
               </div>
             </CardContent>
+            <CardFooter className="pt-4">
+              <Button
+                type="submit"
+                disabled={!selectedList || submitting}
+                className="w-full"
+              >
+                {submitting ? "Creating..." : "Create Study Plan"}
+              </Button>
+            </CardFooter>
           </form>
         </Card>
       </div>
@@ -200,57 +308,103 @@ const CurrentStudyPlan = ({ data, loading, error, onRefresh }: CurrentStudyPlanP
         </CardHeader>
         <CardContent>
           {stats ? (
-            <div className="space-y-4">
+            <div className="space-y-6">
               {/* Completion Badge and Weekly Goal */}
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  {/* Completion Percentage Circle */}
-                  <div className="relative flex items-center justify-center">
-                    <svg className="w-16 h-16 -rotate-90">
-                      <circle
-                        cx="32"
-                        cy="32"
-                        r="28"
-                        stroke="currentColor"
-                        strokeWidth="6"
-                        fill="none"
-                        className="text-muted"
-                      />
-                      <circle
-                        cx="32"
-                        cy="32"
-                        r="28"
-                        stroke="currentColor"
-                        strokeWidth="6"
-                        fill="none"
-                        strokeDasharray={`${2 * Math.PI * 28}`}
-                        strokeDashoffset={`${
-                          2 * Math.PI * 28 * (stats.total > 0 ? 1 - stats.mastered / stats.total : 1)
-                        }`}
-                        className="text-green-600 dark:text-green-400 transition-all duration-500"
-                        strokeLinecap="round"
-                      />
-                    </svg>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-xl font-bold">
-                        {stats.total > 0 ? Math.round((stats.mastered / stats.total) * 100) : 0}%
-                      </span>
-                    </div>
-                  </div>
-                  
-                  {/* Streak */}
-                  <div className="space-y-1">
-                    <p className="text-sm text-muted-foreground">Current Streak</p>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-2xl font-bold text-orange-600 dark:text-orange-400">
-                        {streak?.current_streak ?? 0}
-                      </span>
-                      <span className="text-sm text-muted-foreground">
-                        {streak?.current_streak === 1 ? "day" : "days"} 🔥
-                      </span>
-                    </div>
+                {/* Completion Percentage Circle */}
+                <div className="relative flex items-center justify-center">
+                  <svg className="w-16 h-16 -rotate-90">
+                    <circle
+                      cx="32"
+                      cy="32"
+                      r="28"
+                      stroke="currentColor"
+                      strokeWidth="6"
+                      fill="none"
+                      className="text-muted"
+                    />
+                    <circle
+                      cx="32"
+                      cy="32"
+                      r="28"
+                      stroke="currentColor"
+                      strokeWidth="6"
+                      fill="none"
+                      strokeDasharray={`${2 * Math.PI * 28}`}
+                      strokeDashoffset={`${
+                        2 *
+                        Math.PI *
+                        28 *
+                        (stats.total > 0 ? 1 - stats.mastered / stats.total : 1)
+                      }`}
+                      className="text-green-600 dark:text-green-400 transition-all duration-500"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-xl font-bold">
+                      {stats.total > 0
+                        ? Math.round((stats.mastered / stats.total) * 100)
+                        : 0}
+                      %
+                    </span>
                   </div>
                 </div>
+
+                {/* Streak */}
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">
+                    Current Streak
+                  </p>
+                  <div className="flex items-baseline gap-1">
+                    <span
+                      className={`text-2xl font-bold transition-colors ${
+                        streakActiveToday
+                          ? "text-orange-600 dark:text-orange-400"
+                          : "text-muted-foreground"
+                      }`}
+                    >
+                      {streak?.current_streak ?? 0}
+                    </span>
+                    <span
+                      className={`text-sm transition-colors ${streakActiveToday ? "text-muted-foreground" : "text-muted-foreground/50"}`}
+                    >
+                      {streak?.current_streak === 1 ? "day" : "days"}{" "}
+                      <span
+                        className={
+                          streakActiveToday ? "" : "grayscale opacity-40"
+                        }
+                      >
+                        🔥
+                      </span>
+                    </span>
+                  </div>
+                </div>
+
+                {/* Pace */}
+                {studyPlan && (
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground">Pace</p>
+                    <p className="text-2xl font-bold capitalize">
+                      {studyPlan.pace}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {studyPlan.new_per_day} new · {studyPlan.review_per_day}{" "}
+                      review/day
+                    </p>
+                  </div>
+                )}
+
+                {/* Est. completion */}
+                {estCompletionLabel && (
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground">Est. First Pass</p>
+                    <p className="text-xl font-bold">{estCompletionLabel}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {stats!.notStarted} problems to introduce
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Progress Bar */}
@@ -337,15 +491,14 @@ const CurrentStudyPlan = ({ data, loading, error, onRefresh }: CurrentStudyPlanP
         </CardContent>
         <CardFooter className="flex flex-row justify-end gap-2">
           <Button asChild variant="default">
-            <Link href="/problemsets">
+            <Link href="/problems">
               Review Problems <CaretRightIcon />
             </Link>
           </Button>
-          <CurrentPlanMenuButton 
+          <CurrentPlanMenuButton
             problemList={activeList}
             onPlanRemoved={onRefresh}
           />
-          
         </CardFooter>
       </Card>
     </div>

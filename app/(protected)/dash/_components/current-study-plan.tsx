@@ -24,7 +24,10 @@ import { toast } from "sonner";
 import { CaretRightIcon } from "@radix-ui/react-icons";
 import Link from "next/link";
 import CurrentPlanMenuButton from "./current-plan-menu-button";
-import { DashboardData, ProblemList } from "../../_components/dashboard-provider";
+import {
+  DashboardData,
+  ProblemList,
+} from "../../_components/dashboard-provider";
 
 interface CurrentStudyPlanProps {
   data: DashboardData | null;
@@ -33,8 +36,18 @@ interface CurrentStudyPlanProps {
   onRefresh: () => Promise<void>;
 }
 
-const CurrentStudyPlan = ({ data, loading, error, onRefresh }: CurrentStudyPlanProps) => {
-  const [selectedList, setSelectedList] = React.useState<ProblemList | null>(null);
+const CurrentStudyPlan = ({
+  data,
+  loading,
+  error,
+  onRefresh,
+}: CurrentStudyPlanProps) => {
+  const [selectedList, setSelectedList] = React.useState<ProblemList | null>(
+    null,
+  );
+  const [selectedPace, setSelectedPace] = React.useState<
+    "leisurely" | "normal" | "accelerated"
+  >("normal"); // TODO: add custom pace option in the future
   const [submitting, setSubmitting] = React.useState(false);
 
   // Show greyed out sterak icon if streak has not been updated today
@@ -64,6 +77,7 @@ const CurrentStudyPlan = ({ data, loading, error, onRefresh }: CurrentStudyPlanP
         },
         body: JSON.stringify({
           list_id: selectedList.id,
+          pace: selectedPace,
         }),
       });
 
@@ -76,15 +90,18 @@ const CurrentStudyPlan = ({ data, loading, error, onRefresh }: CurrentStudyPlanP
 
       await response.json();
       setSelectedList(null);
-      
+      setSelectedPace("normal");
+
       // Refresh all dashboard data
       await onRefresh();
-      
+
       toast.success("Active study plan set successfully!");
     } catch (error) {
       console.error("Error setting active study plan:", error);
       toast.error(
-        error instanceof Error ? error.message : "Failed to set active study plan"
+        error instanceof Error
+          ? error.message
+          : "Failed to set active study plan",
       );
     } finally {
       setSubmitting(false);
@@ -143,55 +160,99 @@ const CurrentStudyPlan = ({ data, loading, error, onRefresh }: CurrentStudyPlanP
       <div className="w-full">
         <Card>
           <CardHeader>
-            <CardTitle>Current Study Plan</CardTitle>
+            <CardTitle>Create a Study Plan</CardTitle>
             <CardDescription>
-              You haven't set an active study plan yet. Choose a problem list to
-              start practicing.
+              You haven't set a study plan yet. Choose a problem list and pace
+              to start practicing.
             </CardDescription>
           </CardHeader>
           <form onSubmit={handleSubmit}>
             <CardContent>
-              <div className="flex flex-row gap-4 items-end w-full justify-between">
-                <div className="flex flex-col gap-2 w-full">
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-2">
                   <Label>Select Problem List</Label>
                   <Combobox
-                      items={problemLists}
-                      value={selectedList?.name ?? ""}
-                      onValueChange={(value) => {
-                        const list = problemLists.find(l => l.name === value);
-                        setSelectedList(list ?? null);
-                      }}
-                    >
-                      <ComboboxInput placeholder="Select a problem list" />
-                      <ComboboxContent>
-                        <ComboboxEmpty>No problem lists found.</ComboboxEmpty>
-                        <ComboboxList>
-                          {(item: ProblemList) => (
-                            <ComboboxItem key={item.id} value={item.name}>
-                              <div className="flex flex-col">
-                                <span className="font-medium">{item.name}</span>
-                                {item.description && (
-                                  <span className="text-xs text-muted-foreground">
-                                    {item.description}
-                                  </span>
-                                )}
-                                {item.source && !item.description && (
-                                  <span className="text-xs text-muted-foreground">
-                                    {item.source}
-                                  </span>
-                                )}
-                              </div>
-                            </ComboboxItem>
-                          )}
-                        </ComboboxList>
-                      </ComboboxContent>
-                    </Combobox>
+                    items={problemLists}
+                    value={selectedList?.name ?? ""}
+                    onValueChange={(value) => {
+                      const list = problemLists.find((l) => l.name === value);
+                      setSelectedList(list ?? null);
+                    }}
+                  >
+                    <ComboboxInput placeholder="Select a problem list" />
+                    <ComboboxContent>
+                      <ComboboxEmpty>No problem lists found.</ComboboxEmpty>
+                      <ComboboxList>
+                        {(item: ProblemList) => (
+                          <ComboboxItem key={item.id} value={item.name}>
+                            <div className="flex flex-col">
+                              <span className="font-medium">{item.name}</span>
+                              {item.description && (
+                                <span className="text-xs text-muted-foreground">
+                                  {item.description}
+                                </span>
+                              )}
+                              {item.source && !item.description && (
+                                <span className="text-xs text-muted-foreground">
+                                  {item.source}
+                                </span>
+                              )}
+                            </div>
+                          </ComboboxItem>
+                        )}
+                      </ComboboxList>
+                    </ComboboxContent>
+                  </Combobox>
                 </div>
-                <Button type="submit" disabled={!selectedList || submitting}>
-                {submitting ? "Setting..." : "Set Active Study Plan"}
-              </Button>
+                <div className="flex flex-col gap-2">
+                  <Label>Daily Pace</Label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {(
+                      [
+                        {
+                          value: "leisurely",
+                          label: "Leisurely ⏳",
+                          sub: "1 new · 2 review",
+                        },
+                        {
+                          value: "normal",
+                          label: "Normal 🚶‍♀️‍➡️",
+                          sub: "2 new · 4 review",
+                        },
+                        {
+                          value: "accelerated",
+                          label: "Accelerated 🏎️💨",
+                          sub: "3 new · 6 review",
+                        },
+                      ] as const
+                    ).map(({ value, label, sub }) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => setSelectedPace(value)}
+                        className={`flex flex-col items-center rounded-lg border p-3 text-sm transition-colors ${
+                          selectedPace === value
+                            ? "border-primary bg-primary/5 text-primary"
+                            : "border-muted hover:border-muted-foreground/50 text-muted-foreground"
+                        }`}
+                      >
+                        <span className="font-medium">{label}</span>
+                        <span className="text-xs mt-0.5 opacity-70">{sub}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             </CardContent>
+            <CardFooter className="pt-4">
+              <Button
+                type="submit"
+                disabled={!selectedList || submitting}
+                className="w-full"
+              >
+                {submitting ? "Creating..." : "Create Study Plan"}
+              </Button>
+            </CardFooter>
           </form>
         </Card>
       </div>
@@ -234,7 +295,12 @@ const CurrentStudyPlan = ({ data, loading, error, onRefresh }: CurrentStudyPlanP
                         fill="none"
                         strokeDasharray={`${2 * Math.PI * 28}`}
                         strokeDashoffset={`${
-                          2 * Math.PI * 28 * (stats.total > 0 ? 1 - stats.mastered / stats.total : 1)
+                          2 *
+                          Math.PI *
+                          28 *
+                          (stats.total > 0
+                            ? 1 - stats.mastered / stats.total
+                            : 1)
                         }`}
                         className="text-green-600 dark:text-green-400 transition-all duration-500"
                         strokeLinecap="round"
@@ -242,14 +308,19 @@ const CurrentStudyPlan = ({ data, loading, error, onRefresh }: CurrentStudyPlanP
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
                       <span className="text-xl font-bold">
-                        {stats.total > 0 ? Math.round((stats.mastered / stats.total) * 100) : 0}%
+                        {stats.total > 0
+                          ? Math.round((stats.mastered / stats.total) * 100)
+                          : 0}
+                        %
                       </span>
                     </div>
                   </div>
-                  
+
                   {/* Streak */}
                   <div className="space-y-1">
-                    <p className="text-sm text-muted-foreground">Current Streak</p>
+                    <p className="text-sm text-muted-foreground">
+                      Current Streak
+                    </p>
                     <div className="flex items-baseline gap-1">
                       <span
                         className={`text-2xl font-bold transition-colors ${
@@ -260,9 +331,17 @@ const CurrentStudyPlan = ({ data, loading, error, onRefresh }: CurrentStudyPlanP
                       >
                         {streak?.current_streak ?? 0}
                       </span>
-                      <span className={`text-sm transition-colors ${streakActiveToday ? "text-muted-foreground" : "text-muted-foreground/50"}`}>
+                      <span
+                        className={`text-sm transition-colors ${streakActiveToday ? "text-muted-foreground" : "text-muted-foreground/50"}`}
+                      >
                         {streak?.current_streak === 1 ? "day" : "days"}{" "}
-                        <span className={streakActiveToday ? "" : "grayscale opacity-40"}>🔥</span>
+                        <span
+                          className={
+                            streakActiveToday ? "" : "grayscale opacity-40"
+                          }
+                        >
+                          🔥
+                        </span>
                       </span>
                     </div>
                   </div>
@@ -357,11 +436,10 @@ const CurrentStudyPlan = ({ data, loading, error, onRefresh }: CurrentStudyPlanP
               Review Problems <CaretRightIcon />
             </Link>
           </Button>
-          <CurrentPlanMenuButton 
+          <CurrentPlanMenuButton
             problemList={activeList}
             onPlanRemoved={onRefresh}
           />
-          
         </CardFooter>
       </Card>
     </div>

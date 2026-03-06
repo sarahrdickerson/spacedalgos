@@ -115,7 +115,7 @@ This document provides an overview of all API routes available in the applicatio
         "stage": 2,
         "interval_days": 4,
         "next_review_at": "2026-03-10T00:00:00Z",
-        "last_attempted_at": "2026-03-06T00:00:00Z",
+        "last_attempt_at": "2026-03-06T00:00:00Z",
         "attempt_count": 3,
         "success_count": 2,
         "fail_count": 1
@@ -385,7 +385,7 @@ New problems are only surfaced when all overdue reviews are caught up. Today's n
     "stage": 2,
     "interval_days": 2,
     "next_review_at": "2026-03-08T00:00:00Z",
-    "last_attempted_at": "2026-03-06T10:30:00Z",
+    "last_attempt_at": "2026-03-06T10:30:00Z",
     "attempt_count": 2,
     "success_count": 1,
     "fail_count": 0

@@ -34,7 +34,7 @@ export async function GET() {
       console.error("Error fetching user preferences:", prefsErr);
       return NextResponse.json(
         { error: "Failed to fetch user preferences" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -74,7 +74,7 @@ export async function GET() {
       console.error("Error fetching study plan:", studyPlanErr);
       return NextResponse.json(
         { error: "Failed to fetch study plan" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -86,7 +86,7 @@ export async function GET() {
     console.error(e);
     return NextResponse.json(
       { error: "Unexpected error fetching active study plan" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -116,7 +116,7 @@ export async function DELETE() {
       console.error("Error reading user preferences:", prefsReadErr);
       return NextResponse.json(
         { error: "Failed to fetch user preferences" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -135,7 +135,7 @@ export async function DELETE() {
       console.error("Error clearing active study plan:", updateErr);
       return NextResponse.json(
         { error: "Failed to remove active study plan" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -150,6 +150,10 @@ export async function DELETE() {
 
       if (deactivateErr) {
         console.error("Error deactivating study plan:", deactivateErr);
+        return NextResponse.json(
+          { error: "Failed to deactivate active study plan" },
+          { status: 500 },
+        );
       }
     }
 
@@ -161,7 +165,7 @@ export async function DELETE() {
     console.error(e);
     return NextResponse.json(
       { error: "Unexpected error removing active study plan" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -186,49 +190,60 @@ export async function POST(req: Request) {
     if (!list_id) {
       return NextResponse.json(
         { error: "list_id is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     const validPaces = ["leisurely", "normal", "accelerated", "custom"];
     if (!validPaces.includes(pace)) {
       return NextResponse.json(
-        { error: "pace must be one of: leisurely, normal, accelerated, custom" },
-        { status: 400 }
+        {
+          error: "pace must be one of: leisurely, normal, accelerated, custom",
+        },
+        { status: 400 },
       );
     }
 
     if (pace === "custom" && (new_per_day == null || review_per_day == null)) {
       return NextResponse.json(
-        { error: "new_per_day and review_per_day are required for custom pace" },
-        { status: 400 }
+        {
+          error: "new_per_day and review_per_day are required for custom pace",
+        },
+        { status: 400 },
       );
     }
 
     // Resolve counts from preset if not explicitly provided
-    const presetValues: Record<string, { new_per_day: number; review_per_day: number }> = {
-      leisurely:   { new_per_day: 1, review_per_day: 2 },
-      normal:      { new_per_day: 2, review_per_day: 4 },
+    const presetValues: Record<
+      string,
+      { new_per_day: number; review_per_day: number }
+    > = {
+      leisurely: { new_per_day: 1, review_per_day: 2 },
+      normal: { new_per_day: 2, review_per_day: 4 },
       accelerated: { new_per_day: 3, review_per_day: 6 },
-      custom:      { new_per_day: 2, review_per_day: 4 },
+      custom: { new_per_day: 2, review_per_day: 4 },
     };
-    const resolvedNewPerDay    = new_per_day    ?? presetValues[pace].new_per_day;
-    const resolvedReviewPerDay = review_per_day ?? presetValues[pace].review_per_day;
+    const resolvedNewPerDay = new_per_day ?? presetValues[pace].new_per_day;
+    const resolvedReviewPerDay =
+      review_per_day ?? presetValues[pace].review_per_day;
 
     // Validate resolved counts: must be finite positive integers
     const isValidCount = (v: unknown): v is number =>
-      typeof v === "number" && Number.isFinite(v) && Number.isInteger(v) && v >= 1;
+      typeof v === "number" &&
+      Number.isFinite(v) &&
+      Number.isInteger(v) &&
+      v >= 1;
 
     if (!isValidCount(resolvedNewPerDay)) {
       return NextResponse.json(
         { error: "new_per_day must be a positive integer" },
-        { status: 400 }
+        { status: 400 },
       );
     }
     if (!isValidCount(resolvedReviewPerDay)) {
       return NextResponse.json(
         { error: "review_per_day must be a positive integer" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -242,32 +257,30 @@ export async function POST(req: Request) {
     if (listErr || !list) {
       return NextResponse.json(
         { error: "Problem list not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
     // 4) Upsert the new active study plan first, so the user always has an
     //    active plan even if the deactivation step below fails.
-    const { error: planErr } = await supabase
-      .from("user_study_plans")
-      .upsert(
-        {
-          user_id: user.id,
-          list_id,
-          pace,
-          new_per_day: resolvedNewPerDay,
-          review_per_day: resolvedReviewPerDay,
-          start_date: new Date().toISOString().split("T")[0],
-          is_active: true,
-        },
-        { onConflict: "user_id,list_id" }
-      );
+    const { error: planErr } = await supabase.from("user_study_plans").upsert(
+      {
+        user_id: user.id,
+        list_id,
+        pace,
+        new_per_day: resolvedNewPerDay,
+        review_per_day: resolvedReviewPerDay,
+        start_date: new Date().toISOString().split("T")[0],
+        is_active: true,
+      },
+      { onConflict: "user_id,list_id" },
+    );
 
     if (planErr) {
       console.error("Error upserting study plan:", planErr);
       return NextResponse.json(
         { error: "Failed to save study plan" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -286,22 +299,20 @@ export async function POST(req: Request) {
     }
 
     // 6) Keep user_preferences.active_list_id in sync
-    const { error: upsertErr } = await supabase
-      .from("user_preferences")
-      .upsert(
-        {
-          user_id: user.id,
-          active_list_id: list_id,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "user_id" }
-      );
+    const { error: upsertErr } = await supabase.from("user_preferences").upsert(
+      {
+        user_id: user.id,
+        active_list_id: list_id,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id" },
+    );
 
     if (upsertErr) {
       console.error("Error upserting user preferences:", upsertErr);
       return NextResponse.json(
         { error: "Failed to set active study plan" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -313,7 +324,7 @@ export async function POST(req: Request) {
     console.error(e);
     return NextResponse.json(
       { error: "Unexpected error setting active study plan" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

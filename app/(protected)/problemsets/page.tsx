@@ -12,6 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import MenuButton from "./_components/menu-button";
 import { CaretDownIcon, ExternalLinkIcon } from "@radix-ui/react-icons";
 import RandomProblemDropdown from "./_components/random-problem-dropdown";
+import { Problem, useDashboard } from "../_components/dashboard-provider";
 
 // Stage labels constant
 const stageLabels: Record<number, string> = {
@@ -21,71 +22,21 @@ const stageLabels: Record<number, string> = {
 };
 
 const ProblemSetsPage = () => {
-  //   const [problemSets, setProblemSets] = React.useState<any>(null); // TODO: uncomment in future to support multiple problem sets/lists and selection of which to view. For now we just fetch and show the first one (blind75) for simplicity
-  const [activeSet, setActiveSet] = React.useState<any>(null);
-  const [error, setError] = React.useState<string | null>(null);
-  const [loading, setLoading] = React.useState<boolean>(true);
+  const { data: dashboardData, loading, error } = useDashboard();
+  const activeList = dashboardData?.activeList ?? null;
+  const problems = dashboardData?.allProblems ?? [];
+
   const [openCategories, setOpenCategories] = React.useState<Set<string>>(
     new Set(),
   );
 
-  React.useEffect(() => {
-    const loadProblemSets = async () => {
-      try {
-        // Fetch problem lists from API
-        const response = await fetch("/api/problemlists");
-        if (!response.ok) {
-          throw new Error("Failed to load problem lists");
-        }
-        const json = await response.json();
-        const data = Array.isArray(json?.data) ? json.data : [];
-
-        if (data.length === 0) {
-          //   setProblemSets([]);
-          setActiveSet(null);
-          setError("No problem sets available.");
-          setLoading(false);
-          return;
-        }
-
-        let foundKey = data[0]?.key || "blind75"; // default to blind75 if no lists found
-        // setProblemSets(data);
-
-        // Fetch the problem list with user progress
-        const progressResponse = await fetch(
-          "/api/problemlists/" + encodeURIComponent(foundKey) + "/progress",
-        );
-        if (!progressResponse.ok) {
-          throw new Error("Failed to load problem list progress");
-        }
-        const { list, problems } = await progressResponse.json();
-
-        if (!list || !Array.isArray(problems)) {
-          throw new Error("Invalid problem list progress payload");
-        }
-
-        setActiveSet({ list, problems });
-        setError(null);
-        setLoading(false);
-      } catch (e) {
-        console.error(e);
-        setError("Unable to load problem sets. Please try again later.");
-        // setProblemSets([]);
-        setActiveSet(null);
-        setLoading(false);
-      }
-    };
-
-    loadProblemSets();
-  }, []);
-
   // Group problems by category and sort by order_index
   const groupedProblems = React.useMemo(() => {
-    if (!activeSet) return {};
+    if (!activeList) return {};
 
-    const groups: Record<string, Array<(typeof activeSet.problems)[0]>> = {};
+    const groups: Record<string, Problem[]> = {};
 
-    activeSet.problems.forEach((problem: { category: any }) => {
+    problems.forEach((problem) => {
       const category = problem.category;
       if (!groups[category]) {
         groups[category] = [];
@@ -101,11 +52,11 @@ const ProblemSetsPage = () => {
     });
 
     return groups;
-  }, [activeSet]);
+  }, [activeList, problems]);
 
   // Automatically open categories that have problems with progress
   React.useEffect(() => {
-    if (!activeSet) return;
+    if (!activeList) return;
 
     const categoriesToOpen = new Set<string>();
     Object.entries(groupedProblems).forEach(([category, problems]) => {
@@ -118,21 +69,19 @@ const ProblemSetsPage = () => {
     });
 
     setOpenCategories(categoriesToOpen);
-  }, [activeSet, groupedProblems]);
+  }, [activeList, groupedProblems]);
   const handleRandomProblem = (filterType: 'all' | 'weak' | 'unattempted') => {
-    if (!activeSet?.problems || activeSet.problems.length === 0) return;
+    if (!problems || problems.length === 0) return;
 
-    let filteredProblems = activeSet.problems;
+    let filteredProblems = problems;
 
     if (filterType === 'weak') {
-      // Weak = stage 1 or 2 (learning or reinforcing)
-      filteredProblems = activeSet.problems.filter(
-        (p: any) => p.progress?.stage === 1 || p.progress?.stage === 2
+      filteredProblems = problems.filter(
+        (p) => p.progress?.stage === 1 || p.progress?.stage === 2
       );
     } else if (filterType === 'unattempted') {
-      // Unattempted = no progress or stage 0
-      filteredProblems = activeSet.problems.filter(
-        (p: any) => !p.progress || p.progress.stage === 0
+      filteredProblems = problems.filter(
+        (p) => !p.progress || p.progress.stage === 0
       );
     }
 
@@ -201,11 +150,16 @@ const ProblemSetsPage = () => {
           </button>
         </div>
       )}
-      {!loading && activeSet && (
+      {!loading && !activeList && (
+        <div className="flex flex-col items-center justify-center gap-4 py-8">
+          <p className="text-muted-foreground">No active study plan. Set one from the dashboard to see your problem set here.</p>
+        </div>
+      )}
+      {!loading && activeList && (
         <div className="flex flex-col w-full gap-6">
           <div className="flex flex-row justify-between w-full">
             <h1 className="text-2xl font-bold">
-              {activeSet.list.name ?? activeSet.list.key}
+              {activeList.name ?? activeList.key}
             </h1>
             <RandomProblemDropdown 
               onRandomAll={() => handleRandomProblem('all')}

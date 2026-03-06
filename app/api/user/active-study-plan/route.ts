@@ -104,7 +104,25 @@ export async function DELETE() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // 2) Clear active_list_id from user preferences
+    // 2) Read the current active_list_id before clearing it so we can deactivate
+    //    the corresponding study plan row.
+    const { data: prefs, error: prefsReadErr } = await supabase
+      .from("user_preferences")
+      .select("active_list_id")
+      .eq("user_id", user.id)
+      .single();
+
+    if (prefsReadErr && prefsReadErr.code !== "PGRST116") {
+      console.error("Error reading user preferences:", prefsReadErr);
+      return NextResponse.json(
+        { error: "Failed to fetch user preferences" },
+        { status: 500 }
+      );
+    }
+
+    const activeListId = prefs?.active_list_id ?? null;
+
+    // 3) Clear active_list_id from user preferences
     const { error: updateErr } = await supabase
       .from("user_preferences")
       .update({
@@ -119,6 +137,20 @@ export async function DELETE() {
         { error: "Failed to remove active study plan" },
         { status: 500 }
       );
+    }
+
+    // 4) Deactivate the study plan row so list-scoped routes (due/calendar) stop
+    //    treating it as active.
+    if (activeListId) {
+      const { error: deactivateErr } = await supabase
+        .from("user_study_plans")
+        .update({ is_active: false })
+        .eq("user_id", user.id)
+        .eq("list_id", activeListId);
+
+      if (deactivateErr) {
+        console.error("Error deactivating study plan:", deactivateErr);
+      }
     }
 
     return NextResponse.json({

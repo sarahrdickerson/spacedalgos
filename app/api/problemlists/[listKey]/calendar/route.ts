@@ -170,7 +170,7 @@ export async function GET(
       }));
 
     // Projected new problems: unseen problems assigned to future calendar days
-    const { data: studyPlan } = await supabase
+    const { data: studyPlan, error: studyPlanErr } = await supabase
       .from("user_study_plans")
       .select("new_per_day")
       .eq("user_id", user.id)
@@ -178,7 +178,12 @@ export async function GET(
       .eq("is_active", true)
       .maybeSingle();
 
-    const newPerDay = studyPlan?.new_per_day ?? 0;
+    if (studyPlanErr) {
+      console.error("Error fetching study plan for calendar:", studyPlanErr);
+    }
+
+    // Default to 0 on error — calendar still renders past attempts and upcoming reviews
+    const newPerDay = studyPlanErr ? 0 : (studyPlan?.new_per_day ?? 0);
     const seenProblemIds = new Set((progress ?? []).map((p: any) => p.problem_id));
 
     const unseenItems = (listItems ?? [])

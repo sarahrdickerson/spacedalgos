@@ -50,6 +50,16 @@ const CurrentStudyPlan = ({
   >("normal"); // TODO: add custom pace option in the future
   const [submitting, setSubmitting] = React.useState(false);
 
+  // Auto-select the first available list when the list loads
+  const problemListsRef = React.useRef(data?.problemLists);
+  React.useEffect(() => {
+    const lists = data?.problemLists;
+    if (lists && lists.length > 0 && !selectedList) {
+      setSelectedList(lists[0]);
+    }
+    problemListsRef.current = lists;
+  }, [data?.problemLists, selectedList]);
+
   // Show greyed out streak icon if streak has not been updated today
   // Else show colored icon
   const streakActiveToday = React.useMemo(() => {
@@ -89,7 +99,7 @@ const CurrentStudyPlan = ({
       }
 
       await response.json();
-      setSelectedList(null);
+      setSelectedList(problemListsRef.current?.[0] ?? null);
       setSelectedPace("normal");
 
       // Refresh all dashboard data
@@ -205,8 +215,12 @@ const CurrentStudyPlan = ({
                   </Combobox>
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Label>Daily Pace</Label>
-                  <div className="grid grid-cols-3 gap-2">
+                  <Label id="pace-group-label">Daily Pace</Label>
+                  <div
+                    role="radiogroup"
+                    aria-labelledby="pace-group-label"
+                    className="grid grid-cols-3 gap-2"
+                  >
                     {(
                       [
                         {
@@ -229,6 +243,9 @@ const CurrentStudyPlan = ({
                       <button
                         key={value}
                         type="button"
+                        role="radio"
+                        aria-checked={selectedPace === value}
+                        aria-label={`${label} — ${sub}`}
                         onClick={() => setSelectedPace(value)}
                         className={`flex flex-col items-center rounded-lg border p-3 text-sm transition-colors ${
                           selectedPace === value

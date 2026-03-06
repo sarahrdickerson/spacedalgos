@@ -128,7 +128,7 @@ export async function POST(req: Request) {
 
     // 2) Parse body
     const body = await req.json();
-    const { list_id } = body;
+    const { list_id, pace = "normal", new_per_day, review_per_day } = body;
 
     if (!list_id) {
       return NextResponse.json(
@@ -136,6 +136,31 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
+
+    const validPaces = ["leisurely", "normal", "accelerated", "custom"];
+    if (!validPaces.includes(pace)) {
+      return NextResponse.json(
+        { error: "pace must be one of: leisurely, normal, accelerated, custom" },
+        { status: 400 }
+      );
+    }
+
+    if (pace === "custom" && (new_per_day == null || review_per_day == null)) {
+      return NextResponse.json(
+        { error: "new_per_day and review_per_day are required for custom pace" },
+        { status: 400 }
+      );
+    }
+
+    // Resolve counts from preset if not explicitly provided
+    const presetValues: Record<string, { new_per_day: number; review_per_day: number }> = {
+      leisurely:   { new_per_day: 1, review_per_day: 2 },
+      normal:      { new_per_day: 2, review_per_day: 4 },
+      accelerated: { new_per_day: 3, review_per_day: 6 },
+      custom:      { new_per_day: 2, review_per_day: 4 },
+    };
+    const resolvedNewPerDay    = new_per_day    ?? presetValues[pace].new_per_day;
+    const resolvedReviewPerDay = review_per_day ?? presetValues[pace].review_per_day;
 
     // 3) Validate that the problem list exists
     const { data: list, error: listErr } = await supabase
@@ -151,7 +176,45 @@ export async function POST(req: Request) {
       );
     }
 
-    // 4) Upsert user preferences (insert or update)
+    // 4) Deactivate all existing plans for this user
+    const { error: deactivateErr } = await supabase
+      .from("user_study_plans")
+      .update({ is_active: false })
+      .eq("user_id", user.id);
+
+    if (deactivateErr) {
+      console.error("Error deactivating study plans:", deactivateErr);
+      return NextResponse.json(
+        { error: "Failed to deactivate existing plans" },
+        { status: 500 }
+      );
+    }
+
+    // 5) Upsert the new active study plan
+    const { error: planErr } = await supabase
+      .from("user_study_plans")
+      .upsert(
+        {
+          user_id: user.id,
+          list_id,
+          pace,
+          new_per_day: resolvedNewPerDay,
+          review_per_day: resolvedReviewPerDay,
+          start_date: new Date().toISOString().split("T")[0],
+          is_active: true,
+        },
+        { onConflict: "user_id,list_id" }
+      );
+
+    if (planErr) {
+      console.error("Error upserting study plan:", planErr);
+      return NextResponse.json(
+        { error: "Failed to save study plan" },
+        { status: 500 }
+      );
+    }
+
+    // 6) Keep user_preferences.active_list_id in sync
     const { error: upsertErr } = await supabase
       .from("user_preferences")
       .upsert(
@@ -160,9 +223,7 @@ export async function POST(req: Request) {
           active_list_id: list_id,
           updated_at: new Date().toISOString(),
         },
-        {
-          onConflict: "user_id",
-        }
+        { onConflict: "user_id" }
       );
 
     if (upsertErr) {

@@ -57,20 +57,25 @@ const DueQuestions = ({ data, loading, onRefresh }: DueQuestionsProps) => {
     const weekFromNow = new Date(startOfTomorrow);
     weekFromNow.setDate(startOfTomorrow.getDate() + 6); // 7 days total from today
 
-    // Due today = overdue OR scheduled any time today 
+    // Due today = new problems + overdue + scheduled any time today 
     const todayProblems = dueProblems.filter((p: Problem) => {
+      if (p.is_new) return true; // New problems always belong in today's queue
       const nextReview = p.progress?.next_review_at;
       if (!nextReview) return false;
       const reviewDate = new Date(nextReview);
       return reviewDate < startOfTomorrow;
     }).sort((a: Problem, b: Problem) => {
+      // Reviews first (earliest first), new problems at the end
+      if (a.is_new && !b.is_new) return 1;
+      if (!a.is_new && b.is_new) return -1;
       const aReview = new Date(a.progress?.next_review_at || 0).getTime();
       const bReview = new Date(b.progress?.next_review_at || 0).getTime();
       return aReview - bReview; // Earliest reviews first
     });
 
-    // Due this week = tomorrow through 7 days from now (excludes today)
+    // Due this week = tomorrow through 7 days from now (excludes today and new problems)
     const weekProblems = dueProblems.filter((p: Problem) => {
+      if (p.is_new) return false; // New problems only appear in today's queue
       const nextReview = p.progress?.next_review_at;
       if (!nextReview) return false;
       const reviewDate = new Date(nextReview);

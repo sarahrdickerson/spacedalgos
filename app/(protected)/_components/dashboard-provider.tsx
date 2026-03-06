@@ -23,7 +23,16 @@ export interface Problem {
   difficulty: string;
   leetcode_url?: string;
   order_index?: number;
+  is_new?: boolean;
   progress?: ProblemProgress | null;
+}
+
+export interface StudyPlan {
+  pace: string;
+  new_per_day: number;
+  review_per_day: number;
+  start_date: string | null;
+  target_end_date: string | null;
 }
 
 export interface ProblemList {
@@ -56,6 +65,7 @@ export interface DashboardData {
   stats: PlanStats | null;
   dueProblems: Problem[];
   allProblems: Problem[];
+  studyPlan: StudyPlan | null;
 }
 
 interface DashboardContextType {
@@ -155,6 +165,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
         stats,
         dueProblems,
         allProblems,
+        studyPlan: activePlanData.study_plan ?? null,
       });
     } catch (err) {
       console.error('Error fetching dashboard data:', err);

@@ -65,6 +65,15 @@ const LegendPopover = () => {
                   </div>
                 </div>
               </div>
+              <div className="flex items-start gap-2 text-xs">
+                <div className="w-4 h-4 rounded border border-dashed border-violet-400/50 bg-violet-500/5 flex-shrink-0 mt-0.5"></div>
+                <div>
+                  <div className="font-medium">Projected New</div>
+                  <div className="text-muted-foreground">
+                    Estimated schedule — click to start early
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

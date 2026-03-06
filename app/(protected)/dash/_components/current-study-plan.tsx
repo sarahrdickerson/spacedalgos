@@ -69,6 +69,21 @@ const CurrentStudyPlan = ({
     return lastActivity >= todayStr;
   }, [data?.streak?.last_activity_date]);
 
+  // Estimated first-pass completion date based on unseen problems and daily new quota
+  const estCompletionLabel = React.useMemo(() => {
+    const plan = data?.studyPlan;
+    const s = data?.stats;
+    if (!plan || !s || s.notStarted <= 0) return null;
+    const daysLeft = Math.ceil(s.notStarted / plan.new_per_day);
+    const est = new Date();
+    est.setDate(est.getDate() + daysLeft);
+    return est.toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  }, [data?.studyPlan, data?.stats]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -165,19 +180,6 @@ const CurrentStudyPlan = ({
   const stats = data?.stats || null;
   const streak = data?.streak || null;
   const studyPlan = data?.studyPlan || null;
-
-  // Estimated completion date based on unseen problems and daily new quota
-  const estCompletionLabel = React.useMemo(() => {
-    if (!studyPlan || !stats || stats.notStarted <= 0) return null;
-    const daysLeft = Math.ceil(stats.notStarted / studyPlan.new_per_day);
-    const est = new Date();
-    est.setDate(est.getDate() + daysLeft);
-    return est.toLocaleDateString(undefined, {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  }, [studyPlan, stats]);
 
   if (!activeList) {
     return (

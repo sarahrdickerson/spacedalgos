@@ -45,8 +45,7 @@ export async function AuthButton() {
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuItem><PersonIcon /> Profile</DropdownMenuItem>
-          <DropdownMenuItem><GearIcon /> Settings</DropdownMenuItem>
+          <DropdownMenuItem asChild><Link href="/settings"><GearIcon /> Settings</Link></DropdownMenuItem>
           <DropdownMenuItem asChild><Link href="/feedback"><ChatBubbleIcon /> Feedback</Link></DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />

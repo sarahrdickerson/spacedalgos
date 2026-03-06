@@ -178,9 +178,24 @@ export async function GET(
       const seenProblemIds = new Set(
         (dueProgressData ?? []).map((p: any) => p.problem_id)
       );
+
+      // Subtract slots already consumed today: problems whose first-ever attempt
+      // was logged today (attempt_count === 1 and last_attempt_at is today).
+      const tomorrowMidnightUTC = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1)
+      ).toISOString();
+      const newSlotsUsedToday = (dueProgressData ?? []).filter(
+        (p: any) =>
+          p.attempt_count === 1 &&
+          p.last_attempt_at &&
+          p.last_attempt_at >= todayMidnightUTC &&
+          p.last_attempt_at < tomorrowMidnightUTC
+      ).length;
+      const effectiveNewPerDay = Math.max(0, newPerDay - newSlotsUsedToday);
+
       const unseenItems = items
         .filter((item: any) => item.problems && !seenProblemIds.has(item.problems.id))
-        .slice(0, newPerDay);
+        .slice(0, effectiveNewPerDay);
 
       newProblems = unseenItems.map((item: any) => ({
         ...item.problems,
@@ -192,7 +207,51 @@ export async function GET(
       }));
     }
 
-    const dueProblems = [...reviewProblems, ...newProblems];
+    // 10) Project upcoming new problems for the next 7 days (for "due this week" view).
+    // Uses full newPerDay (not effectiveNewPerDay) since tomorrow's quota resets.
+    let upcomingNewProblems: any[] = [];
+    if (newPerDay > 0) {
+      // Treat today's new problems as already "seen" so they don't double-appear
+      const allSeenIds = new Set((dueProgressData ?? []).map((p: any) => p.problem_id));
+      newProblems.forEach((p: any) => allSeenIds.add(p.id));
+
+      const allUnseenItems = items.filter(
+        (item: any) => item.problems && !allSeenIds.has(item.problems.id)
+      );
+
+      const tomorrowUTC = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1)
+      );
+      let problemIndex = 0;
+      let dayOffset = 0;
+      // Project through end of this calendar week (through Saturday).
+      // getUTCDay(): 0=Sun … 6=Sat. Count days from tomorrow through Saturday (inclusive).
+      const tomorrowDow = tomorrowUTC.getUTCDay();
+      const maxDays = ((7 - tomorrowDow) % 7) || 7;
+
+      while (problemIndex < allUnseenItems.length && dayOffset < maxDays) {
+        const date = new Date(tomorrowUTC);
+        date.setUTCDate(tomorrowUTC.getUTCDate() + dayOffset);
+        const dateStr = date.toISOString().split("T")[0];
+
+        for (let i = 0; i < newPerDay && problemIndex < allUnseenItems.length && dayOffset < maxDays; i++) {
+          const item = allUnseenItems[problemIndex] as any;
+          upcomingNewProblems.push({
+            ...item.problems,
+            leetcode_url: `https://leetcode.com/problems/${item.problems.leetcode_slug}/`,
+            order_index: item.order_index,
+            list_tags: item.list_tags,
+            is_new: true,
+            projected_date: dateStr,
+            progress: null,
+          });
+          problemIndex++;
+        }
+        dayOffset++;
+      }
+    }
+
+    const dueProblems = [...reviewProblems, ...newProblems, ...upcomingNewProblems];
 
     return NextResponse.json({
       list: problemList,

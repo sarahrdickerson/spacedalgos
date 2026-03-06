@@ -24,6 +24,7 @@ export interface Problem {
   leetcode_url?: string;
   order_index?: number;
   is_new?: boolean;
+  projected_date?: string | null; // ISO date string for upcoming projected new problems
   progress?: ProblemProgress | null;
 }
 

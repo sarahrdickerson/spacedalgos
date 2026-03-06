@@ -198,16 +198,36 @@ export async function GET(
       const todayMidnightUTC = new Date(
         Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
       ).toISOString();
+      const tomorrowMidnightUTC = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1)
+      ).toISOString();
+
+      // Count "new" slots already consumed today: problems whose very first attempt
+      // was logged today. Attempts are sorted descending, so the last write per
+      // problem_id is the earliest (first-ever) attempt.
+      const firstAttemptByProblem = new Map<string, string>();
+      (attempts ?? []).forEach((a: any) => {
+        firstAttemptByProblem.set(a.problem_id, a.attempted_at);
+      });
+      let newSlotsUsedToday = 0;
+      firstAttemptByProblem.forEach((earliestAttempt) => {
+        if (earliestAttempt >= todayMidnightUTC && earliestAttempt < tomorrowMidnightUTC) {
+          newSlotsUsedToday++;
+        }
+      });
+      // Remaining slots for new problems today
+      const todayNewSlots = Math.max(0, newPerDay - newSlotsUsedToday);
+
       const hasOverdueReviews = (progress ?? []).some(
         (p: any) => p.next_review_at && p.next_review_at < todayMidnightUTC
       );
 
-      // When no overdue reviews the first new_per_day unseen problems are in today's
+      // When no overdue reviews the first todayNewSlots unseen problems are in today's
       // due queue — emit them with is_today_new so the client can pin them to today's
       // local date, then project the remainder from tomorrow onward.
       let projectionStartIndex = 0;
-      if (!hasOverdueReviews) {
-        const todayItems = unseenItems.slice(0, newPerDay);
+      if (!hasOverdueReviews && todayNewSlots > 0) {
+        const todayItems = unseenItems.slice(0, todayNewSlots);
         todayItems.forEach((item: any) => {
           const problem = problemMap.get(item.problem_id);
           projectedNew.push({
@@ -221,7 +241,7 @@ export async function GET(
             order_index: item.order_index,
           });
         });
-        projectionStartIndex = newPerDay;
+        projectionStartIndex = todayNewSlots;
       }
 
       const itemsToProject = unseenItems.slice(projectionStartIndex);

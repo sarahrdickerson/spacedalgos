@@ -54,12 +54,16 @@ const DueQuestions = ({ data, loading, onRefresh }: DueQuestionsProps) => {
 
     const startOfTomorrow = new Date(today);
     startOfTomorrow.setDate(today.getDate() + 1);
+    // End of this week = midnight Sunday (exclusive), so Saturday is fully included.
+    // getDay(): 0=Sun, 1=Mon, …, 6=Sat. Days until Sunday = (7 - today.getDay()) % 7,
+    // but if today is already Sunday we still want next Sunday (full week), so use 7 when result is 0.
+    const daysUntilSunday = ((7 - today.getDay()) % 7) || 7;
     const endOfWeekWindow = new Date(today);
-    endOfWeekWindow.setDate(today.getDate() + 8);
+    endOfWeekWindow.setDate(today.getDate() + daysUntilSunday);
 
-    // Due today = new problems + overdue + scheduled any time today 
+    // Due today = new problems for today (no projected_date) + overdue + scheduled any time today 
     const todayProblems = dueProblems.filter((p: Problem) => {
-      if (p.is_new) return true; // New problems always belong in today's queue
+      if (p.is_new && !p.projected_date) return true; // New problems queued for today
       const nextReview = p.progress?.next_review_at;
       if (!nextReview) return false;
       const reviewDate = new Date(nextReview);
@@ -73,17 +77,32 @@ const DueQuestions = ({ data, loading, onRefresh }: DueQuestionsProps) => {
       return aReview - bReview; // Earliest reviews first
     });
 
-    // Due this week = tomorrow through 7 days from now (excludes today and new problems)
+    // Due this week = scheduled reviews + projected new problems for tomorrow through 7 days from now
     const weekProblems = dueProblems.filter((p: Problem) => {
-      if (p.is_new) return false; // New problems only appear in today's queue
+      // Projected future new problems (is_new + projected_date)
+      if (p.is_new && p.projected_date) {
+        const [y, m, d] = p.projected_date.split("-").map(Number);
+        const projDate = new Date(y, m - 1, d);
+        return projDate >= startOfTomorrow && projDate < endOfWeekWindow;
+      }
+      if (p.is_new) return false; // Today's new problems — already in today's queue
       const nextReview = p.progress?.next_review_at;
       if (!nextReview) return false;
       const reviewDate = new Date(nextReview);
       return reviewDate >= startOfTomorrow && reviewDate < endOfWeekWindow;
     }).sort((a: Problem, b: Problem) => {
-      const aReview = new Date(a.progress?.next_review_at || 0).getTime();
-      const bReview = new Date(b.progress?.next_review_at || 0).getTime();
-      return aReview - bReview; // Earliest reviews first
+      const toDateStr = (p: Problem) => {
+        if (p.projected_date) return p.projected_date;
+        const t = p.progress?.next_review_at;
+        return t ? t.split("T")[0] : "9999-12-31";
+      };
+      const aDate = toDateStr(a);
+      const bDate = toDateStr(b);
+      if (aDate !== bDate) return aDate < bDate ? -1 : 1; // Earliest day first
+      // Same calendar day: reviews before projected new problems
+      if (a.projected_date && !b.projected_date) return 1;
+      if (!a.projected_date && b.projected_date) return -1;
+      return 0;
     });
 
     const currentStreak = data?.streak?.current_streak || 0;

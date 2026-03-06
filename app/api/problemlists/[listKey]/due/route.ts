@@ -139,6 +139,7 @@ export async function GET(
 
         const progress = dueProgressMap.get(problem.id);
         if (!progress) return null; // Only include problems with progress
+        if (!progress.next_review_at) return null; // No review scheduled yet — skip
 
         // Calculate days until/overdue
         const nextReview = new Date(progress.next_review_at);

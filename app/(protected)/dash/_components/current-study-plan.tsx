@@ -240,22 +240,27 @@ const CurrentStudyPlan = ({
                         },
                       ] as const
                     ).map(({ value, label, sub }) => (
-                      <button
+                      <label
                         key={value}
-                        type="button"
-                        role="radio"
-                        aria-checked={selectedPace === value}
                         aria-label={`${label} — ${sub}`}
-                        onClick={() => setSelectedPace(value)}
-                        className={`flex flex-col items-center rounded-lg border p-3 text-sm transition-colors ${
+                        className={`flex flex-col items-center rounded-lg border p-3 text-sm transition-colors cursor-pointer ${
                           selectedPace === value
                             ? "border-primary bg-primary/5 text-primary"
                             : "border-muted hover:border-muted-foreground/50 text-muted-foreground"
                         }`}
                       >
+                        {/* Native radio: keyboard + screen-reader behaviour for free */}
+                        <input
+                          type="radio"
+                          name="pace"
+                          value={value}
+                          checked={selectedPace === value}
+                          onChange={() => setSelectedPace(value)}
+                          className="sr-only"
+                        />
                         <span className="font-medium">{label}</span>
                         <span className="text-xs mt-0.5 opacity-70">{sub}</span>
-                      </button>
+                      </label>
                     ))}
                   </div>
                 </div>

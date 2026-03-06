@@ -39,11 +39,6 @@ export default function ProtectedLayout({
 
             {/* User Actions */}
             <div className="flex items-center gap-2">
-              <div className="hidden md:block">
-                <Suspense>
-                  <StartPracticeButton />
-                </Suspense>
-              </div>
               <ThemeSwitcher />
               <Suspense>
                 <AuthButton />

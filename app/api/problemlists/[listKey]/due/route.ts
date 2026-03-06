@@ -111,7 +111,7 @@ export async function GET(
     }
 
     // 6) Fetch the user's study plan for new-problem scheduling
-    const { data: studyPlan } = await supabase
+    const { data: studyPlan, error: studyPlanErr } = await supabase
       .from("user_study_plans")
       .select("new_per_day")
       .eq("user_id", user.id)
@@ -119,7 +119,12 @@ export async function GET(
       .eq("is_active", true)
       .maybeSingle();
 
-    const newPerDay = studyPlan?.new_per_day ?? 0;
+    if (studyPlanErr) {
+      console.error("Error fetching study plan:", studyPlanErr);
+    }
+
+    // Default to 0 on error so the review queue still returns normally
+    const newPerDay = studyPlanErr ? 0 : (studyPlan?.new_per_day ?? 0);
 
     // 7) Build the review queue (all problems that have a progress row)
     const now = new Date();

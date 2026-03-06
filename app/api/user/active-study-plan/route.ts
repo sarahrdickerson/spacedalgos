@@ -62,13 +62,21 @@ export async function GET() {
     }
 
     // 4) Fetch pace settings from user_study_plans
-    const { data: studyPlan } = await supabase
+    const { data: studyPlan, error: studyPlanErr } = await supabase
       .from("user_study_plans")
       .select("pace, new_per_day, review_per_day, start_date, target_end_date")
       .eq("user_id", user.id)
       .eq("list_id", prefs.active_list_id)
       .eq("is_active", true)
       .maybeSingle();
+
+    if (studyPlanErr) {
+      console.error("Error fetching study plan:", studyPlanErr);
+      return NextResponse.json(
+        { error: "Failed to fetch study plan" },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
       active_list: list,
@@ -189,21 +197,8 @@ export async function POST(req: Request) {
       );
     }
 
-    // 4) Deactivate all existing plans for this user
-    const { error: deactivateErr } = await supabase
-      .from("user_study_plans")
-      .update({ is_active: false })
-      .eq("user_id", user.id);
-
-    if (deactivateErr) {
-      console.error("Error deactivating study plans:", deactivateErr);
-      return NextResponse.json(
-        { error: "Failed to deactivate existing plans" },
-        { status: 500 }
-      );
-    }
-
-    // 5) Upsert the new active study plan
+    // 4) Upsert the new active study plan first, so the user always has an
+    //    active plan even if the deactivation step below fails.
     const { error: planErr } = await supabase
       .from("user_study_plans")
       .upsert(
@@ -225,6 +220,20 @@ export async function POST(req: Request) {
         { error: "Failed to save study plan" },
         { status: 500 }
       );
+    }
+
+    // 5) Deactivate all other plans for this user (excluding the one we just upserted).
+    //    Done after the upsert so a failure here leaves the user with a valid active plan
+    //    rather than no active plan.
+    const { error: deactivateErr } = await supabase
+      .from("user_study_plans")
+      .update({ is_active: false })
+      .eq("user_id", user.id)
+      .neq("list_id", list_id);
+
+    if (deactivateErr) {
+      // Non-fatal: the new plan is already active. Log and continue.
+      console.error("Error deactivating old study plans:", deactivateErr);
     }
 
     // 6) Keep user_preferences.active_list_id in sync

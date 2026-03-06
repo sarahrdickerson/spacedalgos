@@ -5,9 +5,13 @@ import { useRouter } from "next/navigation";
 
 export interface ProblemProgress {
   stage: number;
-  next_review_at: string;
+  next_review_at: string | null;
+  last_attempt_at: string | null;
+  last_success_at: string | null;
   attempt_count: number;
-  interval_days: number;
+  success_count: number;
+  fail_count: number;
+  interval_days: number | null;
   days_overdue: number;
 }
 
@@ -19,7 +23,7 @@ export interface Problem {
   difficulty: string;
   leetcode_url?: string;
   order_index?: number;
-  progress?: ProblemProgress;
+  progress?: ProblemProgress | null;
 }
 
 export interface ProblemList {
@@ -51,6 +55,7 @@ export interface DashboardData {
   streak: StreakData | null;
   stats: PlanStats | null;
   dueProblems: Problem[];
+  allProblems: Problem[];
 }
 
 interface DashboardContextType {
@@ -113,13 +118,15 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
 
       // Fetch dependent data if there's an active list
       let stats = null;
-      let dueProblems = [];
+      let dueProblems: Problem[] = [];
+      let allProblems: Problem[] = [];
 
       if (activePlanData.active_list?.key) {
         const encodedKey = encodeURIComponent(activePlanData.active_list.key);
-        const [statsRes, dueRes] = await Promise.all([
+        const [statsRes, dueRes, progressRes] = await Promise.all([
           fetch(`/api/problemlists/${encodedKey}/stats`),
           fetch(`/api/problemlists/${encodedKey}/due`),
+          fetch(`/api/problemlists/${encodedKey}/progress`),
         ]);
 
         if (!statsRes.ok) {
@@ -130,9 +137,15 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
           throw new Error('Failed to fetch due problems');
         }
 
+        if (!progressRes.ok) {
+          throw new Error('Failed to fetch problem list');
+        }
+
         stats = await statsRes.json();
         const dueData = await dueRes.json();
+        const progressData = await progressRes.json();
         dueProblems = dueData?.due_problems || [];
+        allProblems = Array.isArray(progressData?.problems) ? progressData.problems : [];
       }
 
       setData({
@@ -141,6 +154,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
         streak: streakData,
         stats,
         dueProblems,
+        allProblems,
       });
     } catch (err) {
       console.error('Error fetching dashboard data:', err);

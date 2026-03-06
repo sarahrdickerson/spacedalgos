@@ -291,12 +291,26 @@ async function updateDailyActivityAndStreak(
 ) {
   const activityDate = attemptDate.toISOString().split("T")[0]; // YYYY-MM-DD
 
-  // Upsert daily activity
-  const { error: activityErr } = await supabase.rpc("upsert_daily_activity", {
-    p_user_id: userId,
-    p_activity_date: activityDate,
-    p_was_due: wasDue,
-  });
+  // Check if a row already exists for today
+  const { data: existingActivity } = await supabase
+    .from("user_daily_activity")
+    .select("problems_reviewed, problems_due_completed")
+    .eq("user_id", userId)
+    .eq("activity_date", activityDate)
+    .maybeSingle();
+
+  const { error: activityErr } = await supabase
+    .from("user_daily_activity")
+    .upsert(
+      {
+        user_id: userId,
+        activity_date: activityDate,
+        problems_reviewed: (existingActivity?.problems_reviewed ?? 0) + 1,
+        problems_due_completed:
+          (existingActivity?.problems_due_completed ?? 0) + (wasDue ? 1 : 0),
+      },
+      { onConflict: "user_id,activity_date" }
+    );
 
   if (activityErr) {
     console.error("Error updating daily activity:", activityErr);

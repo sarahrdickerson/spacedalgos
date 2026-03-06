@@ -44,10 +44,24 @@ export async function GET() {
       );
     }
 
+    // 4) Check if streak has gone stale
+    let currentStreak = prefs?.current_streak ?? 0;
+    const lastActivity = prefs?.last_activity_date ?? null;
+    if (lastActivity) {
+      const todayStr = new Date().toISOString().split("T")[0];
+      const yesterdayStr = new Date(Date.now() - 86_400_000)
+        .toISOString()
+        .split("T")[0];
+      // If the last activity was before yesterday the streak is broken
+      if (lastActivity < yesterdayStr) {
+        currentStreak = 0;
+      }
+    }
+
     return NextResponse.json({
-      current_streak: prefs?.current_streak ?? 0,
+      current_streak: currentStreak,
       longest_streak: prefs?.longest_streak ?? 0,
-      last_activity_date: prefs?.last_activity_date ?? null,
+      last_activity_date: lastActivity,
       recent_activity: activities ?? [],
     });
   } catch (e: any) {

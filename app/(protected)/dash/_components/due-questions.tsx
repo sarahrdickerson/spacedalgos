@@ -51,23 +51,34 @@ const DueQuestions = ({ data, loading, onRefresh }: DueQuestionsProps) => {
       now.getMonth(),
       now.getDate(),
     );
-    const weekFromNow = new Date(today);
-    weekFromNow.setDate(weekFromNow.getDate() + 7);
 
-    // Filter problems due today
+    const startOfTomorrow = new Date(today);
+    startOfTomorrow.setDate(today.getDate() + 1);
+    const weekFromNow = new Date(startOfTomorrow);
+    weekFromNow.setDate(startOfTomorrow.getDate() + 6); // 7 days total from today
+
+    // Due today = overdue OR scheduled any time today 
     const todayProblems = dueProblems.filter((p: Problem) => {
       const nextReview = p.progress?.next_review_at;
       if (!nextReview) return false;
       const reviewDate = new Date(nextReview);
-      return reviewDate <= now;
+      return reviewDate < startOfTomorrow;
+    }).sort((a: Problem, b: Problem) => {
+      const aReview = new Date(a.progress?.next_review_at || 0).getTime();
+      const bReview = new Date(b.progress?.next_review_at || 0).getTime();
+      return aReview - bReview; // Earliest reviews first
     });
 
-    // Filter problems due this week
+    // Due this week = tomorrow through 7 days from now (excludes today)
     const weekProblems = dueProblems.filter((p: Problem) => {
       const nextReview = p.progress?.next_review_at;
       if (!nextReview) return false;
       const reviewDate = new Date(nextReview);
-      return reviewDate > today && reviewDate <= weekFromNow;
+      return reviewDate >= startOfTomorrow && reviewDate <= weekFromNow;
+    }).sort((a: Problem, b: Problem) => {
+      const aReview = new Date(a.progress?.next_review_at || 0).getTime();
+      const bReview = new Date(b.progress?.next_review_at || 0).getTime();
+      return aReview - bReview; // Earliest reviews first
     });
 
     const currentStreak = data?.streak?.current_streak || 0;

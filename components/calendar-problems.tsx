@@ -1,13 +1,13 @@
 "use client"
 
 import React from "react"
-import { Calendar } from "@/components/ui/calendar"
 import { cn } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
 import { LogAttemptDialog } from "@/components/log-attempt-dialog"
 import { ViewAttemptDialog } from "@/components/view-attempt-dialog"
 import { DashboardData } from "@/app/(protected)/_components/dashboard-provider"
 import LegendPopover from "./calendar/legend-popover"
+import { CustomCalendar } from "./ui/custom-calendar"
 
 interface PastAttempt {
   problem_id: string
@@ -360,7 +360,7 @@ export function CalendarProblems({ data, loading, error, onRefresh }: CalendarPr
           <LegendPopover />
         </div>
 
-        <Calendar 
+        <CustomCalendar 
           minHeight="150px"
           renderDay={renderDay}
         />

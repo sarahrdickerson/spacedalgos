@@ -37,6 +37,15 @@ const CurrentStudyPlan = ({ data, loading, error, onRefresh }: CurrentStudyPlanP
   const [selectedList, setSelectedList] = React.useState<ProblemList | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
 
+  // Show greyed out sterak icon if streak has not been updated today
+  // Else show colored icon
+  const streakActiveToday = React.useMemo(() => {
+    const lastActivity = data?.streak?.last_activity_date;
+    if (!lastActivity) return false;
+    const todayStr = new Date().toISOString().split("T")[0];
+    return lastActivity >= todayStr;
+  }, [data?.streak?.last_activity_date]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -242,11 +251,18 @@ const CurrentStudyPlan = ({ data, loading, error, onRefresh }: CurrentStudyPlanP
                   <div className="space-y-1">
                     <p className="text-sm text-muted-foreground">Current Streak</p>
                     <div className="flex items-baseline gap-1">
-                      <span className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                      <span
+                        className={`text-2xl font-bold transition-colors ${
+                          streakActiveToday
+                            ? "text-orange-600 dark:text-orange-400"
+                            : "text-muted-foreground"
+                        }`}
+                      >
                         {streak?.current_streak ?? 0}
                       </span>
-                      <span className="text-sm text-muted-foreground">
-                        {streak?.current_streak === 1 ? "day" : "days"} 🔥
+                      <span className={`text-sm transition-colors ${streakActiveToday ? "text-muted-foreground" : "text-muted-foreground/50"}`}>
+                        {streak?.current_streak === 1 ? "day" : "days"}{" "}
+                        <span className={streakActiveToday ? "" : "grayscale opacity-40"}>🔥</span>
                       </span>
                     </div>
                   </div>

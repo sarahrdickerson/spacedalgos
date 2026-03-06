@@ -164,6 +164,20 @@ const CurrentStudyPlan = ({
   const problemLists = data?.problemLists || [];
   const stats = data?.stats || null;
   const streak = data?.streak || null;
+  const studyPlan = data?.studyPlan || null;
+
+  // Estimated completion date based on unseen problems and daily new quota
+  const estCompletionLabel = React.useMemo(() => {
+    if (!studyPlan || !stats || stats.notStarted <= 0) return null;
+    const daysLeft = Math.ceil(stats.notStarted / studyPlan.new_per_day);
+    const est = new Date();
+    est.setDate(est.getDate() + daysLeft);
+    return est.toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  }, [studyPlan, stats]);
 
   if (!activeList) {
     return (
@@ -292,82 +306,103 @@ const CurrentStudyPlan = ({
         </CardHeader>
         <CardContent>
           {stats ? (
-            <div className="space-y-4">
+            <div className="space-y-6">
               {/* Completion Badge and Weekly Goal */}
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  {/* Completion Percentage Circle */}
-                  <div className="relative flex items-center justify-center">
-                    <svg className="w-16 h-16 -rotate-90">
-                      <circle
-                        cx="32"
-                        cy="32"
-                        r="28"
-                        stroke="currentColor"
-                        strokeWidth="6"
-                        fill="none"
-                        className="text-muted"
-                      />
-                      <circle
-                        cx="32"
-                        cy="32"
-                        r="28"
-                        stroke="currentColor"
-                        strokeWidth="6"
-                        fill="none"
-                        strokeDasharray={`${2 * Math.PI * 28}`}
-                        strokeDashoffset={`${
-                          2 *
-                          Math.PI *
-                          28 *
-                          (stats.total > 0
-                            ? 1 - stats.mastered / stats.total
-                            : 1)
-                        }`}
-                        className="text-green-600 dark:text-green-400 transition-all duration-500"
-                        strokeLinecap="round"
-                      />
-                    </svg>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-xl font-bold">
-                        {stats.total > 0
-                          ? Math.round((stats.mastered / stats.total) * 100)
-                          : 0}
-                        %
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Streak */}
-                  <div className="space-y-1">
-                    <p className="text-sm text-muted-foreground">
-                      Current Streak
-                    </p>
-                    <div className="flex items-baseline gap-1">
-                      <span
-                        className={`text-2xl font-bold transition-colors ${
-                          streakActiveToday
-                            ? "text-orange-600 dark:text-orange-400"
-                            : "text-muted-foreground"
-                        }`}
-                      >
-                        {streak?.current_streak ?? 0}
-                      </span>
-                      <span
-                        className={`text-sm transition-colors ${streakActiveToday ? "text-muted-foreground" : "text-muted-foreground/50"}`}
-                      >
-                        {streak?.current_streak === 1 ? "day" : "days"}{" "}
-                        <span
-                          className={
-                            streakActiveToday ? "" : "grayscale opacity-40"
-                          }
-                        >
-                          🔥
-                        </span>
-                      </span>
-                    </div>
+                {/* Completion Percentage Circle */}
+                <div className="relative flex items-center justify-center">
+                  <svg className="w-16 h-16 -rotate-90">
+                    <circle
+                      cx="32"
+                      cy="32"
+                      r="28"
+                      stroke="currentColor"
+                      strokeWidth="6"
+                      fill="none"
+                      className="text-muted"
+                    />
+                    <circle
+                      cx="32"
+                      cy="32"
+                      r="28"
+                      stroke="currentColor"
+                      strokeWidth="6"
+                      fill="none"
+                      strokeDasharray={`${2 * Math.PI * 28}`}
+                      strokeDashoffset={`${
+                        2 *
+                        Math.PI *
+                        28 *
+                        (stats.total > 0 ? 1 - stats.mastered / stats.total : 1)
+                      }`}
+                      className="text-green-600 dark:text-green-400 transition-all duration-500"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-xl font-bold">
+                      {stats.total > 0
+                        ? Math.round((stats.mastered / stats.total) * 100)
+                        : 0}
+                      %
+                    </span>
                   </div>
                 </div>
+
+                {/* Streak */}
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">
+                    Current Streak
+                  </p>
+                  <div className="flex items-baseline gap-1">
+                    <span
+                      className={`text-2xl font-bold transition-colors ${
+                        streakActiveToday
+                          ? "text-orange-600 dark:text-orange-400"
+                          : "text-muted-foreground"
+                      }`}
+                    >
+                      {streak?.current_streak ?? 0}
+                    </span>
+                    <span
+                      className={`text-sm transition-colors ${streakActiveToday ? "text-muted-foreground" : "text-muted-foreground/50"}`}
+                    >
+                      {streak?.current_streak === 1 ? "day" : "days"}{" "}
+                      <span
+                        className={
+                          streakActiveToday ? "" : "grayscale opacity-40"
+                        }
+                      >
+                        🔥
+                      </span>
+                    </span>
+                  </div>
+                </div>
+
+                {/* Pace */}
+                {studyPlan && (
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground">Pace</p>
+                    <p className="text-2xl font-bold capitalize">
+                      {studyPlan.pace}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {studyPlan.new_per_day} new · {studyPlan.review_per_day}{" "}
+                      review/day
+                    </p>
+                  </div>
+                )}
+
+                {/* Est. completion */}
+                {estCompletionLabel && (
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground">Est. First Pass</p>
+                    <p className="text-xl font-bold">{estCompletionLabel}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {stats!.notStarted} problems to introduce
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Progress Bar */}

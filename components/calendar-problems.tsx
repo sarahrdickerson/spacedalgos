@@ -143,6 +143,13 @@ export function CalendarProblems({ data, loading, error, onRefresh }: CalendarPr
     }
   }, [fetchCalendarData])
 
+  const handleRefresh = React.useCallback(async () => {
+    await Promise.all([
+      onRefresh?.(),
+      fetchCalendarData(true),
+    ])
+  }, [onRefresh, fetchCalendarData])
+
   // Convert calendar data to events — must live before any conditional returns (Rules of Hooks)
   const events: CalendarEvent[] = React.useMemo(() => {
     if (!calendarData) return []
@@ -207,7 +214,7 @@ export function CalendarProblems({ data, loading, error, onRefresh }: CalendarPr
           </p>
           {onRefresh && (
             <button
-              onClick={() => onRefresh()}
+              onClick={() => handleRefresh()}
               className="text-sm text-muted-foreground hover:text-foreground underline"
             >
               Try again
@@ -247,7 +254,7 @@ export function CalendarProblems({ data, loading, error, onRefresh }: CalendarPr
           </p>
           {onRefresh && (
             <button
-              onClick={() => onRefresh()}
+              onClick={() => handleRefresh()}
               className="text-sm text-muted-foreground hover:text-foreground underline"
             >
               Try again
@@ -423,11 +430,7 @@ export function CalendarProblems({ data, loading, error, onRefresh }: CalendarPr
           problemTitle={selectedEvent.title}
           open={dialogOpen}
           onOpenChange={setDialogOpen}
-          onSuccess={async () => {
-            // Refresh both dashboard and calendar data after logging attempt
-            await onRefresh?.();
-            await fetchCalendarData(true);
-          }}
+          onSuccess={handleRefresh}
         />
       )}
 

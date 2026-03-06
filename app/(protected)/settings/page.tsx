@@ -41,10 +41,10 @@ async function AccountCard() {
               Send yourself a reset link to change your password.
             </p>
           </div>
-          <Button asChild variant="outline" size="sm">
-            <Link href="/auth/forgot-password">Change password</Link>
-          </Button>
         </div>
+        <Button asChild variant="outline" size="sm">
+          <Link href="/auth/forgot-password">Change password</Link>
+        </Button>
       </CardContent>
     </Card>
   );
@@ -89,7 +89,7 @@ export default function SettingsPage() {
           <CardTitle>Appearance</CardTitle>
           <CardDescription>Choose how SpacedAlgos looks.</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex flex-col gap-4 w-full">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium">Theme</p>
@@ -97,8 +97,9 @@ export default function SettingsPage() {
                 Light, dark, or system default.
               </p>
             </div>
-            <ThemeSwitcherInline />
+            
           </div>
+          <ThemeSwitcherInline />
         </CardContent>
       </Card>
 
@@ -120,8 +121,8 @@ export default function SettingsPage() {
             </div>
           </div>
           <Button variant="destructive" size="sm" disabled>
-              Delete account
-            </Button>
+            Delete account
+          </Button>
         </CardContent>
       </Card>
     </div>

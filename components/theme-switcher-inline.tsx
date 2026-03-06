@@ -10,7 +10,7 @@ export function ThemeSwitcherInline() {
   const { theme, setTheme } = useTheme();
 
   useEffect(() => setMounted(true), []);
-  if (!mounted) return <div className="h-9 w-[120px] rounded-md bg-muted animate-pulse" />;
+  if (!mounted) return <div className="h-9 w-full rounded-md bg-muted animate-pulse" />;
 
   const options = [
     { value: "light", icon: Sun, label: "Light" },
@@ -19,13 +19,13 @@ export function ThemeSwitcherInline() {
   ] as const;
 
   return (
-    <div className="flex rounded-md border overflow-hidden">
+    <div className="flex w-full rounded-md border overflow-hidden">
       {options.map(({ value, icon: Icon, label }) => (
         <Button
           key={value}
           variant={theme === value ? "default" : "ghost"}
           size="sm"
-          className="rounded-none border-0 gap-1.5 px-3"
+          className="flex-1 rounded-none border-0 gap-1.5 px-3"
           onClick={() => setTheme(value)}
           aria-label={label}
         >

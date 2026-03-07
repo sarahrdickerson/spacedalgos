@@ -27,7 +27,7 @@ interface ProblemList {
   version?: string;
 }
 
-const CurrentPlanMenuButton = (props: { 
+const CurrentPlanMenuButton = (props: {
   problemList: ProblemList | null;
   onPlanRemoved?: () => void;
 }) => {
@@ -46,25 +46,29 @@ const CurrentPlanMenuButton = (props: {
 
   const handleReset = async () => {
     if (!props.problemList?.key) return;
-    
+
     setIsResetting(true);
     try {
       const response = await fetch(
-        `/api/problemlists/${encodeURIComponent(props.problemList.key)}/reset-progress`,
+        `/api/problemlists/${encodeURIComponent(
+          props.problemList.key
+        )}/reset-progress`,
         {
           method: "DELETE",
         }
       );
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: "Failed to reset progress" }));
+        const errorData = await response
+          .json()
+          .catch(() => ({ error: "Failed to reset progress" }));
         throw new Error(errorData.error || "Failed to reset progress");
       }
 
       const data = await response.json();
       toast.success(`Progress reset for ${props.problemList.name}`);
       setIsResetConfirmOpen(false);
-      
+
       // Trigger a page refresh to update stats
       if (props.onPlanRemoved) {
         props.onPlanRemoved();
@@ -73,7 +77,9 @@ const CurrentPlanMenuButton = (props: {
       }
     } catch (error) {
       console.error("Error resetting progress:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to reset progress");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to reset progress"
+      );
     } finally {
       setIsResetting(false);
     }
@@ -81,12 +87,14 @@ const CurrentPlanMenuButton = (props: {
 
   const handleDelete = async () => {
     if (!props.problemList?.key) return;
-    
+
     setIsDeleting(true);
     try {
       // First reset progress
       const resetResponse = await fetch(
-        `/api/problemlists/${encodeURIComponent(props.problemList.key)}/reset-progress`,
+        `/api/problemlists/${encodeURIComponent(
+          props.problemList.key
+        )}/reset-progress`,
         {
           method: "DELETE",
         }
@@ -102,13 +110,15 @@ const CurrentPlanMenuButton = (props: {
       });
 
       if (!deleteResponse.ok) {
-        const errorData = await deleteResponse.json().catch(() => ({ error: "Failed to remove plan" }));
+        const errorData = await deleteResponse
+          .json()
+          .catch(() => ({ error: "Failed to remove plan" }));
         throw new Error(errorData.error || "Failed to remove plan");
       }
 
       toast.success("Study plan removed successfully");
       setIsDeleteConfirmOpen(false);
-      
+
       // Trigger a page refresh or callback
       if (props.onPlanRemoved) {
         props.onPlanRemoved();
@@ -117,7 +127,9 @@ const CurrentPlanMenuButton = (props: {
       }
     } catch (error) {
       console.error("Error deleting plan:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to remove plan");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to remove plan"
+      );
     } finally {
       setIsDeleting(false);
     }
@@ -145,22 +157,29 @@ const CurrentPlanMenuButton = (props: {
 
       {isResetConfirmOpen && (
         <Dialog open={isResetConfirmOpen} onOpenChange={setIsResetConfirmOpen}>
-          <DialogContent>
+          <DialogContent className="w-[calc(100vw-2rem)] max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Confirm Reset</DialogTitle>
+              <DialogTitle className="text-base sm:text-lg break-words">
+                Confirm Reset
+              </DialogTitle>
             </DialogHeader>
-            <div className="py-4">
+            <div className="py-4 text-sm break-words">
               Are you sure you want to reset your progress for{" "}
-              {props.problemList?.name}? This action cannot be undone.
+              <span className="break-all">{props.problemList?.name}</span>? This
+              action cannot be undone.
             </div>
             <DialogFooter>
               <DialogClose asChild>
-                <Button variant="outline">Cancel</Button>
+                <Button variant="outline" className="whitespace-normal text-sm">
+                  Cancel
+                </Button>
               </DialogClose>
               <Button
                 variant="destructive"
                 onClick={handleReset}
-                className={isResetting ? "cursor-not-allowed" : ""}
+                className={`whitespace-normal text-sm ${
+                  isResetting ? "cursor-not-allowed" : ""
+                }`}
                 disabled={isResetting}
               >
                 {isResetting ? "Resetting..." : "Confirm Reset"}
@@ -175,21 +194,30 @@ const CurrentPlanMenuButton = (props: {
           open={isDeleteConfirmOpen}
           onOpenChange={setIsDeleteConfirmOpen}
         >
-          <DialogContent>
+          <DialogContent className="w-[calc(100vw-2rem)] max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Confirm Delete</DialogTitle>
+              <DialogTitle className="text-base sm:text-lg break-words">
+                Confirm Delete
+              </DialogTitle>
             </DialogHeader>
-            <div className="py-4">
-              Are you sure you want to remove <strong>{props.problemList?.name}</strong> as your active study plan? This will also delete all your progress for problems in this list. This action cannot be undone.
+            <div className="py-4 text-sm break-words">
+              Are you sure you want to remove{" "}
+              <strong className="break-all">{props.problemList?.name}</strong>{" "}
+              as your active study plan? This will also delete all your progress
+              for problems in this list. This action cannot be undone.
             </div>
             <DialogFooter>
               <DialogClose asChild>
-                <Button variant="outline">Cancel</Button>
+                <Button variant="outline" className="whitespace-normal text-sm">
+                  Cancel
+                </Button>
               </DialogClose>
               <Button
                 variant="destructive"
                 onClick={handleDelete}
-                className={isDeleting ? "cursor-not-allowed" : ""}
+                className={`whitespace-normal text-sm ${
+                  isDeleting ? "cursor-not-allowed" : ""
+                }`}
                 disabled={isDeleting}
               >
                 {isDeleting ? "Deleting..." : "Confirm Delete"}

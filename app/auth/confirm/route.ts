@@ -38,17 +38,23 @@ export async function GET(request: NextRequest) {
 
     if (user) {
       // Try to create user_preferences if it doesn't exist (ignore conflicts)
-      await supabase.from("user_preferences").upsert(
-        {
-          user_id: user.id,
-          current_streak: 0,
-          longest_streak: 0,
-        },
-        {
-          onConflict: "user_id",
-          ignoreDuplicates: true,
-        }
-      );
+      const { error: prefsError } = await supabase
+        .from("user_preferences")
+        .upsert(
+          {
+            user_id: user.id,
+            current_streak: 0,
+            longest_streak: 0,
+          },
+          {
+            onConflict: "user_id",
+            ignoreDuplicates: true,
+          }
+        );
+
+      if (prefsError) {
+        console.error("Failed to initialize user preferences:", prefsError);
+      }
     }
 
     redirect(next ?? "/dash");

@@ -100,37 +100,37 @@ export function LogAttemptDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-h-[90vh] overflow-y-auto w-[calc(100vw-2rem)] max-w-lg">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className="text-base sm:text-lg break-words">
               Log Attempt —{" "}
               {problemLink ? (
                 <Link
                   href={problemLink}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 hover:underline hover:text-muted-foreground transition-all duration-300"
+                  className="inline-flex items-center gap-1 hover:underline hover:text-muted-foreground transition-all duration-300 break-all"
                 >
                   {problemTitle}{" "}
-                  <ExternalLinkIcon className="text-muted-foreground" />
+                  <ExternalLinkIcon className="text-muted-foreground flex-shrink-0" />
                 </Link>
               ) : (
                 problemTitle
               )}
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-sm">
               Record how well you solved this problem to track your progress.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex flex-col gap-6 py-4">
+          <div className="flex flex-col gap-4 sm:gap-6 py-3 sm:py-4">
             <FieldGroup>
               <Field>
-                <Label>How did it go?</Label>
+                <Label className="text-sm">How did it go?</Label>
                 <Button
                   type="button"
                   variant={grade === 2 ? "default" : "outline"}
-                  className="justify-start"
+                  className="justify-start text-left text-sm h-auto py-2.5 sm:py-3 whitespace-normal"
                   onClick={() => setGrade(2)}
                 >
                   ✅ Easy, solved confidently without hints
@@ -138,7 +138,7 @@ export function LogAttemptDialog({
                 <Button
                   type="button"
                   variant={grade === 1 ? "default" : "outline"}
-                  className="justify-start"
+                  className="justify-start text-left text-sm h-auto py-2.5 sm:py-3 whitespace-normal"
                   onClick={() => setGrade(1)}
                 >
                   👍 Good, solved with some effort or hints
@@ -147,7 +147,7 @@ export function LogAttemptDialog({
                   <Button
                     type="button"
                     variant={grade === 0 ? "destructive" : "outline"}
-                    className="justify-start"
+                    className="justify-start text-left text-sm h-auto py-2.5 sm:py-3 whitespace-normal"
                     onClick={() => setGrade(0)}
                   >
                     ❌ Hard, struggled a lot or couldn't solve even with hints
@@ -158,12 +158,13 @@ export function LogAttemptDialog({
 
             <FieldGroup>
               <Field>
-                <Label>(Optional) Time spent</Label>
-                <div className="flex gap-2 mt-2">
+                <Label className="text-sm">(Optional) Time spent</Label>
+                <div className="grid grid-cols-2 sm:flex gap-2 mt-2">
                   <Button
                     type="button"
                     variant={timeSpent === "0-15" ? "default" : "outline"}
                     onClick={() => setTimeSpent("0-15")}
+                    className="text-sm"
                   >
                     &lt;15m
                   </Button>
@@ -171,6 +172,7 @@ export function LogAttemptDialog({
                     type="button"
                     variant={timeSpent === "15-30" ? "default" : "outline"}
                     onClick={() => setTimeSpent("15-30")}
+                    className="text-sm"
                   >
                     15-30m
                   </Button>
@@ -178,6 +180,7 @@ export function LogAttemptDialog({
                     type="button"
                     variant={timeSpent === "30-60" ? "default" : "outline"}
                     onClick={() => setTimeSpent("30-60")}
+                    className="text-sm"
                   >
                     30–60m
                   </Button>
@@ -185,6 +188,7 @@ export function LogAttemptDialog({
                     type="button"
                     variant={timeSpent === "60+" ? "default" : "outline"}
                     onClick={() => setTimeSpent("60+")}
+                    className="text-sm"
                   >
                     60m+
                   </Button>

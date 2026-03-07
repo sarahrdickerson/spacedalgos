@@ -20,7 +20,9 @@ export default function ProtectedLayout({
             {/* Mobile Menubar */}
             <div className="flex flex-row justify-start md:hidden items-center gap-2">
               <MobileNav />
-              <h1 className="text-xl font-bold">spaced algos</h1>
+              <Link href={"/dash"} className="text-xl font-bold">
+                spaced algos
+              </Link>
             </div>
 
             {/* Desktop Menubar */}
@@ -48,7 +50,7 @@ export default function ProtectedLayout({
         </DashboardProvider>
 
         <footer className="text-center py-6 text-xs text-muted-foreground/50 border-t border-border/30">
-          developed by{" "}
+          spaced algos beta v{packageJson.version} · developed by{" "}
           <Link
             href="https://sarahrdickerson.github.io"
             target="_blank"
@@ -56,8 +58,7 @@ export default function ProtectedLayout({
             rel="noreferrer"
           >
             sarah dickerson
-          </Link>{" "}
-          · spaced algos beta v{packageJson.version}
+          </Link>
         </footer>
       </div>
     </main>

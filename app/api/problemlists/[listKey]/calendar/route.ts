@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { parseLocalDateBounds } from "@/lib/api/parseLocalDateBounds";
 
 export async function GET(
   request: Request,
@@ -193,41 +194,16 @@ export async function GET(
 
     const projectedNew: any[] = [];
     if (newPerDay > 0 && unseenItems.length > 0) {
-      // Use client's local date so midnight boundary matches the user's timezone
+      // Use client's local date/timezone so "today" boundaries match the user's clock.
       const { searchParams } = new URL(request.url);
-      const localDateParam = searchParams.get("localDate");
-      if (localDateParam && !/^\d{4}-\d{2}-\d{2}$/.test(localDateParam)) {
+      const dateBounds = parseLocalDateBounds(searchParams);
+      if (!dateBounds) {
         return NextResponse.json(
           { error: "Invalid localDate format, expected YYYY-MM-DD" },
           { status: 400 }
         );
       }
-      const now = new Date();
-      const [localYear, localMonth, localDay] = localDateParam
-        ? localDateParam.split("-").map(Number)
-        : [now.getUTCFullYear(), now.getUTCMonth() + 1, now.getUTCDate()];
-
-      const todayMidnightUTC = new Date(
-        Date.UTC(localYear, localMonth - 1, localDay)
-      ).toISOString();
-      const tomorrowMidnightUTC = new Date(
-        Date.UTC(localYear, localMonth - 1, localDay + 1)
-      ).toISOString();
-
-      // Compute timezone-aware local-day bounds for slot counting.
-      // getTimezoneOffset() returns (UTC − local) in minutes, e.g. CST = +360.
-      // Adding it to UTC midnight gives the user's actual local midnight in UTC
-      // so post-6PM CST attempts (already UTC "tomorrow") still count as today.
-      const tzOffsetParam = searchParams.get("tzOffset");
-      const tzOffsetMinutes = tzOffsetParam !== null && /^-?\d+$/.test(tzOffsetParam)
-        ? Math.max(-720, Math.min(840, parseInt(tzOffsetParam, 10)))
-        : 0;
-      const localDayStartUTC = new Date(
-        Date.UTC(localYear, localMonth - 1, localDay) + tzOffsetMinutes * 60 * 1000
-      ).toISOString();
-      const localDayEndUTC = new Date(
-        Date.UTC(localYear, localMonth - 1, localDay) + tzOffsetMinutes * 60 * 1000 + 86_400_000
-      ).toISOString();
+      const { localYear, localMonth, localDay, todayMidnightUTC, tomorrowMidnightUTC, localDayStartUTC, localDayEndUTC } = dateBounds;
 
       // Count "new" slots already consumed today: problems whose very first attempt
       // was logged today. Attempts are sorted descending, so the last write per

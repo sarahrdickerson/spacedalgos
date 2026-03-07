@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const supabase = await createClient();
 
@@ -48,9 +48,16 @@ export async function GET() {
     let currentStreak = prefs?.current_streak ?? 0;
     const lastActivity = prefs?.last_activity_date ?? null;
     if (lastActivity) {
-      const yesterdayStr = new Date(Date.now() - 86_400_000)
-        .toISOString()
-        .split("T")[0];
+      // Use the client's local date so the boundary is correct after 6 PM CST
+      // (when UTC has already flipped to the next day).
+      const { searchParams } = new URL(request.url);
+      const localDateParam = searchParams.get("localDate");
+      const yesterdayStr = localDateParam
+        ? (() => {
+            const [y, m, d] = localDateParam.split("-").map(Number);
+            return new Date(Date.UTC(y, m - 1, d - 1)).toISOString().split("T")[0];
+          })()
+        : new Date(Date.now() - 86_400_000).toISOString().split("T")[0];
       // If the last activity was before yesterday the streak is broken
       if (lastActivity < yesterdayStr) {
         currentStreak = 0;

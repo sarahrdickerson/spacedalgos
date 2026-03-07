@@ -136,7 +136,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
         const encodedKey = encodeURIComponent(activePlanData.active_list.key);
         const [statsRes, dueRes, progressRes] = await Promise.all([
           fetch(`/api/problemlists/${encodedKey}/stats`),
-          fetch(`/api/problemlists/${encodedKey}/due?localDate=${new Date().toLocaleDateString('en-CA')}`),
+          fetch(`/api/problemlists/${encodedKey}/due?localDate=${new Date().toLocaleDateString('en-CA')}&tzOffset=${new Date().getTimezoneOffset()}`),
           fetch(`/api/problemlists/${encodedKey}/progress`),
         ]);
 

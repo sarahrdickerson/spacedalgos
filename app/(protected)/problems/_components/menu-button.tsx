@@ -278,7 +278,9 @@ const MenuButton = ({ problemKey, problemTitle }: MenuButtonProps) => {
           <DialogHeader>
             <DialogTitle className="text-base sm:text-lg break-words">
               Are you sure you want to reset your progress for{" "}
-              <span className="italic underline break-all">{problemTitle}</span>
+              <span className="italic underline break-words">
+                {problemTitle}
+              </span>
               ?
             </DialogTitle>
           </DialogHeader>

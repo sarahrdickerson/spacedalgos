@@ -121,7 +121,7 @@ const ContinueForm = ({
             disabled={isLoadingGithub}
           >
             <Image
-              src="/images/Github_Invertocat_White.svg"
+              src="/images/GitHub_Invertocat_White.svg"
               alt="Github logo"
               className="mr-2 invert dark:invert-0"
               width={20}

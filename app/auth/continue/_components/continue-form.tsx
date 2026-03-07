@@ -1,0 +1,89 @@
+"use client";
+
+import { cn } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import Link from "next/link";
+import Image from "next/image";
+import { useState } from "react";
+import { toast } from "sonner";
+
+const ContinueForm = ({
+  className,
+  ...props
+}: React.ComponentPropsWithoutRef<"div">) => {
+  const [isLoading, setIsLoading] = useState(false);
+
+  const signInWithGoogle = async () => {
+    setIsLoading(true);
+
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/confirm`,
+        },
+      });
+      if (error) throw error;
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Failed to sign in with Google";
+      toast.error(message);
+      setIsLoading(false);
+    }
+    // Note: If OAuth succeeds, user is redirected and loading state persists
+  };
+
+  return (
+    <div className={cn("flex flex-col gap-6", className)} {...props}>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-2xl">Welcome to Spaced Algos</CardTitle>
+          <CardDescription>
+            Sign in or create an account to continue.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button
+            type="button"
+            onClick={signInWithGoogle}
+            className="w-full"
+            variant="outline"
+            disabled={isLoading}
+          >
+            <Image
+              src="/images/googleicon.svg"
+              alt="Google logo"
+              className="mr-2"
+              width={20}
+              height={20}
+            />
+            {isLoading ? "Redirecting..." : "Continue with Google"}
+          </Button>
+          <p className="mt-4 text-center text-xs text-muted-foreground">
+            By continuing, you agree to our{" "}
+            <Link href="/terms" className="underline underline-offset-4">
+              Terms
+            </Link>{" "}
+            and{" "}
+            <Link href="/privacy" className="underline underline-offset-4">
+              Privacy Policy
+            </Link>
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+export default ContinueForm;

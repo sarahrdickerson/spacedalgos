@@ -124,7 +124,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
         // Clear any previously loaded protected data before redirecting
         setData(null);
         setError(null);
-        router.replace("/auth/login");
+        router.replace("/auth/continue");
         return;
       }
 

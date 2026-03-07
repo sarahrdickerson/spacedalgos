@@ -40,6 +40,13 @@ export async function updateSession(request: NextRequest) {
   const { data } = await supabase.auth.getClaims();
   const user = data?.claims;
 
+  // Redirect authenticated users away from landing page
+  if (request.nextUrl.pathname === "/" && user) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/dash";
+    return NextResponse.redirect(url);
+  }
+
   if (
     request.nextUrl.pathname !== "/" &&
     !user &&

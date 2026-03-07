@@ -29,7 +29,7 @@ const ContinueForm = ({
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/auth/confirm`,
+          redirectTo: `${window.location.origin}/auth/confirm?next=/dash`,
         },
       });
       if (error) throw error;

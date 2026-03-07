@@ -43,7 +43,7 @@ const CurrentStudyPlan = ({
   onRefresh,
 }: CurrentStudyPlanProps) => {
   const [selectedList, setSelectedList] = React.useState<ProblemList | null>(
-    null,
+    null
   );
   const [selectedPace, setSelectedPace] = React.useState<
     "leisurely" | "normal" | "accelerated"
@@ -126,7 +126,7 @@ const CurrentStudyPlan = ({
       toast.error(
         error instanceof Error
           ? error.message
-          : "Failed to set active study plan",
+          : "Failed to set active study plan"
       );
     } finally {
       setSubmitting(false);
@@ -310,9 +310,9 @@ const CurrentStudyPlan = ({
           {stats ? (
             <div className="space-y-6">
               {/* Completion Badge and Weekly Goal */}
-              <div className="flex items-center justify-between">
+              <div className="flex items-start justify-between gap-4">
                 {/* Completion Percentage Circle */}
-                <div className="relative flex items-center justify-center">
+                <div className="relative flex items-center justify-center flex-shrink-0">
                   <svg className="w-16 h-16 -rotate-90">
                     <circle
                       cx="32"
@@ -352,8 +352,8 @@ const CurrentStudyPlan = ({
                 </div>
 
                 {/* Streak */}
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">
+                <div className="flex-1 min-w-0 pl-4">
+                  <p className="text-sm text-muted-foreground mb-1">
                     Current Streak
                   </p>
                   <div className="flex items-baseline gap-1">
@@ -367,7 +367,11 @@ const CurrentStudyPlan = ({
                       {streak?.current_streak ?? 0}
                     </span>
                     <span
-                      className={`text-sm transition-colors ${streakActiveToday ? "text-muted-foreground" : "text-muted-foreground/50"}`}
+                      className={`text-sm transition-colors ${
+                        streakActiveToday
+                          ? "text-muted-foreground"
+                          : "text-muted-foreground/50"
+                      }`}
                     >
                       {streak?.current_streak === 1 ? "day" : "days"}{" "}
                       <span
@@ -383,12 +387,12 @@ const CurrentStudyPlan = ({
 
                 {/* Pace */}
                 {studyPlan && (
-                  <div className="space-y-1">
-                    <p className="text-sm text-muted-foreground">Pace</p>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-muted-foreground mb-1">Pace</p>
                     <p className="text-2xl font-bold capitalize">
                       {studyPlan.pace}
                     </p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground mt-1">
                       {studyPlan.new_per_day} new · {studyPlan.review_per_day}{" "}
                       review/day
                     </p>
@@ -397,10 +401,12 @@ const CurrentStudyPlan = ({
 
                 {/* Est. completion */}
                 {estCompletionLabel && (
-                  <div className="space-y-1">
-                    <p className="text-sm text-muted-foreground">Est. First Pass</p>
+                  <div className="hidden sm:block flex-1 min-w-0">
+                    <p className="text-sm text-muted-foreground mb-1">
+                      Est. First Pass
+                    </p>
                     <p className="text-xl font-bold">{estCompletionLabel}</p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground mt-1">
                       {stats!.notStarted} problems to introduce
                     </p>
                   </div>

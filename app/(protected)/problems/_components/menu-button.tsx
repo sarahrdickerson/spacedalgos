@@ -14,6 +14,7 @@ import {
 import {
   CounterClockwiseClockIcon,
   DotsVerticalIcon,
+  PlusCircledIcon,
   ResetIcon,
 } from "@radix-ui/react-icons";
 import {
@@ -24,6 +25,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { LogAttemptDialog } from "@/components/log-attempt-dialog";
+import { useDashboard } from "../../_components/dashboard-provider";
 
 type MenuButtonProps = {
   problemKey: string;
@@ -39,19 +42,21 @@ type AttemptHistory = {
 };
 
 const MenuButton = ({ problemKey, problemTitle }: MenuButtonProps) => {
+  const { refreshData } = useDashboard();
   const [isHistoryOpen, setIsHistoryOpen] = React.useState(false);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = React.useState(false);
+  const [isLogAttemptOpen, setIsLogAttemptOpen] = React.useState(false);
   const [history, setHistory] = React.useState<AttemptHistory[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [resetting, setResetting] = React.useState(false);
-
+  const [loggingAttempt, setLoggingAttempt] = React.useState(false);
   const problemHistory = async () => {
     setIsHistoryOpen(true);
     setLoading(true);
 
     try {
       const response = await fetch(
-        `/api/problems/${encodeURIComponent(problemKey)}/history`,
+        `/api/problems/${encodeURIComponent(problemKey)}/history`
       );
       if (!response.ok) {
         throw new Error("Failed to fetch history");
@@ -76,7 +81,7 @@ const MenuButton = ({ problemKey, problemTitle }: MenuButtonProps) => {
     try {
       const response = await fetch(
         `/api/problems/${encodeURIComponent(problemKey)}/reset`,
-        { method: "DELETE" },
+        { method: "DELETE" }
       );
 
       if (!response.ok) {
@@ -94,6 +99,12 @@ const MenuButton = ({ problemKey, problemTitle }: MenuButtonProps) => {
     }
   };
 
+  const logAttempt = async () => {
+    setLoggingAttempt(true);
+    setIsLogAttemptOpen(true);
+    setLoggingAttempt(false);
+  };
+
   return (
     <div>
       <DropdownMenu>
@@ -104,6 +115,12 @@ const MenuButton = ({ problemKey, problemTitle }: MenuButtonProps) => {
         </DropdownMenuTrigger>
         <DropdownMenuContent>
           <DropdownMenuGroup>
+            <DropdownMenuItem
+              onClick={logAttempt}
+              className="sm:hidden display"
+            >
+              <PlusCircledIcon /> Log Attempt
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={problemHistory}>
               <CounterClockwiseClockIcon /> History
             </DropdownMenuItem>
@@ -113,6 +130,14 @@ const MenuButton = ({ problemKey, problemTitle }: MenuButtonProps) => {
           </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      <LogAttemptDialog
+        open={isLogAttemptOpen}
+        onOpenChange={setIsLogAttemptOpen}
+        problemKey={problemKey}
+        problemTitle={problemTitle}
+        onSuccess={refreshData}
+      />
 
       <Dialog open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
         <DialogContent className="sm:max-w-3xl">
@@ -217,7 +242,9 @@ const MenuButton = ({ problemKey, problemTitle }: MenuButtonProps) => {
                             })}
                           </td>
                           <td
-                            className={`px-4 py-3 text-sm font-medium ${gradeColors[attempt.grade as 0 | 1 | 2]}`}
+                            className={`px-4 py-3 text-sm font-medium ${
+                              gradeColors[attempt.grade as 0 | 1 | 2]
+                            }`}
                           >
                             {gradeLabels[attempt.grade as 0 | 1 | 2] ||
                               attempt.grade}

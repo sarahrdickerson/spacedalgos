@@ -9,11 +9,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ThemeSwitcherInline } from "@/components/theme-switcher-inline";
 import { DeleteAccountButton } from "./_components/delete-account-button";
-import Link from "next/link";
 
 async function AccountCard() {
   await connection();

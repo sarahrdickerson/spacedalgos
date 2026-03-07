@@ -26,10 +26,23 @@ const ContinueForm = ({
 
     try {
       const supabase = createClient();
+
+      // Prefer NEXT_PUBLIC_BASE_URL if available, otherwise fall back to window.location.origin
+      const envBaseUrl = process.env.NEXT_PUBLIC_BASE_URL?.trim();
+      const baseUrl =
+        envBaseUrl !== undefined && envBaseUrl !== ""
+          ? new URL(envBaseUrl).toString()
+          : window.location.origin;
+      // Construct the redirect URL using URL constructor to handle trailing slashes properly
+      const redirectUrl = new URL(
+        "/auth/confirm?next=/dash",
+        baseUrl
+      ).toString();
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/auth/confirm?next=/dash`,
+          redirectTo: redirectUrl,
         },
       });
       if (error) throw error;

@@ -1,12 +1,11 @@
-import { DeployButton } from "@/components/deploy-button";
 import { AuthButton } from "@/components/auth-button";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import Link from "next/link";
 import { Suspense } from "react";
-import StartPracticeButton from "@/components/start-practice-button";
 import { MobileNav } from "@/components/mobile-nav";
 import { NavLink } from "@/components/nav-link";
 import { DashboardProvider } from "./_components/dashboard-provider";
+import packageJson from "@/package.json";
 
 export default function ProtectedLayout({
   children,
@@ -58,7 +57,7 @@ export default function ProtectedLayout({
           >
             sarah dickerson
           </Link>{" "}
-          · spaced algos
+          · spaced algos beta v{packageJson.version}
         </footer>
       </div>
     </main>

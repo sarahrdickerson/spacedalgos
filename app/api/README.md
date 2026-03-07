@@ -7,6 +7,8 @@ This document provides an overview of all API routes available in the applicatio
 - [Problem Lists](#problem-lists)
 - [Problems](#problems)
 - [User](#user)
+- [Feedback](#feedback)
+- [Timezone Handling](#timezone-handling)
 
 ---
 
@@ -173,6 +175,10 @@ New problems are only surfaced when all overdue reviews are caught up. Today's n
 **URL Parameters:**
 - `listKey` - The unique key identifier for the problem list
 
+**Query Parameters:**
+- `localDate` (optional) - The client's current local date in `YYYY-MM-DD` format (e.g. `2026-03-06`). When provided, all "today" boundaries are derived from this date rather than the server's UTC clock, preventing problems from appearing a day early for users in UTC-offset timezones after 6 PM local time. Must match `/^\d{4}-\d{2}-\d{2}$/` or a 400 is returned.
+- `tzOffset` (optional) - The client's `Date.prototype.getTimezoneOffset()` value in minutes (e.g. `360` for CST). Used together with `localDate` to compute the true UTC bounds of the user's local calendar day for slot-consumed counting, so attempts logged after 6 PM local time (which are already UTC "tomorrow") are still counted as today's consumed new slots.
+
 **Response:**
 ```json
 {
@@ -250,6 +256,10 @@ New problems are only surfaced when all overdue reviews are caught up. Today's n
 
 **URL Parameters:**
 - `listKey` - The unique key identifier for the problem list
+
+**Query Parameters:**
+- `localDate` (optional) - The client's current local date in `YYYY-MM-DD` format. Prevents projected new problems from appearing on the wrong calendar day for users in UTC-offset timezones. Must match `/^\d{4}-\d{2}-\d{2}$/` or a 400 is returned.
+- `tzOffset` (optional) - The client's `Date.prototype.getTimezoneOffset()` value in minutes. Used together with `localDate` to compute timezone-aware slot-consumed boundaries so post-6 PM local-time attempts are still counted as today's consumed new slots.
 
 **Response:**
 ```json
@@ -357,7 +367,8 @@ New problems are only surfaced when all overdue reviews are caught up. Today's n
   "grade": 1,
   "time_bucket": "0-15m",
   "note": "Solved using hashmap approach",
-  "attempted_at": "2026-03-06T10:30:00Z"
+  "attempted_at": "2026-03-06T10:30:00Z",
+  "localDate": "2026-03-06"
 }
 ```
 
@@ -366,6 +377,7 @@ New problems are only surfaced when all overdue reviews are caught up. Today's n
 - `time_bucket` (optional) - Time taken: `"0-15m"`, `"15-30m"`, `"30-45m"`, `"45-60m"`, `"60m+"`
 - `note` (optional) - Notes about the attempt
 - `attempted_at` (optional) - ISO timestamp (defaults to current time)
+- `localDate` (optional) - The client's current local date in `YYYY-MM-DD` format. Used to record `user_daily_activity` on the correct calendar day and compute streak boundaries for users in UTC-offset timezones. Must match `/^\d{4}-\d{2}-\d{2}$/` or a 400 is returned.
 
 **Response:**
 ```json
@@ -600,6 +612,9 @@ Both `new_per_day` and `review_per_day` must be finite positive integers after p
 
 **Authentication:** Required
 
+**Query Parameters:**
+- `localDate` (optional) - The client's current local date in `YYYY-MM-DD` format. Used to compute the "yesterday" boundary for streak staleness checks, so users in UTC-offset timezones don't have their streak incorrectly reset after 6 PM local time. Must match `/^\d{4}-\d{2}-\d{2}$/` or a 400 is returned.
+
 **Response:**
 ```json
 {
@@ -633,6 +648,65 @@ Both `new_per_day` and `review_per_day` must be finite positive integers after p
 
 ---
 
+### Delete Account
+
+**Endpoint:** `DELETE /api/user/account`
+
+**Description:** Permanently deletes the authenticated user's account and all associated data. The auth user record is deleted first (ending login ability), then all application data rows are removed. If data cleanup fails after auth deletion, orphaned rows are logged server-side but no error is returned to the client since the account is effectively gone.
+
+**Authentication:** Required
+
+**Data deleted (in order):**
+1. `user_problem_attempts`
+2. `user_problem_progress`
+3. `user_daily_activity`
+4. `user_study_plans`
+5. `user_preferences`
+6. `feedback`
+7. Auth user record (via service role)
+
+**Response:**
+```json
+{ "ok": true }
+```
+
+**Notes:**
+- Uses the Supabase service-role client (bypasses RLS) for all deletions to ensure rows are removed regardless of each table's DELETE policy.
+- Requires `SUPABASE_SERVICE_ROLE_KEY` environment variable.
+
+---
+
+## Feedback
+
+### Submit Feedback
+
+**Endpoint:** `POST /api/feedback`
+
+**Description:** Stores a feedback message from the authenticated user.
+
+**Authentication:** Required
+
+**Request Body:**
+```json
+{
+  "message": "Love the spaced repetition system!"
+}
+```
+
+**Body Parameters:**
+- `message` (required) - Feedback text, 1–2000 characters
+
+**Response:**
+```json
+{ "ok": true }
+```
+
+**Error Responses:**
+- `400` — message missing or exceeds 2000 characters
+- `401` — unauthenticated
+
+---
+
 ## Authentication
 
 Most endpoints require authentication via Supabase Auth (session cookie). Unauthenticated requests to protected endpoints return:
@@ -659,3 +733,28 @@ Most endpoints require authentication via Supabase Auth (session cookie). Unauth
 ```json
 { "error": "Failed to fetch problem lists" }
 ```
+---
+
+## Timezone Handling
+
+Several routes accept `localDate` and/or `tzOffset` query parameters (or `localDate` in the request body for POST endpoints) to ensure correct behaviour for users in non-UTC timezones.
+
+### The problem
+
+The server runs in UTC. At 6 PM CST the UTC clock has already flipped to the next day, so a naive `new Date().toISOString().split("T")[0]` on the server returns tomorrow's date. This causes:
+- Tomorrow's new problems appearing in today's review queue
+- Logged attempts after 6 PM not counting as today's consumed new slots
+- Streak staleness checks incorrectly treating today's activity as yesterday's
+
+### The solution
+
+The client sends two values with every time-sensitive request:
+
+| Parameter | Source | Format | Example |
+|-----------|--------|--------|---------|
+| `localDate` | `new Date().toLocaleDateString('en-CA')` | `YYYY-MM-DD` | `2026-03-06` |
+| `tzOffset` | `new Date().getTimezoneOffset()` | integer minutes (UTC − local) | `360` (CST) |
+
+The server uses `localDate` to derive UTC midnight boundaries for the user's calendar day, and `tzOffset` to shift those boundaries to cover the true 24-hour window of that local day in UTC (so a 7 PM CST timestamp stored as `2026-03-07T01:00Z` is still recognised as belonging to March 6 local time).
+
+The shared helper `lib/api/parseLocalDateBounds.ts` implements this logic and is used by both the `/due` and `/calendar` routes. All `localDate` values are validated against `/^\d{4}-\d{2}-\d{2}$/` before use; malformed values return a 400.

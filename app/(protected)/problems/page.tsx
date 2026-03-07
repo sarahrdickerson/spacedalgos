@@ -321,6 +321,7 @@ const ProblemsPage = () => {
                                   <MenuButton
                                     problemKey={problem.key}
                                     problemTitle={problem.title}
+                                    problemLink={problem.leetcode_url}
                                   />
                                 </div>
                               </div>

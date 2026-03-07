@@ -14,6 +14,7 @@ import {
 import {
   CounterClockwiseClockIcon,
   DotsVerticalIcon,
+  PlusCircledIcon,
   ResetIcon,
 } from "@radix-ui/react-icons";
 import {
@@ -24,10 +25,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { LogAttemptDialog } from "@/components/log-attempt-dialog";
+import { useDashboard } from "../../_components/dashboard-provider";
 
 type MenuButtonProps = {
   problemKey: string;
   problemTitle: string;
+  problemLink?: string | null;
 };
 
 type AttemptHistory = {
@@ -38,20 +42,25 @@ type AttemptHistory = {
   attempted_at: string;
 };
 
-const MenuButton = ({ problemKey, problemTitle }: MenuButtonProps) => {
+const MenuButton = ({
+  problemKey,
+  problemTitle,
+  problemLink,
+}: MenuButtonProps) => {
+  const { refreshData } = useDashboard();
   const [isHistoryOpen, setIsHistoryOpen] = React.useState(false);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = React.useState(false);
+  const [isLogAttemptOpen, setIsLogAttemptOpen] = React.useState(false);
   const [history, setHistory] = React.useState<AttemptHistory[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [resetting, setResetting] = React.useState(false);
-
   const problemHistory = async () => {
     setIsHistoryOpen(true);
     setLoading(true);
 
     try {
       const response = await fetch(
-        `/api/problems/${encodeURIComponent(problemKey)}/history`,
+        `/api/problems/${encodeURIComponent(problemKey)}/history`
       );
       if (!response.ok) {
         throw new Error("Failed to fetch history");
@@ -76,7 +85,7 @@ const MenuButton = ({ problemKey, problemTitle }: MenuButtonProps) => {
     try {
       const response = await fetch(
         `/api/problems/${encodeURIComponent(problemKey)}/reset`,
-        { method: "DELETE" },
+        { method: "DELETE" }
       );
 
       if (!response.ok) {
@@ -104,6 +113,12 @@ const MenuButton = ({ problemKey, problemTitle }: MenuButtonProps) => {
         </DropdownMenuTrigger>
         <DropdownMenuContent>
           <DropdownMenuGroup>
+            <DropdownMenuItem
+              onClick={() => setIsLogAttemptOpen(true)}
+              className="sm:hidden"
+            >
+              <PlusCircledIcon /> Log Attempt
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={problemHistory}>
               <CounterClockwiseClockIcon /> History
             </DropdownMenuItem>
@@ -114,20 +129,31 @@ const MenuButton = ({ problemKey, problemTitle }: MenuButtonProps) => {
         </DropdownMenuContent>
       </DropdownMenu>
 
+      <LogAttemptDialog
+        open={isLogAttemptOpen}
+        onOpenChange={setIsLogAttemptOpen}
+        problemKey={problemKey}
+        problemTitle={problemTitle}
+        problemLink={problemLink}
+        onSuccess={refreshData}
+      />
+
       <Dialog open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
-        <DialogContent className="sm:max-w-3xl">
+        <DialogContent className="w-[calc(100vw-2rem)] max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>History — {problemTitle}</DialogTitle>
+            <DialogTitle className="text-base sm:text-lg break-words">
+              History — {problemTitle}
+            </DialogTitle>
           </DialogHeader>
           <div className="-mx-4 no-scrollbar max-h-[60vh] overflow-y-auto px-4">
             {loading ? (
-              <div className="rounded-md border">
+              <div className="rounded-md border overflow-hidden">
                 <table className="w-full table-fixed">
                   <colgroup>
-                    <col className="w-[160px]" />
-                    <col className="w-[80px]" />
-                    <col className="w-[90px]" />
-                    <col />
+                    <col className="w-[35%]" />
+                    <col className="w-[20%]" />
+                    <col className="w-[20%]" />
+                    <col className="w-[25%]" />
                   </colgroup>
                   <thead className="bg-muted/50">
                     <tr className="border-b">
@@ -149,13 +175,13 @@ const MenuButton = ({ problemKey, problemTitle }: MenuButtonProps) => {
                     {Array.from({ length: 3 }).map((_, i) => (
                       <tr key={i} className="border-b last:border-0">
                         <td className="px-4 py-3">
-                          <Skeleton className="h-4 w-32" />
+                          <Skeleton className="h-4 w-full" />
                         </td>
                         <td className="px-4 py-3">
-                          <Skeleton className="h-4 w-14" />
+                          <Skeleton className="h-4 w-full" />
                         </td>
                         <td className="px-4 py-3">
-                          <Skeleton className="h-4 w-16" />
+                          <Skeleton className="h-4 w-full" />
                         </td>
                         <td className="px-4 py-3">
                           <Skeleton className="h-4 w-full" />
@@ -170,13 +196,13 @@ const MenuButton = ({ problemKey, problemTitle }: MenuButtonProps) => {
                 <p className="text-muted-foreground">No attempts yet</p>
               </div>
             ) : (
-              <div className="rounded-md border">
+              <div className="rounded-md border overflow-hidden">
                 <table className="w-full table-fixed">
                   <colgroup>
-                    <col className="w-[160px]" />
-                    <col className="w-[80px]" />
-                    <col className="w-[90px]" />
-                    <col />
+                    <col className="w-[35%]" />
+                    <col className="w-[20%]" />
+                    <col className="w-[20%]" />
+                    <col className="w-[25%]" />
                   </colgroup>
                   <thead className="bg-muted/50">
                     <tr className="border-b">
@@ -209,7 +235,7 @@ const MenuButton = ({ problemKey, problemTitle }: MenuButtonProps) => {
                           key={attempt.id}
                           className="border-b last:border-0 hover:bg-muted/30"
                         >
-                          <td className="px-4 py-3 text-sm whitespace-nowrap">
+                          <td className="px-4 py-3 text-sm">
                             {date.toLocaleDateString()}{" "}
                             {date.toLocaleTimeString([], {
                               hour: "2-digit",
@@ -217,7 +243,9 @@ const MenuButton = ({ problemKey, problemTitle }: MenuButtonProps) => {
                             })}
                           </td>
                           <td
-                            className={`px-4 py-3 text-sm font-medium ${gradeColors[attempt.grade as 0 | 1 | 2]}`}
+                            className={`px-4 py-3 text-sm font-medium ${
+                              gradeColors[attempt.grade as 0 | 1 | 2]
+                            }`}
                           >
                             {gradeLabels[attempt.grade as 0 | 1 | 2] ||
                               attempt.grade}
@@ -245,11 +273,14 @@ const MenuButton = ({ problemKey, problemTitle }: MenuButtonProps) => {
       </Dialog>
 
       <Dialog open={isResetConfirmOpen} onOpenChange={setIsResetConfirmOpen}>
-        <DialogContent>
+        <DialogContent className="w-[calc(100vw-2rem)] max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className="text-base sm:text-lg break-words">
               Are you sure you want to reset your progress for{" "}
-              <span className="italic underline">{problemTitle}</span>?
+              <span className="italic underline break-words">
+                {problemTitle}
+              </span>
+              ?
             </DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground py-2">
@@ -261,6 +292,7 @@ const MenuButton = ({ problemKey, problemTitle }: MenuButtonProps) => {
               variant="outline"
               onClick={() => setIsResetConfirmOpen(false)}
               disabled={resetting}
+              className="whitespace-normal text-sm"
             >
               Cancel
             </Button>
@@ -268,6 +300,7 @@ const MenuButton = ({ problemKey, problemTitle }: MenuButtonProps) => {
               variant="destructive"
               onClick={resetProblemProgress}
               disabled={resetting}
+              className="whitespace-normal text-sm"
             >
               {resetting ? "Resetting..." : "Reset Progress"}
             </Button>

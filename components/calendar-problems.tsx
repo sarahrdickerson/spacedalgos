@@ -56,7 +56,7 @@ interface CalendarEvent {
   id: string;
   title: string;
   problemKey: string;
-  leetcode_url: string;
+  leetcode_url?: string | null;
   date: Date;
   isPast: boolean;
   isProjected?: boolean;

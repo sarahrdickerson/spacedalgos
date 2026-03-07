@@ -104,7 +104,7 @@ export function CalendarProblems({ data, loading, error, onRefresh }: CalendarPr
 
     try {
       const response = await fetch(
-        `/api/problemlists/${encodeURIComponent(activeListKey)}/calendar?localDate=${new Date().toLocaleDateString('en-CA')}`,
+        `/api/problemlists/${encodeURIComponent(activeListKey)}/calendar?localDate=${new Date().toLocaleDateString('en-CA')}&tzOffset=${new Date().getTimezoneOffset()}`,
         { signal }
       )
 

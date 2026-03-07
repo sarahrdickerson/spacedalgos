@@ -214,6 +214,21 @@ export async function GET(
         Date.UTC(localYear, localMonth - 1, localDay + 1)
       ).toISOString();
 
+      // Compute timezone-aware local-day bounds for slot counting.
+      // getTimezoneOffset() returns (UTC − local) in minutes, e.g. CST = +360.
+      // Adding it to UTC midnight gives the user's actual local midnight in UTC
+      // so post-6PM CST attempts (already UTC "tomorrow") still count as today.
+      const tzOffsetParam = searchParams.get("tzOffset");
+      const tzOffsetMinutes = tzOffsetParam !== null && /^-?\d+$/.test(tzOffsetParam)
+        ? Math.max(-720, Math.min(840, parseInt(tzOffsetParam, 10)))
+        : 0;
+      const localDayStartUTC = new Date(
+        Date.UTC(localYear, localMonth - 1, localDay) + tzOffsetMinutes * 60 * 1000
+      ).toISOString();
+      const localDayEndUTC = new Date(
+        Date.UTC(localYear, localMonth - 1, localDay) + tzOffsetMinutes * 60 * 1000 + 86_400_000
+      ).toISOString();
+
       // Count "new" slots already consumed today: problems whose very first attempt
       // was logged today. Attempts are sorted descending, so the last write per
       // problem_id is the earliest (first-ever) attempt.
@@ -223,7 +238,7 @@ export async function GET(
       });
       let newSlotsUsedToday = 0;
       firstAttemptByProblem.forEach((earliestAttempt) => {
-        if (earliestAttempt >= todayMidnightUTC && earliestAttempt < tomorrowMidnightUTC) {
+        if (earliestAttempt >= localDayStartUTC && earliestAttempt < localDayEndUTC) {
           newSlotsUsedToday++;
         }
       });

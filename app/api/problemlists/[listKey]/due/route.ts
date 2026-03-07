@@ -149,6 +149,21 @@ export async function GET(
       Date.UTC(localYear, localMonth - 1, localDay + 1)
     ).toISOString();
 
+    // Compute the true UTC bounds of the user's local calendar day for slot counting.
+    // getTimezoneOffset() returns (UTC − local) in minutes, e.g. CST = +360.
+    // Adding that offset to UTC midnight gives the user's actual local midnight in UTC.
+    // e.g. CST: Date.UTC(2026,2,6) + 360*60*1000 = 2026-03-06T06:00Z = midnight CST ✓
+    const tzOffsetParam = searchParams.get("tzOffset");
+    const tzOffsetMinutes = tzOffsetParam !== null && /^-?\d+$/.test(tzOffsetParam)
+      ? Math.max(-720, Math.min(840, parseInt(tzOffsetParam, 10)))
+      : 0;
+    const localDayStartUTC = new Date(
+      Date.UTC(localYear, localMonth - 1, localDay) + tzOffsetMinutes * 60 * 1000
+    ).toISOString();
+    const localDayEndUTC = new Date(
+      Date.UTC(localYear, localMonth - 1, localDay) + tzOffsetMinutes * 60 * 1000 + 86_400_000
+    ).toISOString();
+
     const reviewProblems = items
       .map((item: any) => {
         const problem = item.problems;
@@ -198,12 +213,14 @@ export async function GET(
 
       // Subtract slots already consumed today: problems whose first-ever attempt
       // was logged today (attempt_count === 1 and last_attempt_at is today).
+      // Use timezone-aware local-day bounds so post-6PM CST attempts (which are
+      // already UTC "tomorrow") are still counted as today's consumed slot.
       const newSlotsUsedToday = (dueProgressData ?? []).filter(
         (p: any) =>
           p.attempt_count === 1 &&
           p.last_attempt_at &&
-          p.last_attempt_at >= todayMidnightUTC &&
-          p.last_attempt_at < tomorrowMidnightUTC
+          p.last_attempt_at >= localDayStartUTC &&
+          p.last_attempt_at < localDayEndUTC
       ).length;
       const effectiveNewPerDay = Math.max(0, newPerDay - newSlotsUsedToday);
 

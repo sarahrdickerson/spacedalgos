@@ -1,65 +1,69 @@
-"use client"
+"use client";
 
-import React from "react"
-import { cn } from "@/lib/utils"
-import { Skeleton } from "@/components/ui/skeleton"
-import { LogAttemptDialog } from "@/components/log-attempt-dialog"
-import { ViewAttemptDialog } from "@/components/view-attempt-dialog"
-import { DashboardData } from "@/app/(protected)/_components/dashboard-provider"
-import LegendPopover from "./calendar/legend-popover"
-import { CustomCalendar } from "./ui/custom-calendar"
+import React from "react";
+import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
+import { LogAttemptDialog } from "@/components/log-attempt-dialog";
+import { ViewAttemptDialog } from "@/components/view-attempt-dialog";
+import { DashboardData } from "@/app/(protected)/_components/dashboard-provider";
+import LegendPopover from "./calendar/legend-popover";
+import { CustomCalendar } from "./ui/custom-calendar";
 
 interface PastAttempt {
-  problem_id: string
-  problem_key: string
-  problem_title: string
-  difficulty: "Easy" | "Medium" | "Hard"
-  category: string
-  attempted_at: string
-  grade: 0 | 1 | 2
-  stage: number
-  attempt_number: number
+  problem_id: string;
+  problem_key: string;
+  problem_title: string;
+  difficulty: "Easy" | "Medium" | "Hard";
+  category: string;
+  leetcode_url: string | null;
+  attempted_at: string;
+  grade: 0 | 1 | 2;
+  stage: number;
+  attempt_number: number;
 }
 
 interface UpcomingReview {
-  problem_id: string
-  problem_key: string
-  problem_title: string
-  difficulty: "Easy" | "Medium" | "Hard"
-  category: string
-  next_review_at: string
-  stage: number
-  attempt_count: number
+  problem_id: string;
+  problem_key: string;
+  problem_title: string;
+  difficulty: "Easy" | "Medium" | "Hard";
+  category: string;
+  leetcode_url: string | null;
+  next_review_at: string;
+  stage: number;
+  attempt_count: number;
 }
 
 interface ProjectedNew {
-  problem_id: string
-  problem_key: string
-  problem_title: string
-  difficulty: "Easy" | "Medium" | "Hard"
-  category: string
-  projected_date: string | null
-  is_today_new: boolean
-  order_index: number
+  problem_id: string;
+  problem_key: string;
+  problem_title: string;
+  difficulty: "Easy" | "Medium" | "Hard";
+  category: string;
+  leetcode_url: string | null;
+  projected_date: string | null;
+  is_today_new: boolean;
+  order_index: number;
 }
 
 interface CalendarData {
-  past_attempts: PastAttempt[]
-  upcoming_reviews: UpcomingReview[]
-  projected_new: ProjectedNew[]
+  past_attempts: PastAttempt[];
+  upcoming_reviews: UpcomingReview[];
+  projected_new: ProjectedNew[];
 }
 
 interface CalendarEvent {
-  id: string
-  title: string
-  problemKey: string
-  date: Date
-  isPast: boolean
-  isProjected?: boolean
-  stage?: number
-  grade?: 0 | 1 | 2
-  difficulty: "Easy" | "Medium" | "Hard"
-  attemptNumber?: number
+  id: string;
+  title: string;
+  problemKey: string;
+  leetcode_url?: string | null;
+  date: Date;
+  isPast: boolean;
+  isProjected?: boolean;
+  stage?: number;
+  grade?: 0 | 1 | 2;
+  difficulty: "Easy" | "Medium" | "Hard";
+  attemptNumber?: number;
 }
 
 interface CalendarProblemsProps {
@@ -69,161 +73,189 @@ interface CalendarProblemsProps {
   onRefresh?: () => Promise<void>;
 }
 
-export function CalendarProblems({ data, loading, error, onRefresh }: CalendarProblemsProps) {
-  const [selectedEvent, setSelectedEvent] = React.useState<CalendarEvent | null>(null)
-  const [dialogOpen, setDialogOpen] = React.useState(false)
-  const [viewAttemptOpen, setViewAttemptOpen] = React.useState(false)
-  const [calendarData, setCalendarData] = React.useState<CalendarData | null>(null)
-  const [calendarLoading, setCalendarLoading] = React.useState(true)
-  const [calendarError, setCalendarError] = React.useState<string | null>(null)
-  const lastFetchedKeyRef = React.useRef<string | null>(null)
-  const lastFetchedVersionRef = React.useRef<number>(-1)
-  const abortControllerRef = React.useRef<AbortController | null>(null)
+export function CalendarProblems({
+  data,
+  loading,
+  error,
+  onRefresh,
+}: CalendarProblemsProps) {
+  const [selectedEvent, setSelectedEvent] =
+    React.useState<CalendarEvent | null>(null);
+  const [dialogOpen, setDialogOpen] = React.useState(false);
+  const [viewAttemptOpen, setViewAttemptOpen] = React.useState(false);
+  const [calendarData, setCalendarData] = React.useState<CalendarData | null>(
+    null
+  );
+  const [calendarLoading, setCalendarLoading] = React.useState(true);
+  const [calendarError, setCalendarError] = React.useState<string | null>(null);
+  const lastFetchedKeyRef = React.useRef<string | null>(null);
+  const lastFetchedVersionRef = React.useRef<number>(-1);
+  const abortControllerRef = React.useRef<AbortController | null>(null);
 
   // Increment dataVersionRef on every new `data` prop to track when dashboard data refreshes (e.g. after logging an attempt)
-  const dataVersionRef = React.useRef(0)
-  const prevDataRef = React.useRef(data)
+  const dataVersionRef = React.useRef(0);
+  const prevDataRef = React.useRef(data);
   if (prevDataRef.current !== data) {
-    prevDataRef.current = data
-    dataVersionRef.current += 1
+    prevDataRef.current = data;
+    dataVersionRef.current += 1;
   }
 
-  const fetchCalendarData = React.useCallback(async (forceRefresh = false) => {
-    const activeListKey = data?.activeList?.key
-    const currentVersion = dataVersionRef.current
+  const fetchCalendarData = React.useCallback(
+    async (forceRefresh = false) => {
+      const activeListKey = data?.activeList?.key;
+      const currentVersion = dataVersionRef.current;
 
-    if (!activeListKey) {
-      setCalendarData(null)
-      setCalendarLoading(false)
-      lastFetchedKeyRef.current = null
-      return
-    }
-
-    // Skip fetch if we already have data for this list at this data version (unless forced)
-    if (
-      !forceRefresh &&
-      lastFetchedKeyRef.current === activeListKey &&
-      lastFetchedVersionRef.current === currentVersion
-    ) {
-      return
-    }
-
-    // Abort any existing request
-    abortControllerRef.current?.abort()
-    abortControllerRef.current = new AbortController()
-    const signal = abortControllerRef.current.signal
-
-    setCalendarLoading(true)
-    setCalendarError(null)
-
-    try {
-      const response = await fetch(
-        `/api/problemlists/${encodeURIComponent(activeListKey)}/calendar?localDate=${new Date().toLocaleDateString('en-CA')}&tzOffset=${new Date().getTimezoneOffset()}`,
-        { signal }
-      )
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch calendar data")
+      if (!activeListKey) {
+        setCalendarData(null);
+        setCalendarLoading(false);
+        lastFetchedKeyRef.current = null;
+        return;
       }
 
-      const calData = await response.json()
-      
-      // Only update state if request wasn't aborted
-      if (!signal.aborted) {
-        setCalendarData(calData)
-        lastFetchedKeyRef.current = activeListKey
-        lastFetchedVersionRef.current = currentVersion
+      // Skip fetch if we already have data for this list at this data version (unless forced)
+      if (
+        !forceRefresh &&
+        lastFetchedKeyRef.current === activeListKey &&
+        lastFetchedVersionRef.current === currentVersion
+      ) {
+        return;
       }
-    } catch (err) {
-      // Ignore abort errors
-      if (err instanceof Error && err.name === 'AbortError') {
-        return
+
+      // Abort any existing request
+      abortControllerRef.current?.abort();
+      abortControllerRef.current = new AbortController();
+      const signal = abortControllerRef.current.signal;
+
+      setCalendarLoading(true);
+      setCalendarError(null);
+
+      try {
+        const response = await fetch(
+          `/api/problemlists/${encodeURIComponent(
+            activeListKey
+          )}/calendar?localDate=${new Date().toLocaleDateString(
+            "en-CA"
+          )}&tzOffset=${new Date().getTimezoneOffset()}`,
+          { signal }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch calendar data");
+        }
+
+        const calData = await response.json();
+
+        // Only update state if request wasn't aborted
+        if (!signal.aborted) {
+          setCalendarData(calData);
+          lastFetchedKeyRef.current = activeListKey;
+          lastFetchedVersionRef.current = currentVersion;
+        }
+      } catch (err) {
+        // Ignore abort errors
+        if (err instanceof Error && err.name === "AbortError") {
+          return;
+        }
+        if (!signal.aborted) {
+          setCalendarError(
+            err instanceof Error ? err.message : "Unknown error"
+          );
+        }
+      } finally {
+        if (!signal.aborted) {
+          setCalendarLoading(false);
+        }
       }
-      if (!signal.aborted) {
-        setCalendarError(err instanceof Error ? err.message : "Unknown error")
-      }
-    } finally {
-      if (!signal.aborted) {
-        setCalendarLoading(false)
-      }
-    }
-  }, [data?.activeList?.key])
+    },
+    [data?.activeList?.key]
+  );
 
   // Fetch calendar data when active list changes or when dashboard data refreshes
   // (dataVersionRef.current increments on every new `data` prop, e.g. after a logged attempt)
-  const dataVersion = dataVersionRef.current
+  const dataVersion = dataVersionRef.current;
   React.useEffect(() => {
-    fetchCalendarData()
+    fetchCalendarData();
 
     return () => {
-      abortControllerRef.current?.abort()
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fetchCalendarData, dataVersion])
+      abortControllerRef.current?.abort();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchCalendarData, dataVersion]);
 
   const handleRefresh = React.useCallback(async () => {
-    await Promise.all([
-      onRefresh?.(),
-      fetchCalendarData(true),
-    ])
-  }, [onRefresh, fetchCalendarData])
+    await Promise.all([onRefresh?.(), fetchCalendarData(true)]);
+  }, [onRefresh, fetchCalendarData]);
 
   // Convert calendar data to events — must live before any conditional returns (Rules of Hooks)
   const events: CalendarEvent[] = React.useMemo(() => {
-    if (!calendarData) return []
+    if (!calendarData) return [];
 
-    const pastEvents: CalendarEvent[] = calendarData.past_attempts.map((attempt) => ({
-      id: `past-${attempt.problem_id}-${attempt.attempted_at}`,
-      title: attempt.problem_title,
-      problemKey: attempt.problem_key,
-      date: new Date(attempt.attempted_at),
-      isPast: true,
-      grade: attempt.grade,
-      stage: attempt.stage,
-      difficulty: attempt.difficulty,
-      attemptNumber: attempt.attempt_number,
-    }))
+    const pastEvents: CalendarEvent[] = calendarData.past_attempts.map(
+      (attempt) => ({
+        id: `past-${attempt.problem_id}-${attempt.attempted_at}`,
+        title: attempt.problem_title,
+        problemKey: attempt.problem_key,
+        leetcode_url: attempt.leetcode_url || "",
+        date: new Date(attempt.attempted_at),
+        isPast: true,
+        grade: attempt.grade,
+        stage: attempt.stage,
+        difficulty: attempt.difficulty,
+        attemptNumber: attempt.attempt_number,
+      })
+    );
 
-    const upcomingEvents: CalendarEvent[] = calendarData.upcoming_reviews.map((review) => ({
-      id: `upcoming-${review.problem_id}`,
-      title: review.problem_title,
-      problemKey: review.problem_key,
-      date: new Date(review.next_review_at),
-      isPast: false,
-      stage: review.stage,
-      difficulty: review.difficulty,
-      attemptNumber: review.attempt_count + 1,
-    }))
+    const upcomingEvents: CalendarEvent[] = calendarData.upcoming_reviews.map(
+      (review) => ({
+        id: `upcoming-${review.problem_id}`,
+        title: review.problem_title,
+        problemKey: review.problem_key,
+        leetcode_url: review.leetcode_url || "",
+        date: new Date(review.next_review_at),
+        isPast: false,
+        stage: review.stage,
+        difficulty: review.difficulty,
+        attemptNumber: review.attempt_count + 1,
+      })
+    );
 
     // Parse projected_date as local date (YYYY-MM-DD) to avoid UTC-midnight timezone shift.
     // is_today_new items carry no date string — resolve to client's local today instead.
-    const projectedEvents: CalendarEvent[] = (calendarData.projected_new ?? []).map((proj) => {
-      let date: Date
+    const projectedEvents: CalendarEvent[] = (
+      calendarData.projected_new ?? []
+    ).map((proj) => {
+      let date: Date;
       if (proj.is_today_new) {
-        const now = new Date()
-        date = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+        const now = new Date();
+        date = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       } else {
-        const [y, m, d] = proj.projected_date!.split("-").map(Number)
-        date = new Date(y, m - 1, d)
+        const [y, m, d] = proj.projected_date!.split("-").map(Number);
+        date = new Date(y, m - 1, d);
       }
       return {
         id: `projected-${proj.problem_id}`,
         title: proj.problem_title,
         problemKey: proj.problem_key,
+        leetcode_url: proj.leetcode_url || "",
         date,
         isPast: false,
         isProjected: true,
         difficulty: proj.difficulty,
-      }
-    })
+      };
+    });
 
-    return [...pastEvents, ...upcomingEvents, ...projectedEvents]
-  }, [calendarData])
+    return [...pastEvents, ...upcomingEvents, ...projectedEvents];
+  }, [calendarData]);
 
   // Handle error state
   if (error) {
-    const errorMessage = error instanceof Error ? error.message : typeof error === "string" ? error : "An unknown error occurred while loading the dashboard";
-    
+    const errorMessage =
+      error instanceof Error
+        ? error.message
+        : typeof error === "string"
+        ? error
+        : "An unknown error occurred while loading the dashboard";
+
     return (
       <div className="w-full">
         <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-6 text-center">
@@ -286,25 +318,25 @@ export function CalendarProblems({ data, loading, error, onRefresh }: CalendarPr
   const getEventsForDate = (date: Date): CalendarEvent[] => {
     return events.filter(
       (event) => event.date.toDateString() === date.toDateString()
-    )
-  }
+    );
+  };
 
   const renderDay = (date: Date) => {
-    const dayEvents = getEventsForDate(date)
+    const dayEvents = getEventsForDate(date);
 
     return (
       <div className="flex flex-col gap-1">
         {dayEvents.map((event) => {
           if (event.isPast) {
             // Past attempts - lighter/muted styling based on stage BEFORE the attempt
-            const stageColor = 
+            const stageColor =
               event.stage === 3
                 ? "bg-green-500/5 text-green-700/60 dark:text-green-400/60 hover:bg-green-500/10"
                 : event.stage === 2
-                  ? "bg-blue-500/5 text-blue-700/60 dark:text-blue-400/60 hover:bg-blue-500/10"
-                  : event.stage === 1
-                    ? "bg-yellow-500/5 text-yellow-700/60 dark:text-yellow-400/60 hover:bg-yellow-500/10"
-                    : "bg-gray-500/5 text-gray-700/60 dark:text-gray-400/60 hover:bg-gray-500/10"
+                ? "bg-blue-500/5 text-blue-700/60 dark:text-blue-400/60 hover:bg-blue-500/10"
+                : event.stage === 1
+                ? "bg-yellow-500/5 text-yellow-700/60 dark:text-yellow-400/60 hover:bg-yellow-500/10"
+                : "bg-gray-500/5 text-gray-700/60 dark:text-gray-400/60 hover:bg-gray-500/10";
 
             return (
               <button
@@ -314,15 +346,20 @@ export function CalendarProblems({ data, loading, error, onRefresh }: CalendarPr
                   "text-xs px-2 py-1 rounded text-left w-full opacity-60 transition-colors cursor-pointer",
                   stageColor
                 )}
-                title={`${event.title} - Stage ${event.stage || 0} attempt (Grade ${event.grade})`}
+                title={`${event.title} - Stage ${
+                  event.stage || 0
+                } attempt (Grade ${event.grade})`}
                 onClick={() => {
-                  setSelectedEvent(event)
-                  setViewAttemptOpen(true)
+                  setSelectedEvent(event);
+                  setViewAttemptOpen(true);
                 }}
               >
-                {event.title} <span className="text-muted-foreground">#{event.attemptNumber}</span>
+                {event.title}{" "}
+                <span className="text-muted-foreground">
+                  #{event.attemptNumber}
+                </span>
               </button>
-            )
+            );
           } else if (event.isProjected) {
             // Projected new problems — dashed outline, violet/muted, clickable to log first attempt
             return (
@@ -332,21 +369,21 @@ export function CalendarProblems({ data, loading, error, onRefresh }: CalendarPr
                 className="text-xs px-2 py-1 rounded text-left w-full border border-dashed border-violet-400/50 bg-violet-500/5 text-violet-700/60 dark:text-violet-400/60 hover:bg-violet-500/10 transition-colors"
                 title={`${event.title} — projected new problem (click to start)`}
                 onClick={() => {
-                  setSelectedEvent(event)
-                  setDialogOpen(true)
+                  setSelectedEvent(event);
+                  setDialogOpen(true);
                 }}
               >
                 {event.title}
               </button>
-            )
+            );
           } else {
             // Upcoming reviews - normal styling by stage
             const stageColor =
               event.stage === 1
                 ? "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 hover:bg-yellow-500/20"
                 : event.stage === 2
-                  ? "bg-blue-500/10 text-blue-700 dark:text-blue-400 hover:bg-blue-500/20"
-                  : "bg-green-500/10 text-green-700 dark:text-green-400 hover:bg-green-500/20"
+                ? "bg-blue-500/10 text-blue-700 dark:text-blue-400 hover:bg-blue-500/20"
+                : "bg-green-500/10 text-green-700 dark:text-green-400 hover:bg-green-500/20";
 
             return (
               <button
@@ -358,18 +395,21 @@ export function CalendarProblems({ data, loading, error, onRefresh }: CalendarPr
                 )}
                 title={`${event.title} - Stage ${event.stage} (Due for review)`}
                 onClick={() => {
-                  setSelectedEvent(event)
-                  setDialogOpen(true)
+                  setSelectedEvent(event);
+                  setDialogOpen(true);
                 }}
               >
-                {event.title} <span className="text-muted-foreground">#{event.attemptNumber}</span>
+                {event.title}{" "}
+                <span className="text-muted-foreground">
+                  #{event.attemptNumber}
+                </span>
               </button>
-            )
+            );
           }
         })}
       </div>
-    )
-  }
+    );
+  };
 
   if (loading || calendarLoading) {
     return (
@@ -424,7 +464,7 @@ export function CalendarProblems({ data, loading, error, onRefresh }: CalendarPr
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -436,39 +476,40 @@ export function CalendarProblems({ data, loading, error, onRefresh }: CalendarPr
           <LegendPopover />
         </div>
 
-        <CustomCalendar 
-          minHeight="150px"
-          renderDay={renderDay}
-        />
+        <CustomCalendar minHeight="150px" renderDay={renderDay} />
       </div>
-      
+
       {selectedEvent && dialogOpen && !selectedEvent.isPast && (
         <LogAttemptDialog
           problemKey={selectedEvent.problemKey}
           problemTitle={selectedEvent.title}
+          problemLink={selectedEvent.leetcode_url}
           open={dialogOpen}
           onOpenChange={setDialogOpen}
           onSuccess={handleRefresh}
         />
       )}
 
-      {selectedEvent && viewAttemptOpen && selectedEvent.isPast && (() => {
-        // Runtime validation: ensure grade is a valid value
-        const grade = selectedEvent.grade ?? 0
-        const validGrade: 0 | 1 | 2 = 
-          grade === 0 || grade === 1 || grade === 2 ? grade : 0
-        
-        return (
-          <ViewAttemptDialog
-            problemKey={selectedEvent.problemKey}
-            problemTitle={selectedEvent.title}
-            attemptDate={selectedEvent.date.toISOString()}
-            grade={validGrade}
-            open={viewAttemptOpen}
-            onOpenChange={setViewAttemptOpen}
-          />
-        )
-      })()}
+      {selectedEvent &&
+        viewAttemptOpen &&
+        selectedEvent.isPast &&
+        (() => {
+          // Runtime validation: ensure grade is a valid value
+          const grade = selectedEvent.grade ?? 0;
+          const validGrade: 0 | 1 | 2 =
+            grade === 0 || grade === 1 || grade === 2 ? grade : 0;
+
+          return (
+            <ViewAttemptDialog
+              problemKey={selectedEvent.problemKey}
+              problemTitle={selectedEvent.title}
+              attemptDate={selectedEvent.date.toISOString()}
+              grade={validGrade}
+              open={viewAttemptOpen}
+              onOpenChange={setViewAttemptOpen}
+            />
+          );
+        })()}
     </>
-  )
+  );
 }

@@ -44,12 +44,7 @@ export async function updateSession(request: NextRequest) {
   if (request.nextUrl.pathname === "/" && user) {
     const url = request.nextUrl.clone();
     url.pathname = "/dash";
-    const redirectResponse = NextResponse.redirect(url);
-    // Copy over cookies to preserve auth state
-    supabaseResponse.cookies.getAll().forEach((cookie) => {
-      redirectResponse.cookies.set(cookie.name, cookie.value);
-    });
-    return redirectResponse;
+    return NextResponse.redirect(url);
   }
 
   if (
@@ -63,12 +58,7 @@ export async function updateSession(request: NextRequest) {
     // no user, potentially respond by redirecting the user to /auth/continue to continue the auth flow
     const url = request.nextUrl.clone();
     url.pathname = "/auth/continue";
-    const redirectResponse = NextResponse.redirect(url);
-    // Copy over cookies to preserve auth state
-    supabaseResponse.cookies.getAll().forEach((cookie) => {
-      redirectResponse.cookies.set(cookie.name, cookie.value);
-    });
-    return redirectResponse;
+    return NextResponse.redirect(url);
   }
 
   // IMPORTANT: You *must* return the supabaseResponse object as it is.

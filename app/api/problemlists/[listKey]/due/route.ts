@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ listKey: string }> }
 ) {
   try {
@@ -128,8 +128,19 @@ export async function GET(
 
     // 7) Build the review queue (all problems that have a progress row)
     const now = new Date();
+
+    // Use local time to determine "due today" to address UTC offset issues
+    const { searchParams } = new URL(request.url);
+    const localDateParam = searchParams.get("localDate"); // "YYYY-MM-DD"
+    const [localYear, localMonth, localDay] = localDateParam
+      ? localDateParam.split("-").map(Number)
+      : [now.getUTCFullYear(), now.getUTCMonth() + 1, now.getUTCDate()];
+
     const todayMidnightUTC = new Date(
-      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+      Date.UTC(localYear, localMonth - 1, localDay)
+    ).toISOString();
+    const tomorrowMidnightUTC = new Date(
+      Date.UTC(localYear, localMonth - 1, localDay + 1)
     ).toISOString();
 
     const reviewProblems = items
@@ -181,9 +192,6 @@ export async function GET(
 
       // Subtract slots already consumed today: problems whose first-ever attempt
       // was logged today (attempt_count === 1 and last_attempt_at is today).
-      const tomorrowMidnightUTC = new Date(
-        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1)
-      ).toISOString();
       const newSlotsUsedToday = (dueProgressData ?? []).filter(
         (p: any) =>
           p.attempt_count === 1 &&
@@ -220,7 +228,7 @@ export async function GET(
       );
 
       const tomorrowUTC = new Date(
-        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1)
+        Date.UTC(localYear, localMonth - 1, localDay + 1)
       );
       let problemIndex = 0;
       let dayOffset = 0;

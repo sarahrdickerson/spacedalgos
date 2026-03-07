@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   props: { params: Promise<{ listKey: string }> }
 ) {
   try {
@@ -193,13 +193,19 @@ export async function GET(
 
     const projectedNew: any[] = [];
     if (newPerDay > 0 && unseenItems.length > 0) {
-      // Check if any reviews are overdue (same rule as /due route)
+      // Use client's local date so midnight boundary matches the user's timezone
+      const { searchParams } = new URL(request.url);
+      const localDateParam = searchParams.get("localDate");
       const now = new Date();
+      const [localYear, localMonth, localDay] = localDateParam
+        ? localDateParam.split("-").map(Number)
+        : [now.getUTCFullYear(), now.getUTCMonth() + 1, now.getUTCDate()];
+
       const todayMidnightUTC = new Date(
-        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+        Date.UTC(localYear, localMonth - 1, localDay)
       ).toISOString();
       const tomorrowMidnightUTC = new Date(
-        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1)
+        Date.UTC(localYear, localMonth - 1, localDay + 1)
       ).toISOString();
 
       // Count "new" slots already consumed today: problems whose very first attempt
@@ -246,7 +252,7 @@ export async function GET(
 
       const itemsToProject = unseenItems.slice(projectionStartIndex);
       const tomorrow = new Date(
-        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1)
+        Date.UTC(localYear, localMonth - 1, localDay + 1)
       );
 
       let problemIndex = 0;

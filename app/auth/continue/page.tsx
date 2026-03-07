@@ -1,4 +1,3 @@
-import React from "react";
 import ContinueForm from "./_components/continue-form";
 
 const ContinuePage = () => {

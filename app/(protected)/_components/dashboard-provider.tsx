@@ -1,6 +1,13 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  ReactNode,
+} from "react";
 import { useRouter } from "next/navigation";
 
 export interface ProblemProgress {
@@ -21,7 +28,7 @@ export interface Problem {
   title: string;
   category: string;
   difficulty: string;
-  leetcode_url?: string;
+  leetcode_url: string;
   order_index?: number;
   is_new?: boolean;
   projected_date?: string | null; // ISO date string for upcoming projected new problems
@@ -76,12 +83,14 @@ interface DashboardContextType {
   refreshData: () => Promise<void>;
 }
 
-const DashboardContext = createContext<DashboardContextType | undefined>(undefined);
+const DashboardContext = createContext<DashboardContextType | undefined>(
+  undefined
+);
 
 export function useDashboard() {
   const context = useContext(DashboardContext);
   if (context === undefined) {
-    throw new Error('useDashboard must be used within DashboardProvider');
+    throw new Error("useDashboard must be used within DashboardProvider");
   }
   return context;
 }
@@ -99,27 +108,33 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
 
       // Fetch initial data in parallel
       const [activePlanRes, problemListsRes, streakRes] = await Promise.all([
-        fetch('/api/user/active-study-plan'),
-        fetch('/api/problemlists'),
-        fetch(`/api/user/streak?localDate=${new Date().toLocaleDateString('en-CA')}`),  
+        fetch("/api/user/active-study-plan"),
+        fetch("/api/problemlists"),
+        fetch(
+          `/api/user/streak?localDate=${new Date().toLocaleDateString("en-CA")}`
+        ),
       ]);
 
       // Check for auth errors
-      if (activePlanRes.status === 401 || problemListsRes.status === 401 || streakRes.status === 401) {
+      if (
+        activePlanRes.status === 401 ||
+        problemListsRes.status === 401 ||
+        streakRes.status === 401
+      ) {
         // Clear any previously loaded protected data before redirecting
         setData(null);
         setError(null);
-        router.replace('/auth/login');
+        router.replace("/auth/login");
         return;
       }
 
       // Check for API failures
       if (!activePlanRes.ok) {
-        throw new Error('Failed to fetch active study plan');
+        throw new Error("Failed to fetch active study plan");
       }
 
       if (!problemListsRes.ok) {
-        throw new Error('Failed to fetch problem lists');
+        throw new Error("Failed to fetch problem lists");
       }
 
       // Streak is optional - don't fail if it's unavailable
@@ -136,32 +151,40 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
         const encodedKey = encodeURIComponent(activePlanData.active_list.key);
         const [statsRes, dueRes, progressRes] = await Promise.all([
           fetch(`/api/problemlists/${encodedKey}/stats`),
-          fetch(`/api/problemlists/${encodedKey}/due?localDate=${new Date().toLocaleDateString('en-CA')}&tzOffset=${new Date().getTimezoneOffset()}`),
+          fetch(
+            `/api/problemlists/${encodedKey}/due?localDate=${new Date().toLocaleDateString(
+              "en-CA"
+            )}&tzOffset=${new Date().getTimezoneOffset()}`
+          ),
           fetch(`/api/problemlists/${encodedKey}/progress`),
         ]);
 
         if (!statsRes.ok) {
-          throw new Error('Failed to fetch study plan statistics');
+          throw new Error("Failed to fetch study plan statistics");
         }
 
         if (!dueRes.ok) {
-          throw new Error('Failed to fetch due problems');
+          throw new Error("Failed to fetch due problems");
         }
 
         if (!progressRes.ok) {
-          throw new Error('Failed to fetch problem list');
+          throw new Error("Failed to fetch problem list");
         }
 
         stats = await statsRes.json();
         const dueData = await dueRes.json();
         const progressData = await progressRes.json();
         dueProblems = dueData?.due_problems || [];
-        allProblems = Array.isArray(progressData?.problems) ? progressData.problems : [];
+        allProblems = Array.isArray(progressData?.problems)
+          ? progressData.problems
+          : [];
       }
 
       setData({
         activeList: activePlanData.active_list,
-        problemLists: Array.isArray(problemListsData?.data) ? problemListsData.data : [],
+        problemLists: Array.isArray(problemListsData?.data)
+          ? problemListsData.data
+          : [],
         streak: streakData,
         stats,
         dueProblems,
@@ -169,8 +192,8 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
         studyPlan: activePlanData.study_plan ?? null,
       });
     } catch (err) {
-      console.error('Error fetching dashboard data:', err);
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      console.error("Error fetching dashboard data:", err);
+      setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
       setLoading(false);
     }

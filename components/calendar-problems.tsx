@@ -77,10 +77,20 @@ export function CalendarProblems({ data, loading, error, onRefresh }: CalendarPr
   const [calendarLoading, setCalendarLoading] = React.useState(true)
   const [calendarError, setCalendarError] = React.useState<string | null>(null)
   const lastFetchedKeyRef = React.useRef<string | null>(null)
+  const lastFetchedVersionRef = React.useRef<number>(-1)
   const abortControllerRef = React.useRef<AbortController | null>(null)
+
+  // Increment dataVersionRef on every new `data` prop to track when dashboard data refreshes (e.g. after logging an attempt)
+  const dataVersionRef = React.useRef(0)
+  const prevDataRef = React.useRef(data)
+  if (prevDataRef.current !== data) {
+    prevDataRef.current = data
+    dataVersionRef.current += 1
+  }
 
   const fetchCalendarData = React.useCallback(async (forceRefresh = false) => {
     const activeListKey = data?.activeList?.key
+    const currentVersion = dataVersionRef.current
 
     if (!activeListKey) {
       setCalendarData(null)
@@ -89,8 +99,12 @@ export function CalendarProblems({ data, loading, error, onRefresh }: CalendarPr
       return
     }
 
-    // Skip fetch if we already have data for this list (unless forced)
-    if (!forceRefresh && lastFetchedKeyRef.current === activeListKey) {
+    // Skip fetch if we already have data for this list at this data version (unless forced)
+    if (
+      !forceRefresh &&
+      lastFetchedKeyRef.current === activeListKey &&
+      lastFetchedVersionRef.current === currentVersion
+    ) {
       return
     }
 
@@ -118,6 +132,7 @@ export function CalendarProblems({ data, loading, error, onRefresh }: CalendarPr
       if (!signal.aborted) {
         setCalendarData(calData)
         lastFetchedKeyRef.current = activeListKey
+        lastFetchedVersionRef.current = currentVersion
       }
     } catch (err) {
       // Ignore abort errors
@@ -134,14 +149,17 @@ export function CalendarProblems({ data, loading, error, onRefresh }: CalendarPr
     }
   }, [data?.activeList?.key])
 
-  // Fetch calendar data when active plan changes
+  // Fetch calendar data when active list changes or when dashboard data refreshes
+  // (dataVersionRef.current increments on every new `data` prop, e.g. after a logged attempt)
+  const dataVersion = dataVersionRef.current
   React.useEffect(() => {
     fetchCalendarData()
-    
+
     return () => {
       abortControllerRef.current?.abort()
     }
-  }, [fetchCalendarData])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchCalendarData, dataVersion])
 
   const handleRefresh = React.useCallback(async () => {
     await Promise.all([

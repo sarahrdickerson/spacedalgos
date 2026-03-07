@@ -37,28 +37,142 @@ export default function Home() {
             className="drop-shadow-lg"
           >
             {/* Monitor body */}
-            <rect x="20" y="10" width="140" height="100" rx="12" className="fill-card stroke-border" strokeWidth="2"/>
+            <rect
+              x="20"
+              y="10"
+              width="140"
+              height="100"
+              rx="12"
+              className="fill-card stroke-border"
+              strokeWidth="2"
+            />
             {/* Screen */}
-            <rect x="32" y="22" width="116" height="76" rx="6" className="fill-muted"/>
+            <rect
+              x="32"
+              y="22"
+              width="116"
+              height="76"
+              rx="6"
+              className="fill-muted"
+            />
             {/* Screen glow / code lines */}
-            <rect x="42" y="36" width="60" height="5" rx="2.5" className="fill-primary" opacity="0.7"/>
-            <rect x="42" y="47" width="80" height="5" rx="2.5" className="fill-primary" opacity="0.4"/>
-            <rect x="42" y="58" width="50" height="5" rx="2.5" className="fill-primary" opacity="0.6"/>
-            <rect x="42" y="69" width="70" height="5" rx="2.5" className="fill-primary" opacity="0.3"/>
-            <rect x="42" y="80" width="40" height="5" rx="2.5" className="fill-primary" opacity="0.5"/>
+            <rect
+              x="42"
+              y="36"
+              width="60"
+              height="5"
+              rx="2.5"
+              className="fill-primary"
+              opacity="0.7"
+            />
+            <rect
+              x="42"
+              y="47"
+              width="80"
+              height="5"
+              rx="2.5"
+              className="fill-primary"
+              opacity="0.4"
+            />
+            <rect
+              x="42"
+              y="58"
+              width="50"
+              height="5"
+              rx="2.5"
+              className="fill-primary"
+              opacity="0.6"
+            />
+            <rect
+              x="42"
+              y="69"
+              width="70"
+              height="5"
+              rx="2.5"
+              className="fill-primary"
+              opacity="0.3"
+            />
+            <rect
+              x="42"
+              y="80"
+              width="40"
+              height="5"
+              rx="2.5"
+              className="fill-primary"
+              opacity="0.5"
+            />
             {/* Cursor blink */}
-            <rect x="86" y="80" width="3" height="5" rx="1" className="fill-primary"/>
+            <rect
+              x="86"
+              y="80"
+              width="3"
+              height="5"
+              rx="1"
+              className="fill-primary"
+            />
             {/* Stand neck */}
-            <rect x="82" y="110" width="16" height="16" rx="2" className="fill-muted stroke-border" strokeWidth="1.5"/>
+            <rect
+              x="82"
+              y="110"
+              width="16"
+              height="16"
+              rx="2"
+              className="fill-muted stroke-border"
+              strokeWidth="1.5"
+            />
             {/* Stand base */}
-            <rect x="60" y="126" width="60" height="10" rx="5" className="fill-muted stroke-border" strokeWidth="1.5"/>
+            <rect
+              x="60"
+              y="126"
+              width="60"
+              height="10"
+              rx="5"
+              className="fill-muted stroke-border"
+              strokeWidth="1.5"
+            />
             {/* Little stars / sparkles */}
-            <circle cx="162" cy="22" r="3" className="fill-primary" opacity="0.5"/>
-            <circle cx="170" cy="38" r="2" className="fill-primary" opacity="0.35"/>
-            <circle cx="155" cy="42" r="1.5" className="fill-primary" opacity="0.5"/>
-            <circle cx="18" cy="55" r="2.5" className="fill-primary" opacity="0.4"/>
-            <circle cx="10" cy="38" r="1.5" className="fill-primary" opacity="0.3"/>
-            <circle cx="25" cy="30" r="2" className="fill-primary" opacity="0.45"/>
+            <circle
+              cx="162"
+              cy="22"
+              r="3"
+              className="fill-primary"
+              opacity="0.5"
+            />
+            <circle
+              cx="170"
+              cy="38"
+              r="2"
+              className="fill-primary"
+              opacity="0.35"
+            />
+            <circle
+              cx="155"
+              cy="42"
+              r="1.5"
+              className="fill-primary"
+              opacity="0.5"
+            />
+            <circle
+              cx="18"
+              cy="55"
+              r="2.5"
+              className="fill-primary"
+              opacity="0.4"
+            />
+            <circle
+              cx="10"
+              cy="38"
+              r="1.5"
+              className="fill-primary"
+              opacity="0.3"
+            />
+            <circle
+              cx="25"
+              cy="30"
+              r="2"
+              className="fill-primary"
+              opacity="0.45"
+            />
           </svg>
           {/* Floating badge */}
           <span className="absolute -top-2 -right-4 text-xs bg-primary text-primary-foreground rounded-full px-2 py-0.5 font-semibold shadow">
@@ -73,7 +187,8 @@ export default function Home() {
             <span className="text-primary">what you learn.</span>
           </h1>
           <p className="text-muted-foreground text-lg leading-relaxed">
-            Spaced repetition for coding interview prep. Practice the right problems at the right time — so nothing slips through the cracks.
+            Spaced repetition for coding interview prep. Practice the right
+            problems at the right time — so nothing slips through the cracks.
           </p>
         </div>
 
@@ -98,14 +213,28 @@ export default function Home() {
       <div className="border-t border-border/50 bg-muted/30">
         <div className="max-w-3xl mx-auto px-6 py-12 grid grid-cols-1 sm:grid-cols-3 gap-8 text-center">
           {[
-            { emoji: "🧠", title: "Spaced repetition", body: "Smart scheduling surfaces problems exactly when you're about to forget them." },
-            { emoji: "📅", title: "Visual calendar", body: "See your review schedule at a glance and plan your practice around your life." },
-            { emoji: "🔥", title: "Streak tracking", body: "Build a daily habit with streaks that keep you accountable and motivated." },
+            {
+              emoji: "🧠",
+              title: "Spaced repetition",
+              body: "Smart scheduling surfaces problems exactly when you're about to forget them.",
+            },
+            {
+              emoji: "📅",
+              title: "Visual calendar",
+              body: "See your review schedule at a glance and plan your practice around your life.",
+            },
+            {
+              emoji: "🔥",
+              title: "Streak tracking",
+              body: "Build a daily habit with streaks that keep you accountable and motivated.",
+            },
           ].map(({ emoji, title, body }) => (
             <div key={title} className="flex flex-col items-center gap-2">
               <span className="text-3xl">{emoji}</span>
               <h3 className="font-semibold text-sm">{title}</h3>
-              <p className="text-xs text-muted-foreground leading-relaxed">{body}</p>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                {body}
+              </p>
             </div>
           ))}
         </div>
@@ -113,7 +242,16 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="text-center py-6 text-xs text-muted-foreground/50 border-t border-border/30">
-        developed by sarah dickerson · spaced algos
+        developed by{" "}
+        <Link
+          href="https://sarahrdickerson.github.io"
+          target="_blank"
+          className="font-bold hover:underline"
+          rel="noreferrer"
+        >
+          sarah dickerson
+        </Link>{" "}
+        · spaced algos
       </footer>
     </main>
   );

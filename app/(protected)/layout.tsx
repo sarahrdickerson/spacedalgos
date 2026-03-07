@@ -20,7 +20,9 @@ export default function ProtectedLayout({
             {/* Mobile Menubar */}
             <div className="flex flex-row justify-start md:hidden items-center gap-2">
               <MobileNav />
-              <h1 className="text-xl font-bold">spaced algos</h1>
+              <Link href={"/dash"} className="text-xl font-bold">
+                spaced algos
+              </Link>
             </div>
 
             {/* Desktop Menubar */}

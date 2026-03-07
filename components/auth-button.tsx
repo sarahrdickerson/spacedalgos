@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ChatBubbleIcon, GearIcon, PersonIcon } from "@radix-ui/react-icons";
+import { ChatBubbleIcon, GearIcon } from "@radix-ui/react-icons";
 
 export async function AuthButton() {
   const supabase = await createClient();

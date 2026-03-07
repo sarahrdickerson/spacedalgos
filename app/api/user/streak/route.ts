@@ -52,6 +52,12 @@ export async function GET(request: Request) {
       // (when UTC has already flipped to the next day).
       const { searchParams } = new URL(request.url);
       const localDateParam = searchParams.get("localDate");
+      if (localDateParam && !/^\d{4}-\d{2}-\d{2}$/.test(localDateParam)) {
+        return NextResponse.json(
+          { error: "Invalid localDate format, expected YYYY-MM-DD" },
+          { status: 400 }
+        );
+      }
       const yesterdayStr = localDateParam
         ? (() => {
             const [y, m, d] = localDateParam.split("-").map(Number);

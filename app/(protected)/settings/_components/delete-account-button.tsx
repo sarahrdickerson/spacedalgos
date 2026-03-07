@@ -45,7 +45,7 @@ export function DeleteAccountButton() {
   };
 
   return (
-    <AlertDialog open={open} onOpenChange={setOpen}>
+    <AlertDialog open={open} onOpenChange={(val) => { setOpen(val); if (!val) setConfirmation(""); }}>
       <AlertDialogTrigger asChild>
         <Button variant="destructive" size="sm">
           Delete account

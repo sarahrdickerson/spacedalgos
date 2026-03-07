@@ -1,22 +1,23 @@
-import fs from "fs";
-import path from "path";
 import FeedbackForm from "./_components/feedback-form";
 
-const CATS_DIR = path.join(process.cwd(), "public", "images", "cats");
-const IMAGE_EXTS = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif"]);
-
-function getCatImages(): string[] {
-  try {
-    return fs
-      .readdirSync(CATS_DIR)
-      .filter((f) => IMAGE_EXTS.has(path.extname(f).toLowerCase()))
-      .map((f) => `/images/cats/${f}`);
-  } catch {
-    return [];
-  }
-}
+const CAT_IMAGES = [
+  "/images/cats/cat1.jpeg",
+  "/images/cats/cat2.jpeg",
+  "/images/cats/cat3.png",
+  "/images/cats/cat4.png",
+  "/images/cats/cat5.jpeg",
+  "/images/cats/cat6.jpeg",
+  "/images/cats/cat7.jpeg",
+  "/images/cats/cat8.png",
+  "/images/cats/cat9.jpeg",
+  "/images/cats/cat10.png",
+  "/images/cats/cat11.png",
+  "/images/cats/cat12.jpeg",
+  "/images/cats/cat13.jpeg",
+  "/images/cats/cat14.jpeg",
+  "/images/cats/cat15.jpeg",
+];
 
 export default function FeedbackPage() {
-  const catImages = getCatImages();
-  return <FeedbackForm catImages={catImages} />;
+  return <FeedbackForm catImages={CAT_IMAGES} />;
 }

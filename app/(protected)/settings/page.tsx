@@ -117,7 +117,7 @@ export default function SettingsPage() {
             <div>
               <p className="text-sm font-medium">Delete account</p>
               <p className="text-sm text-muted-foreground">
-                Permanently delete your account and all data. Coming soon.
+                Permanently delete your account and all data.
               </p>
             </div>
           </div>

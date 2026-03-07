@@ -132,6 +132,12 @@ export async function GET(
     // Use local time to determine "due today" to address UTC offset issues
     const { searchParams } = new URL(request.url);
     const localDateParam = searchParams.get("localDate"); // "YYYY-MM-DD"
+    if (localDateParam && !/^\d{4}-\d{2}-\d{2}$/.test(localDateParam)) {
+      return NextResponse.json(
+        { error: "Invalid localDate format, expected YYYY-MM-DD" },
+        { status: 400 }
+      );
+    }
     const [localYear, localMonth, localDay] = localDateParam
       ? localDateParam.split("-").map(Number)
       : [now.getUTCFullYear(), now.getUTCMonth() + 1, now.getUTCDate()];

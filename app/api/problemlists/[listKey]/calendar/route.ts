@@ -196,6 +196,12 @@ export async function GET(
       // Use client's local date so midnight boundary matches the user's timezone
       const { searchParams } = new URL(request.url);
       const localDateParam = searchParams.get("localDate");
+      if (localDateParam && !/^\d{4}-\d{2}-\d{2}$/.test(localDateParam)) {
+        return NextResponse.json(
+          { error: "Invalid localDate format, expected YYYY-MM-DD" },
+          { status: 400 }
+        );
+      }
       const now = new Date();
       const [localYear, localMonth, localDay] = localDateParam
         ? localDateParam.split("-").map(Number)

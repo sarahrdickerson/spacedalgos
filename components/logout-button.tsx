@@ -10,12 +10,15 @@ export function LogoutButton() {
   const logout = async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
-    router.push("/auth/login");
+    router.push("/auth/continue");
   };
 
   return (
-    <button onClick={logout} className="flex flex-row items-center gap-2 w-full">
-      <ExitIcon /> Logout 
+    <button
+      onClick={logout}
+      className="flex flex-row items-center gap-2 w-full"
+    >
+      <ExitIcon /> Logout
     </button>
   );
 }

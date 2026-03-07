@@ -45,8 +45,16 @@ export async function AuthButton() {
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuItem asChild><Link href="/settings"><GearIcon /> Settings</Link></DropdownMenuItem>
-          <DropdownMenuItem asChild><Link href="/feedback"><ChatBubbleIcon /> Feedback</Link></DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href="/settings">
+              <GearIcon /> Settings
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href="/feedback">
+              <ChatBubbleIcon /> Feedback
+            </Link>
+          </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
@@ -59,10 +67,7 @@ export async function AuthButton() {
   ) : (
     <div className="flex gap-2">
       <Button asChild size="sm" variant={"outline"}>
-        <Link href="/auth/login">Sign in</Link>
-      </Button>
-      <Button asChild size="sm" variant={"default"}>
-        <Link href="/auth/sign-up">Sign up</Link>
+        <Link href="/auth/continue">Sign up / Continue</Link>
       </Button>
     </div>
   );

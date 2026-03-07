@@ -101,7 +101,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       const [activePlanRes, problemListsRes, streakRes] = await Promise.all([
         fetch('/api/user/active-study-plan'),
         fetch('/api/problemlists'),
-        fetch('/api/user/streak'),
+        fetch(`/api/user/streak?localDate=${new Date().toLocaleDateString('en-CA')}`),  
       ]);
 
       // Check for auth errors

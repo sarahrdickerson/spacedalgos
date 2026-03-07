@@ -61,6 +61,7 @@ export function LogAttemptDialog({
           time_bucket: timeSpent || null,
           note: note || null,
           attempted_at: new Date().toISOString(),
+          localDate: new Date().toLocaleDateString('en-CA'),
         }),
       });
 

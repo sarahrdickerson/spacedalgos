@@ -231,7 +231,7 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="text-center py-6 text-xs text-muted-foreground/50 border-t border-border/30">
-        developed by{" "}
+        spaced algos beta v{packageJson.version} · developed by{" "}
         <Link
           href="https://sarahrdickerson.github.io"
           target="_blank"
@@ -239,8 +239,7 @@ export default function Home() {
           rel="noreferrer"
         >
           sarah dickerson
-        </Link>{" "}
-        · spaced algos beta v{packageJson.version}
+        </Link>
       </footer>
     </main>
   );

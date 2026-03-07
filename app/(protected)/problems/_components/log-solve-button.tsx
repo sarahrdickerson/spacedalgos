@@ -9,9 +9,14 @@ import { useDashboard } from "../../_components/dashboard-provider";
 type LogSolveButtonProps = {
   problemKey: string;
   problemTitle: string;
+  problemLink: string;
 };
 
-const LogSolveButton = ({ problemKey, problemTitle }: LogSolveButtonProps) => {
+const LogSolveButton = ({
+  problemKey,
+  problemTitle,
+  problemLink,
+}: LogSolveButtonProps) => {
   const [dialogOpen, setDialogOpen] = React.useState<boolean>(false);
   const { refreshData } = useDashboard();
 
@@ -23,6 +28,7 @@ const LogSolveButton = ({ problemKey, problemTitle }: LogSolveButtonProps) => {
       <LogAttemptDialog
         problemKey={problemKey}
         problemTitle={problemTitle}
+        problemLink={problemLink}
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         onSuccess={refreshData}

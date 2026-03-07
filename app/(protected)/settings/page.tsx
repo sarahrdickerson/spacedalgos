@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ThemeSwitcherInline } from "@/components/theme-switcher-inline";
+import { DeleteAccountButton } from "./_components/delete-account-button";
 import Link from "next/link";
 
 async function AccountCard() {
@@ -120,9 +121,7 @@ export default function SettingsPage() {
               </p>
             </div>
           </div>
-          <Button variant="destructive" size="sm" disabled>
-            Delete account
-          </Button>
+          <DeleteAccountButton />
         </CardContent>
       </Card>
     </div>

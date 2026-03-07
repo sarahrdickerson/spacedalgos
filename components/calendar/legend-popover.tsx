@@ -25,21 +25,24 @@ const LegendPopover = () => {
               <div className="flex items-center gap-2 text-xs">
                 <div className="w-4 h-4 rounded bg-gray-500/20 border border-gray-500/30 flex-shrink-0"></div>
                 <span className="font-medium">First Attempt</span>
+                <span className="text-muted-foreground">(review next day)</span>
               </div>
               <div className="flex items-center gap-2 text-xs">
                 <div className="w-4 h-4 rounded bg-yellow-500/20 border border-yellow-500/30 flex-shrink-0"></div>
                 <span className="font-medium">Learning</span>
-                <span className="text-muted-foreground">(~2 days)</span>
+                <span className="text-muted-foreground">(~1-4 days)</span>
               </div>
               <div className="flex items-center gap-2 text-xs">
                 <div className="w-4 h-4 rounded bg-blue-500/20 border border-blue-500/30 flex-shrink-0"></div>
                 <span className="font-medium">Reinforcing</span>
-                <span className="text-muted-foreground">(~5 days)</span>
+                <span className="text-muted-foreground">(~1-2 weeks)</span>
               </div>
               <div className="flex items-center gap-2 text-xs">
                 <div className="w-4 h-4 rounded bg-green-500/20 border border-green-500/30 flex-shrink-0"></div>
                 <span className="font-medium">Mastered</span>
-                <span className="text-muted-foreground">(~21+ days)</span>
+                <span className="text-muted-foreground">
+                  (~monthly/quarterly)
+                </span>
               </div>
             </div>
           </div>

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ThemeSwitcher } from "@/components/theme-switcher";
+import packageJson from "@/package.json";
 
 export default function Home() {
   return (
@@ -251,7 +252,7 @@ export default function Home() {
         >
           sarah dickerson
         </Link>{" "}
-        · spaced algos
+        · spaced algos beta v{packageJson.version}
       </footer>
     </main>
   );

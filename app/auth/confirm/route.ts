@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
       console.error("OAuth error:", error);
       redirect(
         `/auth/error?error=${encodeURIComponent(
-          error.message || "Authentication failed. Please try again."
+          "Authentication failed. Please try again."
         )}`
       );
     }

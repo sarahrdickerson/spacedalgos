@@ -22,11 +22,36 @@ export async function GET(request: NextRequest) {
   // Handle OAuth callback
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) {
-      redirect(next ?? "/dash");
-    } else {
-      redirect(`/auth/error?error=${encodeURIComponent("Authentication failed. Please try again.")}`);
+    if (error) {
+      console.error("OAuth error:", error);
+      redirect(
+        `/auth/error?error=${encodeURIComponent(
+          error.message || "Authentication failed. Please try again."
+        )}`
+      );
     }
+
+    // For new users, ensure user_preferences row exists
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (user) {
+      // Try to create user_preferences if it doesn't exist (ignore conflicts)
+      await supabase.from("user_preferences").upsert(
+        {
+          user_id: user.id,
+          current_streak: 0,
+          longest_streak: 0,
+        },
+        {
+          onConflict: "user_id",
+          ignoreDuplicates: true,
+        }
+      );
+    }
+
+    redirect(next ?? "/dash");
   }
 
   // Handle email verification
@@ -38,10 +63,16 @@ export async function GET(request: NextRequest) {
     if (!error) {
       redirect(next ?? "/dash");
     } else {
-      redirect(`/auth/error?error=${encodeURIComponent("Verification failed. Please try again.")}`);
+      redirect(
+        `/auth/error?error=${encodeURIComponent(
+          "Verification failed. Please try again."
+        )}`
+      );
     }
   }
 
   // redirect the user to an error page with some instructions
-  redirect(`/auth/error?error=${encodeURIComponent("Invalid authentication request.")}`);
+  redirect(
+    `/auth/error?error=${encodeURIComponent("Invalid authentication request.")}`
+  );
 }

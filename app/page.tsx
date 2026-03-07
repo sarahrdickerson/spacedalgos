@@ -11,16 +11,10 @@ export default function Home() {
         <div className="flex items-center gap-3">
           <ThemeSwitcher />
           <Link
-            href="/auth/login"
+            href="/auth/continue"
             className="text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             Sign in
-          </Link>
-          <Link
-            href="/auth/sign-up"
-            className="text-sm px-4 py-1.5 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors font-medium"
-          >
-            Get started
           </Link>
         </div>
       </nav>
@@ -196,16 +190,10 @@ export default function Home() {
         {/* CTA */}
         <div className="flex flex-col sm:flex-row items-center gap-3">
           <Link
-            href="/auth/sign-up"
+            href="/auth/continue"
             className="px-8 py-3 rounded-full bg-primary text-primary-foreground font-semibold text-base hover:bg-primary/90 transition-colors shadow-md"
           >
             Get started →
-          </Link>
-          <Link
-            href="/auth/login"
-            className="px-8 py-3 rounded-full border border-border text-sm font-medium hover:bg-muted transition-colors"
-          >
-            I already have an account
           </Link>
         </div>
       </div>

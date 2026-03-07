@@ -44,11 +44,13 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname !== "/" &&
     !user &&
     !request.nextUrl.pathname.startsWith("/login") &&
-    !request.nextUrl.pathname.startsWith("/auth")
+    !request.nextUrl.pathname.startsWith("/auth") &&
+    !request.nextUrl.pathname.startsWith("/terms") &&
+    !request.nextUrl.pathname.startsWith("/privacy")
   ) {
-    // no user, potentially respond by redirecting the user to the login page
+    // no user, potentially respond by redirecting the user to /auth/continue to continue the auth flow
     const url = request.nextUrl.clone();
-    url.pathname = "/auth/login";
+    url.pathname = "/auth/continue";
     return NextResponse.redirect(url);
   }
 

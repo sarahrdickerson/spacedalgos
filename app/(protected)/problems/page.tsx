@@ -27,7 +27,7 @@ const ProblemsPage = () => {
   const problems = dashboardData?.allProblems ?? [];
 
   const [openCategories, setOpenCategories] = React.useState<Set<string>>(
-    new Set(),
+    new Set()
   );
 
   // Group problems by category and sort by order_index
@@ -47,7 +47,7 @@ const ProblemsPage = () => {
     // Sort each group by order_index
     Object.keys(groups).forEach((category) => {
       groups[category].sort(
-        (a, b) => (a.order_index ?? 0) - (b.order_index ?? 0),
+        (a, b) => (a.order_index ?? 0) - (b.order_index ?? 0)
       );
     });
 
@@ -61,7 +61,7 @@ const ProblemsPage = () => {
     const categoriesToOpen = new Set<string>();
     Object.entries(groupedProblems).forEach(([category, problems]) => {
       const hasProgress = problems.some(
-        (problem) => problem.progress && problem.progress.stage > 0,
+        (problem) => problem.progress && problem.progress.stage > 0
       );
       if (hasProgress) {
         categoriesToOpen.add(category);
@@ -70,16 +70,16 @@ const ProblemsPage = () => {
 
     setOpenCategories(categoriesToOpen);
   }, [activeList, groupedProblems]);
-  const handleRandomProblem = (filterType: 'all' | 'weak' | 'unattempted') => {
+  const handleRandomProblem = (filterType: "all" | "weak" | "unattempted") => {
     if (!problems || problems.length === 0) return;
 
     let filteredProblems = problems;
 
-    if (filterType === 'weak') {
+    if (filterType === "weak") {
       filteredProblems = problems.filter(
         (p) => p.progress?.stage === 1 || p.progress?.stage === 2
       );
-    } else if (filterType === 'unattempted') {
+    } else if (filterType === "unattempted") {
       filteredProblems = problems.filter(
         (p) => !p.progress || p.progress.stage === 0
       );
@@ -90,16 +90,14 @@ const ProblemsPage = () => {
       return;
     }
 
-    const randomProblem = filteredProblems[
-      Math.floor(Math.random() * filteredProblems.length)
-    ];
+    const randomProblem =
+      filteredProblems[Math.floor(Math.random() * filteredProblems.length)];
 
     if (randomProblem?.leetcode_url) {
-      window.open(randomProblem.leetcode_url, '_blank');
+      window.open(randomProblem.leetcode_url, "_blank");
     }
 
     setOpenCategories((prev) => new Set(prev).add(randomProblem.category));
-
   };
 
   return (
@@ -152,7 +150,10 @@ const ProblemsPage = () => {
       )}
       {!loading && !activeList && (
         <div className="flex flex-col items-center justify-center gap-4 py-8">
-          <p className="text-muted-foreground">No active study plan. Set one from the dashboard to see your problem set here.</p>
+          <p className="text-muted-foreground">
+            No active study plan. Set one from the dashboard to see your problem
+            set here.
+          </p>
         </div>
       )}
       {!loading && activeList && (
@@ -161,10 +162,10 @@ const ProblemsPage = () => {
             <h1 className="text-2xl font-bold">
               {activeList.name ?? activeList.key}
             </h1>
-            <RandomProblemDropdown 
-              onRandomAll={() => handleRandomProblem('all')}
-              onRandomWeak={() => handleRandomProblem('weak')}
-              onRandomUnattempted={() => handleRandomProblem('unattempted')}
+            <RandomProblemDropdown
+              onRandomAll={() => handleRandomProblem("all")}
+              onRandomWeak={() => handleRandomProblem("weak")}
+              onRandomUnattempted={() => handleRandomProblem("unattempted")}
             />
           </div>
           <div className="flex flex-col gap-4 w-full">
@@ -227,11 +228,11 @@ const ProblemsPage = () => {
                             progress?.stage
                           ) {
                             const nextReview = new Date(
-                              progress.next_review_at,
+                              progress.next_review_at
                             );
                             const diffMs = nextReview.getTime() - now.getTime();
                             daysUntilReview = Math.ceil(
-                              diffMs / (1000 * 60 * 60 * 24),
+                              diffMs / (1000 * 60 * 60 * 24)
                             );
 
                             // Calculate decay: as we approach next_review_at, progress decays to previous stage
@@ -242,7 +243,7 @@ const ProblemsPage = () => {
                             if (daysSinceLastAttempt >= 0 && intervalDays > 0) {
                               const decayRatio = Math.min(
                                 1,
-                                daysSinceLastAttempt / intervalDays,
+                                daysSinceLastAttempt / intervalDays
                               );
                               const currentStageProgress =
                                 (progress.stage / 3) * 100;
@@ -259,16 +260,16 @@ const ProblemsPage = () => {
                               // Clamp to ensure it doesn't go below previous stage
                               progressValue = Math.max(
                                 previousStageProgress,
-                                Math.min(currentStageProgress, progressValue),
+                                Math.min(currentStageProgress, progressValue)
                               );
                             }
                           } else if (progress?.next_review_at) {
                             const nextReview = new Date(
-                              progress.next_review_at,
+                              progress.next_review_at
                             );
                             const diffMs = nextReview.getTime() - now.getTime();
                             daysUntilReview = Math.ceil(
-                              diffMs / (1000 * 60 * 60 * 24),
+                              diffMs / (1000 * 60 * 60 * 24)
                             );
                           }
 
@@ -298,8 +299,8 @@ const ProblemsPage = () => {
                                       problem.difficulty === "Easy"
                                         ? "bg-green-500/10 text-green-700 dark:text-green-400 hover:bg-green-500/20"
                                         : problem.difficulty === "Medium"
-                                          ? "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 hover:bg-yellow-500/20"
-                                          : "bg-red-500/10 text-red-700 dark:text-red-400 hover:bg-red-500/20"
+                                        ? "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 hover:bg-yellow-500/20"
+                                        : "bg-red-500/10 text-red-700 dark:text-red-400 hover:bg-red-500/20"
                                     }
                                   >
                                     {problem.difficulty}
@@ -307,6 +308,7 @@ const ProblemsPage = () => {
                                   <LogSolveButton
                                     problemKey={problem.key}
                                     problemTitle={problem.title}
+                                    problemLink={problem.leetcode_url}
                                   />
                                   <MenuButton
                                     problemKey={problem.key}
@@ -330,8 +332,10 @@ const ProblemsPage = () => {
                                         {daysUntilReview > 0
                                           ? `Due in ${daysUntilReview}d`
                                           : daysUntilReview === 0
-                                            ? "Due today"
-                                            : `Overdue by ${Math.abs(daysUntilReview)}d`}
+                                          ? "Due today"
+                                          : `Overdue by ${Math.abs(
+                                              daysUntilReview
+                                            )}d`}
                                       </>
                                     )}
                                   </p>

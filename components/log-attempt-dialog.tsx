@@ -21,21 +21,25 @@ import {
 import { ChevronDown } from "lucide-react";
 import React from "react";
 import { toast } from "sonner";
+import Link from "next/link";
+import { ExternalLinkIcon } from "@radix-ui/react-icons";
 
 type LogAttemptDialogProps = {
   problemKey: string;
   problemTitle: string;
+  problemLink: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
 };
 
-export function LogAttemptDialog({ 
-  problemKey, 
-  problemTitle, 
-  open, 
+export function LogAttemptDialog({
+  problemKey,
+  problemTitle,
+  problemLink,
+  open,
   onOpenChange,
-  onSuccess
+  onSuccess,
 }: LogAttemptDialogProps) {
   const [grade, setGrade] = React.useState<0 | 1 | 2 | null>(null);
   const [timeSpent, setTimeSpent] = React.useState<string>("");
@@ -45,28 +49,33 @@ export function LogAttemptDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (grade === null) return;
 
     setIsSubmitting(true);
 
     try {
-      const response = await fetch(`/api/problems/${encodeURIComponent(problemKey)}/attempts`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          grade,
-          time_bucket: timeSpent || null,
-          note: note || null,
-          attempted_at: new Date().toISOString(),
-          localDate: new Date().toLocaleDateString('en-CA'),
-        }),
-      });
+      const response = await fetch(
+        `/api/problems/${encodeURIComponent(problemKey)}/attempts`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            grade,
+            time_bucket: timeSpent || null,
+            note: note || null,
+            attempted_at: new Date().toISOString(),
+            localDate: new Date().toLocaleDateString("en-CA"),
+          }),
+        }
+      );
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: "Failed to log attempt" }));
+        const errorData = await response
+          .json()
+          .catch(() => ({ error: "Failed to log attempt" }));
         throw new Error(errorData.error || "Failed to log attempt");
       }
 
@@ -81,7 +90,9 @@ export function LogAttemptDialog({
       onSuccess?.();
     } catch (error) {
       console.error("Error logging attempt:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to log attempt");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to log attempt"
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -92,7 +103,17 @@ export function LogAttemptDialog({
       <DialogContent>
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Log Attempt — {problemTitle}</DialogTitle>
+            <DialogTitle>
+              Log Attempt —{" "}
+              <Link
+                href={problemLink}
+                target="_blank"
+                className="inline-flex items-center gap-1 hover:underline hover:text-muted-foreground transition-all duration-300"
+              >
+                {problemTitle}{" "}
+                <ExternalLinkIcon className="text-muted-foreground" />
+              </Link>
+            </DialogTitle>
             <DialogDescription>
               Record how well you solved this problem to track your progress.
             </DialogDescription>

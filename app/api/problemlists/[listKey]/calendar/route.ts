@@ -48,7 +48,8 @@ export async function GET(
     // Get all problems in this list
     const { data: listItems, error: itemsError } = await supabase
       .from("problem_list_items")
-      .select(`
+      .select(
+        `
         problem_id,
         order_index,
         problems (
@@ -56,9 +57,11 @@ export async function GET(
           key,
           title,
           difficulty,
-          category
+          category,
+          leetcode_url
         )
-      `)
+      `
+      )
       .eq("list_id", list.id)
       .order("order_index", { ascending: true });
 
@@ -138,17 +141,19 @@ export async function GET(
           problemAttemptCounts.get(attempt.problem_id) || 0
         );
       }
-      
+
       // Get current counter value and decrement for next iteration
       const attemptNumber = problemCounters.get(attempt.problem_id)!;
       problemCounters.set(attempt.problem_id, attemptNumber - 1);
-      
+
+      const problem = problemMap.get(attempt.problem_id);
       return {
         problem_id: attempt.problem_id,
-        problem_key: problemMap.get(attempt.problem_id)?.key,
-        problem_title: problemMap.get(attempt.problem_id)?.title,
-        difficulty: problemMap.get(attempt.problem_id)?.difficulty,
-        category: problemMap.get(attempt.problem_id)?.category,
+        problem_key: problem?.key,
+        problem_title: problem?.title,
+        difficulty: problem?.difficulty,
+        category: problem?.category,
+        leetcode_url: problem?.leetcode_url,
         attempted_at: attempt.attempted_at,
         grade: attempt.grade,
         stage: attempt.stage,
@@ -159,16 +164,20 @@ export async function GET(
     // Format upcoming reviews (only problems with a scheduled next_review_at)
     const upcomingReviews = (progress || [])
       .filter((prog: any) => prog.next_review_at != null)
-      .map((prog: any) => ({
-        problem_id: prog.problem_id,
-        problem_key: problemMap.get(prog.problem_id)?.key,
-        problem_title: problemMap.get(prog.problem_id)?.title,
-        difficulty: problemMap.get(prog.problem_id)?.difficulty,
-        category: problemMap.get(prog.problem_id)?.category,
-        next_review_at: prog.next_review_at,
-        stage: prog.stage,
-        attempt_count: prog.attempt_count,
-      }));
+      .map((prog: any) => {
+        const problem = problemMap.get(prog.problem_id);
+        return {
+          problem_id: prog.problem_id,
+          problem_key: problem?.key,
+          problem_title: problem?.title,
+          difficulty: problem?.difficulty,
+          category: problem?.category,
+          leetcode_url: problem?.leetcode_url,
+          next_review_at: prog.next_review_at,
+          stage: prog.stage,
+          attempt_count: prog.attempt_count,
+        };
+      });
 
     // Projected new problems: unseen problems assigned to future calendar days
     const { data: studyPlan, error: studyPlanErr } = await supabase
@@ -184,14 +193,15 @@ export async function GET(
     }
 
     // Default to 0 on error — calendar still renders past attempts and upcoming reviews
-    const newPerDay = studyPlanErr ? 0 : (studyPlan?.new_per_day ?? 0);
-    const seenProblemIds = new Set((progress ?? []).map((p: any) => p.problem_id));
+    const newPerDay = studyPlanErr ? 0 : studyPlan?.new_per_day ?? 0;
+    const seenProblemIds = new Set(
+      (progress ?? []).map((p: any) => p.problem_id)
+    );
 
-    const unseenItems = (listItems ?? [])
-      .filter((item: any) => !seenProblemIds.has(item.problem_id))
-      // already ordered by order_index ASC from the query
-      ;
-
+    const unseenItems = (listItems ?? []).filter(
+      (item: any) => !seenProblemIds.has(item.problem_id)
+    );
+    // already ordered by order_index ASC from the query
     const projectedNew: any[] = [];
     if (newPerDay > 0 && unseenItems.length > 0) {
       // Use client's local date/timezone so "today" boundaries match the user's clock.
@@ -203,7 +213,15 @@ export async function GET(
           { status: 400 }
         );
       }
-      const { localYear, localMonth, localDay, todayMidnightUTC, tomorrowMidnightUTC, localDayStartUTC, localDayEndUTC } = dateBounds;
+      const {
+        localYear,
+        localMonth,
+        localDay,
+        todayMidnightUTC,
+        tomorrowMidnightUTC,
+        localDayStartUTC,
+        localDayEndUTC,
+      } = dateBounds;
 
       // Count "new" slots already consumed today: problems whose very first attempt
       // was logged today. Attempts are sorted descending, so the last write per
@@ -214,7 +232,10 @@ export async function GET(
       });
       let newSlotsUsedToday = 0;
       firstAttemptByProblem.forEach((earliestAttempt) => {
-        if (earliestAttempt >= localDayStartUTC && earliestAttempt < localDayEndUTC) {
+        if (
+          earliestAttempt >= localDayStartUTC &&
+          earliestAttempt < localDayEndUTC
+        ) {
           newSlotsUsedToday++;
         }
       });
@@ -239,6 +260,7 @@ export async function GET(
             problem_title: problem?.title,
             difficulty: problem?.difficulty,
             category: problem?.category,
+            leetcode_url: problem?.leetcode_url,
             projected_date: null,
             is_today_new: true,
             order_index: item.order_index,
@@ -260,7 +282,11 @@ export async function GET(
         date.setUTCDate(tomorrow.getUTCDate() + dayOffset);
         const dateStr = date.toISOString().split("T")[0];
 
-        for (let i = 0; i < newPerDay && problemIndex < itemsToProject.length; i++) {
+        for (
+          let i = 0;
+          i < newPerDay && problemIndex < itemsToProject.length;
+          i++
+        ) {
           const item = itemsToProject[problemIndex] as any;
           const problem = problemMap.get(item.problem_id);
           projectedNew.push({
@@ -269,6 +295,7 @@ export async function GET(
             problem_title: problem?.title,
             difficulty: problem?.difficulty,
             category: problem?.category,
+            leetcode_url: problem?.leetcode_url,
             projected_date: dateStr,
             is_today_new: false,
             order_index: item.order_index,

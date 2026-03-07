@@ -150,6 +150,13 @@ export async function POST(
       );
     }
 
+    if (body.localDate != null && !/^\d{4}-\d{2}-\d{2}$/.test(body.localDate)) {
+      return NextResponse.json(
+        { error: "localDate must be YYYY-MM-DD" },
+        { status: 400 }
+      );
+    }
+
     // 3) Resolve problem id by key
     const { data: problemRow, error: problemErr } = await supabase
       .from("problems")

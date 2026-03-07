@@ -283,7 +283,7 @@ const ProblemsPage = () => {
                               className="flex flex-col p-3 rounded-lg hover:bg-accent/50 transition-colors"
                             >
                               <div className="flex items-center justify-between p-3 w-full">
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-3 pr-2">
                                   <span className="text-muted-foreground text-sm">
                                     {problem.order_index}
                                   </span>
@@ -291,10 +291,12 @@ const ProblemsPage = () => {
                                     href={problem.leetcode_url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="hover:underline hover:cursor-pointer font-medium flex flex-row gap-2 items-center"
+                                    className="hover:underline hover:cursor-pointer font-medium inline-flex items-center gap-1 min-w-0 shrink"
                                   >
-                                    {problem.title}{" "}
-                                    <ExternalLinkIcon className="text-muted-foreground size-4" />
+                                    <span className="break-words whitespace-normal min-w-0">
+                                      {problem.title}
+                                    </span>
+                                    <ExternalLinkIcon className="text-muted-foreground size-4 shrink-0" />
                                   </a>
                                 </div>
                                 <div className="flex flex-row gap-2 items-center">
@@ -309,11 +311,13 @@ const ProblemsPage = () => {
                                   >
                                     {problem.difficulty}
                                   </Badge>
-                                  <LogSolveButton
-                                    problemKey={problem.key}
-                                    problemTitle={problem.title}
-                                    problemLink={problem.leetcode_url}
-                                  />
+                                  <div className="hidden sm:block">
+                                    <LogSolveButton
+                                      problemKey={problem.key}
+                                      problemTitle={problem.title}
+                                      problemLink={problem.leetcode_url}
+                                    />
+                                  </div>
                                   <MenuButton
                                     problemKey={problem.key}
                                     problemTitle={problem.title}

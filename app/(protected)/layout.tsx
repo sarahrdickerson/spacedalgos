@@ -50,7 +50,7 @@ export default function ProtectedLayout({
         </DashboardProvider>
 
         <footer className="text-center py-6 text-xs text-muted-foreground/50 border-t border-border/30">
-          developed by{" "}
+          spaced algos beta v{packageJson.version} · developed by{" "}
           <Link
             href="https://sarahrdickerson.github.io"
             target="_blank"
@@ -58,8 +58,7 @@ export default function ProtectedLayout({
             rel="noreferrer"
           >
             sarah dickerson
-          </Link>{" "}
-          · spaced algos beta v{packageJson.version}
+          </Link>
         </footer>
       </div>
     </main>

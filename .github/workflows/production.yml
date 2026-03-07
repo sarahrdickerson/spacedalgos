@@ -1,0 +1,16 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - run: supabase db push --db-url "postgresql://postgres:${{ secrets.PRODUCTION_DB_PASSWORD }}@db.${{ secrets.PRODUCTION_PROJECT_ID }}.supabase.co:5432/postgres"

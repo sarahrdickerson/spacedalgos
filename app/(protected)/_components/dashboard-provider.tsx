@@ -101,7 +101,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       const [activePlanRes, problemListsRes, streakRes] = await Promise.all([
         fetch('/api/user/active-study-plan'),
         fetch('/api/problemlists'),
-        fetch('/api/user/streak'),
+        fetch(`/api/user/streak?localDate=${new Date().toLocaleDateString('en-CA')}`),  
       ]);
 
       // Check for auth errors
@@ -136,7 +136,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
         const encodedKey = encodeURIComponent(activePlanData.active_list.key);
         const [statsRes, dueRes, progressRes] = await Promise.all([
           fetch(`/api/problemlists/${encodedKey}/stats`),
-          fetch(`/api/problemlists/${encodedKey}/due`),
+          fetch(`/api/problemlists/${encodedKey}/due?localDate=${new Date().toLocaleDateString('en-CA')}&tzOffset=${new Date().getTimezoneOffset()}`),
           fetch(`/api/problemlists/${encodedKey}/progress`),
         ]);
 

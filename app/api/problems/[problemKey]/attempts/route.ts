@@ -10,6 +10,7 @@ type Body = {
   time_bucket?: string | null;
   note?: string | null;
   attempted_at?: string | null; // ISO string optional
+  localDate?: string | null;    // YYYY-MM-DD in client's local timezone
 };
 
 function addDays(date: Date, days: number) {
@@ -149,6 +150,13 @@ export async function POST(
       );
     }
 
+    if (body.localDate != null && !/^\d{4}-\d{2}-\d{2}$/.test(body.localDate)) {
+      return NextResponse.json(
+        { error: "localDate must be YYYY-MM-DD" },
+        { status: 400 }
+      );
+    }
+
     // 3) Resolve problem id by key
     const { data: problemRow, error: problemErr } = await supabase
       .from("problems")
@@ -252,7 +260,7 @@ export async function POST(
     }
 
     // 8) Update daily activity and streak
-    await updateDailyActivityAndStreak(supabase, user.id, now, wasDue);
+    await updateDailyActivityAndStreak(supabase, user.id, now, wasDue, body.localDate ?? null);
 
     return NextResponse.json({
       attempt,
@@ -272,9 +280,12 @@ async function updateDailyActivityAndStreak(
   supabase: any,
   userId: string,
   attemptDate: Date,
-  wasDue: boolean
+  wasDue: boolean,
+  localDate?: string | null
 ) {
-  const activityDate = attemptDate.toISOString().split("T")[0]; // YYYY-MM-DD
+  // Use the client's local date if provided so activity is recorded on the correct
+  // calendar day even after 6 PM CST when UTC has already flipped to the next day.
+  const activityDate = localDate ?? attemptDate.toISOString().split("T")[0]; // YYYY-MM-DD
 
   // Check if a row already exists for today
   const { data: existingActivity } = await supabase
@@ -316,8 +327,13 @@ async function updateDailyActivityAndStreak(
 
   // Calculate current streak
   let currentStreak = 0;
-  const today = new Date().toISOString().split("T")[0];
-  const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+  const today = localDate ?? new Date().toISOString().split("T")[0];
+  const yesterday = localDate
+    ? (() => {
+        const [y, m, d] = localDate.split("-").map(Number);
+        return new Date(Date.UTC(y, m - 1, d - 1)).toISOString().split("T")[0];
+      })()
+    : new Date(Date.now() - 86400000).toISOString().split("T")[0];
 
   // Start from today or yesterday
   let expectedDate = activities[0].activity_date >= yesterday ? activities[0].activity_date : null;

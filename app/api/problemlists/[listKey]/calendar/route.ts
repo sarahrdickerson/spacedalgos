@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { parseLocalDateBounds } from "@/lib/api/parseLocalDateBounds";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   props: { params: Promise<{ listKey: string }> }
 ) {
   try {
@@ -193,14 +194,16 @@ export async function GET(
 
     const projectedNew: any[] = [];
     if (newPerDay > 0 && unseenItems.length > 0) {
-      // Check if any reviews are overdue (same rule as /due route)
-      const now = new Date();
-      const todayMidnightUTC = new Date(
-        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
-      ).toISOString();
-      const tomorrowMidnightUTC = new Date(
-        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1)
-      ).toISOString();
+      // Use client's local date/timezone so "today" boundaries match the user's clock.
+      const { searchParams } = new URL(request.url);
+      const dateBounds = parseLocalDateBounds(searchParams);
+      if (!dateBounds) {
+        return NextResponse.json(
+          { error: "Invalid localDate format, expected YYYY-MM-DD" },
+          { status: 400 }
+        );
+      }
+      const { localYear, localMonth, localDay, todayMidnightUTC, tomorrowMidnightUTC, localDayStartUTC, localDayEndUTC } = dateBounds;
 
       // Count "new" slots already consumed today: problems whose very first attempt
       // was logged today. Attempts are sorted descending, so the last write per
@@ -211,7 +214,7 @@ export async function GET(
       });
       let newSlotsUsedToday = 0;
       firstAttemptByProblem.forEach((earliestAttempt) => {
-        if (earliestAttempt >= todayMidnightUTC && earliestAttempt < tomorrowMidnightUTC) {
+        if (earliestAttempt >= localDayStartUTC && earliestAttempt < localDayEndUTC) {
           newSlotsUsedToday++;
         }
       });
@@ -246,7 +249,7 @@ export async function GET(
 
       const itemsToProject = unseenItems.slice(projectionStartIndex);
       const tomorrow = new Date(
-        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1)
+        Date.UTC(localYear, localMonth - 1, localDay + 1)
       );
 
       let problemIndex = 0;

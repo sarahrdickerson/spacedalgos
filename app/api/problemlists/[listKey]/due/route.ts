@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { parseLocalDateBounds } from "@/lib/api/parseLocalDateBounds";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ listKey: string }> }
 ) {
   try {
@@ -128,9 +129,17 @@ export async function GET(
 
     // 7) Build the review queue (all problems that have a progress row)
     const now = new Date();
-    const todayMidnightUTC = new Date(
-      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
-    ).toISOString();
+
+    // Use client's local date/timezone so "today" boundaries match the user's clock.
+    const { searchParams } = new URL(request.url);
+    const dateBounds = parseLocalDateBounds(searchParams);
+    if (!dateBounds) {
+      return NextResponse.json(
+        { error: "Invalid localDate format, expected YYYY-MM-DD" },
+        { status: 400 }
+      );
+    }
+    const { localYear, localMonth, localDay, todayMidnightUTC, localDayStartUTC, localDayEndUTC } = dateBounds;
 
     const reviewProblems = items
       .map((item: any) => {
@@ -181,15 +190,14 @@ export async function GET(
 
       // Subtract slots already consumed today: problems whose first-ever attempt
       // was logged today (attempt_count === 1 and last_attempt_at is today).
-      const tomorrowMidnightUTC = new Date(
-        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1)
-      ).toISOString();
+      // Use timezone-aware local-day bounds so post-6PM CST attempts (which are
+      // already UTC "tomorrow") are still counted as today's consumed slot.
       const newSlotsUsedToday = (dueProgressData ?? []).filter(
         (p: any) =>
           p.attempt_count === 1 &&
           p.last_attempt_at &&
-          p.last_attempt_at >= todayMidnightUTC &&
-          p.last_attempt_at < tomorrowMidnightUTC
+          p.last_attempt_at >= localDayStartUTC &&
+          p.last_attempt_at < localDayEndUTC
       ).length;
       const effectiveNewPerDay = Math.max(0, newPerDay - newSlotsUsedToday);
 
@@ -220,7 +228,7 @@ export async function GET(
       );
 
       const tomorrowUTC = new Date(
-        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1)
+        Date.UTC(localYear, localMonth - 1, localDay + 1)
       );
       let problemIndex = 0;
       let dayOffset = 0;

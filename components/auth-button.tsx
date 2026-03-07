@@ -12,6 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { ChatBubbleIcon, GearIcon } from "@radix-ui/react-icons";
 
 export async function AuthButton() {
   const supabase = await createClient();
@@ -43,11 +44,11 @@ export async function AuthButton() {
           </DropdownMenuLabel>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        {/* <DropdownMenuGroup>
-          <DropdownMenuItem>Profile</DropdownMenuItem>
-          <DropdownMenuItem>Settings</DropdownMenuItem>
+        <DropdownMenuGroup>
+          <DropdownMenuItem asChild><Link href="/settings"><GearIcon /> Settings</Link></DropdownMenuItem>
+          <DropdownMenuItem asChild><Link href="/feedback"><ChatBubbleIcon /> Feedback</Link></DropdownMenuItem>
         </DropdownMenuGroup>
-        <DropdownMenuSeparator /> */}
+        <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuItem variant="destructive">
             <LogoutButton />

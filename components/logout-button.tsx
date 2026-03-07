@@ -14,8 +14,8 @@ export function LogoutButton() {
   };
 
   return (
-    <button onClick={logout} className="flex flex-row justify-between w-full">
-      Logout <ExitIcon />
+    <button onClick={logout} className="flex flex-row items-center gap-2 w-full">
+      <ExitIcon /> Logout 
     </button>
   );
 }

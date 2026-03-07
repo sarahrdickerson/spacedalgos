@@ -65,7 +65,7 @@ const CurrentStudyPlan = ({
   const streakActiveToday = React.useMemo(() => {
     const lastActivity = data?.streak?.last_activity_date;
     if (!lastActivity) return false;
-    const todayStr = new Date().toISOString().split("T")[0];
+    const todayStr = new Date().toLocaleDateString("en-CA");
     return lastActivity >= todayStr;
   }, [data?.streak?.last_activity_date]);
 

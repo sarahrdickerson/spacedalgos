@@ -27,7 +27,7 @@ import { ExternalLinkIcon } from "@radix-ui/react-icons";
 type LogAttemptDialogProps = {
   problemKey: string;
   problemTitle: string;
-  problemLink: string;
+  problemLink?: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
@@ -105,14 +105,19 @@ export function LogAttemptDialog({
           <DialogHeader>
             <DialogTitle>
               Log Attempt —{" "}
-              <Link
-                href={problemLink}
-                target="_blank"
-                className="inline-flex items-center gap-1 hover:underline hover:text-muted-foreground transition-all duration-300"
-              >
-                {problemTitle}{" "}
-                <ExternalLinkIcon className="text-muted-foreground" />
-              </Link>
+              {problemLink ? (
+                <Link
+                  href={problemLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 hover:underline hover:text-muted-foreground transition-all duration-300"
+                >
+                  {problemTitle}{" "}
+                  <ExternalLinkIcon className="text-muted-foreground" />
+                </Link>
+              ) : (
+                problemTitle
+              )}
             </DialogTitle>
             <DialogDescription>
               Record how well you solved this problem to track your progress.

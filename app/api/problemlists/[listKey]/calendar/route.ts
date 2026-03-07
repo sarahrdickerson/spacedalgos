@@ -58,7 +58,7 @@ export async function GET(
           title,
           difficulty,
           category,
-          leetcode_url
+          leetcode_slug
         )
       `
       )
@@ -153,7 +153,7 @@ export async function GET(
         problem_title: problem?.title,
         difficulty: problem?.difficulty,
         category: problem?.category,
-        leetcode_url: problem?.leetcode_url,
+        leetcode_url: `https://leetcode.com/problems/${problem?.leetcode_slug}/`,
         attempted_at: attempt.attempted_at,
         grade: attempt.grade,
         stage: attempt.stage,
@@ -172,7 +172,7 @@ export async function GET(
           problem_title: problem?.title,
           difficulty: problem?.difficulty,
           category: problem?.category,
-          leetcode_url: problem?.leetcode_url,
+          leetcode_url: `https://leetcode.com/problems/${problem?.leetcode_slug}/`,
           next_review_at: prog.next_review_at,
           stage: prog.stage,
           attempt_count: prog.attempt_count,
@@ -260,7 +260,7 @@ export async function GET(
             problem_title: problem?.title,
             difficulty: problem?.difficulty,
             category: problem?.category,
-            leetcode_url: problem?.leetcode_url,
+            leetcode_url: `https://leetcode.com/problems/${problem?.leetcode_slug}/`,
             projected_date: null,
             is_today_new: true,
             order_index: item.order_index,
@@ -295,7 +295,7 @@ export async function GET(
             problem_title: problem?.title,
             difficulty: problem?.difficulty,
             category: problem?.category,
-            leetcode_url: problem?.leetcode_url,
+            leetcode_url: `https://leetcode.com/problems/${problem?.leetcode_slug}/`,
             projected_date: dateStr,
             is_today_new: false,
             order_index: item.order_index,

@@ -31,6 +31,7 @@ import { useDashboard } from "../../_components/dashboard-provider";
 type MenuButtonProps = {
   problemKey: string;
   problemTitle: string;
+  problemLink?: string | null;
 };
 
 type AttemptHistory = {
@@ -41,7 +42,11 @@ type AttemptHistory = {
   attempted_at: string;
 };
 
-const MenuButton = ({ problemKey, problemTitle }: MenuButtonProps) => {
+const MenuButton = ({
+  problemKey,
+  problemTitle,
+  problemLink,
+}: MenuButtonProps) => {
   const { refreshData } = useDashboard();
   const [isHistoryOpen, setIsHistoryOpen] = React.useState(false);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = React.useState(false);
@@ -49,7 +54,6 @@ const MenuButton = ({ problemKey, problemTitle }: MenuButtonProps) => {
   const [history, setHistory] = React.useState<AttemptHistory[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [resetting, setResetting] = React.useState(false);
-  const [loggingAttempt, setLoggingAttempt] = React.useState(false);
   const problemHistory = async () => {
     setIsHistoryOpen(true);
     setLoading(true);
@@ -99,12 +103,6 @@ const MenuButton = ({ problemKey, problemTitle }: MenuButtonProps) => {
     }
   };
 
-  const logAttempt = async () => {
-    setLoggingAttempt(true);
-    setIsLogAttemptOpen(true);
-    setLoggingAttempt(false);
-  };
-
   return (
     <div>
       <DropdownMenu>
@@ -116,8 +114,8 @@ const MenuButton = ({ problemKey, problemTitle }: MenuButtonProps) => {
         <DropdownMenuContent>
           <DropdownMenuGroup>
             <DropdownMenuItem
-              onClick={logAttempt}
-              className="sm:hidden display"
+              onClick={() => setIsLogAttemptOpen(true)}
+              className="sm:hidden"
             >
               <PlusCircledIcon /> Log Attempt
             </DropdownMenuItem>
@@ -136,6 +134,7 @@ const MenuButton = ({ problemKey, problemTitle }: MenuButtonProps) => {
         onOpenChange={setIsLogAttemptOpen}
         problemKey={problemKey}
         problemTitle={problemTitle}
+        problemLink={problemLink}
         onSuccess={refreshData}
       />
 

@@ -75,7 +75,7 @@ function computeNextProgress(params: {
   if (!prevIntervalDays || prevIntervalDays <= 0) {
     // First attempt: Easy gets a head start, Good/Again review next day
     interval_days = grade === 2 ? 3 : 1;
-  } else if (prevIntervalDays === 1) {
+  } else if (prevAttemptCount === 1) {
     // Second attempt: bigger jump than raw ×2 would give
     interval_days = grade === 0 ? 1 : grade === 2 ? 7 : 3;
   } else if (grade === 0) {

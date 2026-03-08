@@ -59,22 +59,25 @@ function computeNextProgress(params: {
     stage = Math.min(3, Math.max(1, stage + 1));
   }
 
-  // Interval calculation — grows purely from the previous interval and the grade.
-  // Stages no longer affect the multiplier (eliminates the old 4.2x runaway at stage 3).
-  //
-  //   First attempt        → 1 day  (always review next day to confirm memory)
+  // Interval calculation — uses fixed intervals for the first two attempts,
+  // then grows from the previous interval and grade from the third attempt onward.
+  //   First attempt        → 1 day (Easy → 3 days)
+  //   Second attempt       → Good: 3 days, Easy: 7 days, Again: 1 day
   //   Grade 0 (fail)       → ×0.25, min 1 day   (same/next-day repair)
   //   Grade 1 (good)       → ×2.0,  cap 30 days  (monthly maintenance once stable)
   //   Grade 2 (easy)       → ×2.3,  cap 90 days  (quarterly maintenance once stable)
   //
   // Approximate sequences produced:
-  //   Easy:  1 → 3 → 7 → 17 → 40 → 90 (cap) → 90 → …
-  //   Good:  1 → 2 → 4 → 8  → 16 → 30 (cap) → 30 → …
+  //   Easy:  3 → 7 → 17 → 40 → 90 (cap) → 90 → …
+  //   Good:  1 → 3 → 6  → 12 → 24 → 30 (cap) → 30 → …
   //   Fail:  current × 0.25 → min 1 day (next-day repair for short intervals)
   let interval_days: number;
   if (!prevIntervalDays || prevIntervalDays <= 0) {
-    // First attempt: always review the next day
-    interval_days = 1;
+    // First attempt: Easy gets a head start, Good/Again review next day
+    interval_days = grade === 2 ? 3 : 1;
+  } else if (prevIntervalDays === 1) {
+    // Second attempt: bigger jump than raw ×2 would give
+    interval_days = grade === 0 ? 1 : grade === 2 ? 7 : 3;
   } else if (grade === 0) {
     interval_days = Math.max(1, Math.floor(prevIntervalDays * 0.25));
   } else if (grade === 1) {

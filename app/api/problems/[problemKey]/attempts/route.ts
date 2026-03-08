@@ -10,7 +10,7 @@ type Body = {
   time_bucket?: string | null;
   note?: string | null;
   attempted_at?: string | null; // ISO string optional
-  localDate?: string | null;    // YYYY-MM-DD in client's local timezone
+  localDate?: string | null; // YYYY-MM-DD in client's local timezone
 };
 
 function addDays(date: Date, days: number) {
@@ -78,10 +78,16 @@ function computeNextProgress(params: {
   } else if (grade === 0) {
     interval_days = Math.max(1, Math.floor(prevIntervalDays * 0.25));
   } else if (grade === 1) {
-    interval_days = Math.min(MAX_INTERVAL_GOOD, Math.ceil(prevIntervalDays * 2.0));
+    interval_days = Math.min(
+      MAX_INTERVAL_GOOD,
+      Math.ceil(prevIntervalDays * 2.0)
+    );
   } else {
     // grade === 2
-    interval_days = Math.min(MAX_INTERVAL_EASY, Math.ceil(prevIntervalDays * 2.3));
+    interval_days = Math.min(
+      MAX_INTERVAL_EASY,
+      Math.ceil(prevIntervalDays * 2.3)
+    );
   }
 
   const next_review_at = addDays(now, interval_days).toISOString();
@@ -260,7 +266,13 @@ export async function POST(
     }
 
     // 8) Update daily activity and streak
-    await updateDailyActivityAndStreak(supabase, user.id, now, wasDue, body.localDate ?? null);
+    await updateDailyActivityAndStreak(
+      supabase,
+      user.id,
+      now,
+      wasDue,
+      body.localDate ?? null
+    );
 
     return NextResponse.json({
       attempt,
@@ -336,8 +348,11 @@ async function updateDailyActivityAndStreak(
     : new Date(Date.now() - 86400000).toISOString().split("T")[0];
 
   // Start from today or yesterday
-  let expectedDate = activities[0].activity_date >= yesterday ? activities[0].activity_date : null;
-  
+  let expectedDate =
+    activities[0].activity_date >= yesterday
+      ? activities[0].activity_date
+      : null;
+
   if (!expectedDate) {
     currentStreak = 0;
   } else {
@@ -357,7 +372,7 @@ async function updateDailyActivityAndStreak(
   // Calculate longest streak
   let longestStreak = 0;
   let tempStreak = 1;
-  
+
   for (let i = 0; i < activities.length - 1; i++) {
     const currentDate = new Date(activities[i].activity_date);
     const nextDate = new Date(activities[i + 1].activity_date);
@@ -387,15 +402,13 @@ async function updateDailyActivityAndStreak(
     prefs?.longest_streak ?? 0
   );
 
-  await supabase
-    .from("user_preferences")
-    .upsert(
-      {
-        user_id: userId,
-        current_streak: currentStreak,
-        longest_streak: newLongestStreak,
-        last_activity_date: activityDate,
-      },
-      { onConflict: "user_id" }
-    );
+  await supabase.from("user_preferences").upsert(
+    {
+      user_id: userId,
+      current_streak: currentStreak,
+      longest_streak: newLongestStreak,
+      last_activity_date: activityDate,
+    },
+    { onConflict: "user_id" }
+  );
 }

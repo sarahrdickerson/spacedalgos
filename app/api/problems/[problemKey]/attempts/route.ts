@@ -73,19 +73,22 @@ function computeNextProgress(params: {
   //   Fail:  current × 0.25 → min 1 day (next-day repair for short intervals)
   let interval_days: number;
   if (!prevIntervalDays || prevIntervalDays <= 0) {
-    // First attempt: Easy gets a head start, Good/Again review next day
+    // First attempt: Easy gets a head start (3 days), Good/Again review next day
     interval_days = grade === 2 ? 3 : 1;
   } else if (prevAttemptCount === 1) {
-    // Second attempt: bigger jump than raw ×2 would give
+    // Second attempt: 7 days for Easy, 3 days for Good, 1 day for Again
     interval_days = grade === 0 ? 1 : grade === 2 ? 7 : 3;
   } else if (grade === 0) {
+    // Fail: drop to 25% of previous interval, min 1 day (same/next-day repair)
     interval_days = Math.max(1, Math.floor(prevIntervalDays * 0.25));
   } else if (grade === 1) {
+    // Good: double the previous interval, capped at MAX_INTERVAL_GOOD to prevent runaway growth
     interval_days = Math.min(
       MAX_INTERVAL_GOOD,
       Math.ceil(prevIntervalDays * 2.0)
     );
   } else {
+    // Easy: multiply previous interval by 2.3, capped at MAX_INTERVAL_EASY to prevent runaway growth
     // grade === 2
     interval_days = Math.min(
       MAX_INTERVAL_EASY,

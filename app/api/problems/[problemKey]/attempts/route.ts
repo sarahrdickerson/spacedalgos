@@ -10,7 +10,7 @@ type Body = {
   time_bucket?: string | null;
   note?: string | null;
   attempted_at?: string | null; // ISO string optional
-  localDate?: string | null;    // YYYY-MM-DD in client's local timezone
+  localDate?: string | null; // YYYY-MM-DD in client's local timezone
 };
 
 function addDays(date: Date, days: number) {
@@ -59,29 +59,41 @@ function computeNextProgress(params: {
     stage = Math.min(3, Math.max(1, stage + 1));
   }
 
-  // Interval calculation — grows purely from the previous interval and the grade.
-  // Stages no longer affect the multiplier (eliminates the old 4.2x runaway at stage 3).
-  //
-  //   First attempt        → 1 day  (always review next day to confirm memory)
+  // Interval calculation — uses fixed intervals for the first two attempts,
+  // then grows from the previous interval and grade from the third attempt onward.
+  //   First attempt        → 1 day (Easy → 3 days)
+  //   Second attempt       → Good: 3 days, Easy: 7 days, Again: 1 day
   //   Grade 0 (fail)       → ×0.25, min 1 day   (same/next-day repair)
   //   Grade 1 (good)       → ×2.0,  cap 30 days  (monthly maintenance once stable)
   //   Grade 2 (easy)       → ×2.3,  cap 90 days  (quarterly maintenance once stable)
   //
   // Approximate sequences produced:
-  //   Easy:  1 → 3 → 7 → 17 → 40 → 90 (cap) → 90 → …
-  //   Good:  1 → 2 → 4 → 8  → 16 → 30 (cap) → 30 → …
+  //   Easy:  3 → 7 → 17 → 40 → 90 (cap) → 90 → …
+  //   Good:  1 → 3 → 6  → 12 → 24 → 30 (cap) → 30 → …
   //   Fail:  current × 0.25 → min 1 day (next-day repair for short intervals)
   let interval_days: number;
   if (!prevIntervalDays || prevIntervalDays <= 0) {
-    // First attempt: always review the next day
-    interval_days = 1;
+    // First attempt: Easy gets a head start (3 days), Good/Again review next day
+    interval_days = grade === 2 ? 3 : 1;
+  } else if (prevAttemptCount === 1) {
+    // Second attempt: 7 days for Easy, 3 days for Good, 1 day for Again
+    interval_days = grade === 0 ? 1 : grade === 2 ? 7 : 3;
   } else if (grade === 0) {
+    // Fail: drop to 25% of previous interval, min 1 day (same/next-day repair)
     interval_days = Math.max(1, Math.floor(prevIntervalDays * 0.25));
   } else if (grade === 1) {
-    interval_days = Math.min(MAX_INTERVAL_GOOD, Math.ceil(prevIntervalDays * 2.0));
+    // Good: double the previous interval, capped at MAX_INTERVAL_GOOD to prevent runaway growth
+    interval_days = Math.min(
+      MAX_INTERVAL_GOOD,
+      Math.ceil(prevIntervalDays * 2.0)
+    );
   } else {
+    // Easy: multiply previous interval by 2.3, capped at MAX_INTERVAL_EASY to prevent runaway growth
     // grade === 2
-    interval_days = Math.min(MAX_INTERVAL_EASY, Math.ceil(prevIntervalDays * 2.3));
+    interval_days = Math.min(
+      MAX_INTERVAL_EASY,
+      Math.ceil(prevIntervalDays * 2.3)
+    );
   }
 
   const next_review_at = addDays(now, interval_days).toISOString();
@@ -260,7 +272,13 @@ export async function POST(
     }
 
     // 8) Update daily activity and streak
-    await updateDailyActivityAndStreak(supabase, user.id, now, wasDue, body.localDate ?? null);
+    await updateDailyActivityAndStreak(
+      supabase,
+      user.id,
+      now,
+      wasDue,
+      body.localDate ?? null
+    );
 
     return NextResponse.json({
       attempt,
@@ -336,8 +354,11 @@ async function updateDailyActivityAndStreak(
     : new Date(Date.now() - 86400000).toISOString().split("T")[0];
 
   // Start from today or yesterday
-  let expectedDate = activities[0].activity_date >= yesterday ? activities[0].activity_date : null;
-  
+  let expectedDate =
+    activities[0].activity_date >= yesterday
+      ? activities[0].activity_date
+      : null;
+
   if (!expectedDate) {
     currentStreak = 0;
   } else {
@@ -357,7 +378,7 @@ async function updateDailyActivityAndStreak(
   // Calculate longest streak
   let longestStreak = 0;
   let tempStreak = 1;
-  
+
   for (let i = 0; i < activities.length - 1; i++) {
     const currentDate = new Date(activities[i].activity_date);
     const nextDate = new Date(activities[i + 1].activity_date);
@@ -387,15 +408,13 @@ async function updateDailyActivityAndStreak(
     prefs?.longest_streak ?? 0
   );
 
-  await supabase
-    .from("user_preferences")
-    .upsert(
-      {
-        user_id: userId,
-        current_streak: currentStreak,
-        longest_streak: newLongestStreak,
-        last_activity_date: activityDate,
-      },
-      { onConflict: "user_id" }
-    );
+  await supabase.from("user_preferences").upsert(
+    {
+      user_id: userId,
+      current_streak: currentStreak,
+      longest_streak: newLongestStreak,
+      last_activity_date: activityDate,
+    },
+    { onConflict: "user_id" }
+  );
 }

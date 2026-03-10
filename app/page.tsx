@@ -66,112 +66,110 @@ const week1: Array<{ d: number; today?: boolean; items: CI[] }> = [
     ],
   },
 ];
+const week2: Array<{ d: number; items: CI[] }> = [
+  {
+    d: 16,
+    items: [
+      ["Contains #4", "mast"],
+      ["BTree LO Trav", "new"],
+    ],
+  },
+  {
+    d: 17,
+    items: [
+      ["Min Window #2", "lrn"],
+      ["Validate BST", "new"],
+    ],
+  },
+  {
+    d: 18,
+    items: [
+      ["Search Rot #3", "rein"],
+      ["Build BTree", "new"],
+    ],
+  },
+  {
+    d: 19,
+    items: [
+      ["Anagram #4", "mast"],
+      ["Find Median", "new"],
+    ],
+  },
+  {
+    d: 20,
+    items: [
+      ["Reorder Lst #2", "lrn"],
+      ["Num Islands", "new"],
+    ],
+  },
+  {
+    d: 21,
+    items: [
+      ["Palindrome #3", "rein"],
+      ["Word Search", "new"],
+    ],
+  },
+  {
+    d: 22,
+    items: [
+      ["House Rob #4", "mast"],
+      ["Course Sched", "new"],
+    ],
+  },
+];
+const week3: Array<{ d: number; items: CI[] }> = [
+  {
+    d: 23,
+    items: [
+      ["Clone Graph #2", "lrn"],
+      ["Graph Valid", "new"],
+    ],
+  },
+  {
+    d: 24,
+    items: [
+      ["BTree LO #3", "rein"],
+      ["Combo Sum", "new"],
+    ],
+  },
+  {
+    d: 25,
+    items: [
+      ["Two Sum #5", "mast"],
+      ["Pacific Water", "new"],
+    ],
+  },
+  {
+    d: 26,
+    items: [
+      ["Invert BT #2", "lrn"],
+      ["Num Connected", "new"],
+    ],
+  },
+  {
+    d: 27,
+    items: [
+      ["Course Sch #3", "rein"],
+      ["3Sum Closest", "new"],
+    ],
+  },
+  {
+    d: 28,
+    items: [
+      ["Contains #5", "mast"],
+      ["Word Search II", "new"],
+    ],
+  },
+  {
+    d: 29,
+    items: [
+      ["Word Search #2", "lrn"],
+      ["Longest Substr", "new"],
+    ],
+  },
+];
 
 export default function Home() {
-  // Mon Mar 16 → Sun Mar 22
-  const week2: Array<{ d: number; items: CI[] }> = [
-    {
-      d: 16,
-      items: [
-        ["Contains #4", "mast"],
-        ["BTree LO Trav", "new"],
-      ],
-    },
-    {
-      d: 17,
-      items: [
-        ["Min Window #2", "lrn"],
-        ["Validate BST", "new"],
-      ],
-    },
-    {
-      d: 18,
-      items: [
-        ["Search Rot #3", "rein"],
-        ["Build BTree", "new"],
-      ],
-    },
-    {
-      d: 19,
-      items: [
-        ["Anagram #4", "mast"],
-        ["Find Median", "new"],
-      ],
-    },
-    {
-      d: 20,
-      items: [
-        ["Reorder Lst #2", "lrn"],
-        ["Num Islands", "new"],
-      ],
-    },
-    {
-      d: 21,
-      items: [
-        ["Palindrome #3", "rein"],
-        ["Word Search", "new"],
-      ],
-    },
-    {
-      d: 22,
-      items: [
-        ["House Rob #4", "mast"],
-        ["Course Sched", "new"],
-      ],
-    },
-  ];
-  // Mon Mar 23 → Sun Mar 29
-  const week3: Array<{ d: number; items: CI[] }> = [
-    {
-      d: 23,
-      items: [
-        ["Clone Graph #2", "lrn"],
-        ["Graph Valid", "new"],
-      ],
-    },
-    {
-      d: 24,
-      items: [
-        ["BTree LO #3", "rein"],
-        ["Combo Sum", "new"],
-      ],
-    },
-    {
-      d: 25,
-      items: [
-        ["Two Sum #5", "mast"],
-        ["Pacific Water", "new"],
-      ],
-    },
-    {
-      d: 26,
-      items: [
-        ["Invert BT #2", "lrn"],
-        ["Num Connected", "new"],
-      ],
-    },
-    {
-      d: 27,
-      items: [
-        ["Course Sch #3", "rein"],
-        ["3Sum Closest", "new"],
-      ],
-    },
-    {
-      d: 28,
-      items: [
-        ["Contains #5", "mast"],
-        ["Word Search II", "new"],
-      ],
-    },
-    {
-      d: 29,
-      items: [
-        ["Word Search #2", "lrn"],
-        ["Longest Substr", "new"],
-      ],
-    },
-  ];
   return (
     <>
       <style>{`
@@ -236,7 +234,6 @@ export default function Home() {
             className="absolute inset-0 overflow-hidden pointer-events-none"
             aria-hidden="true"
           >
-            <div className="absolute inset-0" />
             <div className="absolute -top-40 -right-40 w-[520px] h-[520px] rounded-full bg-primary/10 blur-[90px]" />
             <div className="absolute -bottom-24 -left-24 w-72 h-72 rounded-full bg-primary/8 blur-[70px]" />
           </div>

@@ -43,7 +43,7 @@ const CurrentStudyPlan = ({
   onRefresh,
 }: CurrentStudyPlanProps) => {
   const [selectedList, setSelectedList] = React.useState<ProblemList | null>(
-    null
+    null,
   );
   const [selectedPace, setSelectedPace] = React.useState<
     "leisurely" | "normal" | "accelerated"
@@ -83,6 +83,21 @@ const CurrentStudyPlan = ({
       year: "numeric",
     });
   }, [data?.studyPlan, data?.stats]);
+
+  const estCompletionFromCreateStudyPlan = React.useMemo(() => {
+    if (!selectedList) return null;
+    const total = selectedList.problem_count ?? 75; // fallback to 75 if not available
+    const newPerDay =
+      selectedPace === "leisurely" ? 1 : selectedPace === "accelerated" ? 3 : 2;
+    const daysLeft = Math.ceil(total / newPerDay);
+    const est = new Date();
+    est.setDate(est.getDate() + daysLeft);
+    return est.toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  }, [selectedList, selectedPace]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -126,7 +141,7 @@ const CurrentStudyPlan = ({
       toast.error(
         error instanceof Error
           ? error.message
-          : "Failed to set active study plan"
+          : "Failed to set active study plan",
       );
     } finally {
       setSubmitting(false);
@@ -280,6 +295,16 @@ const CurrentStudyPlan = ({
                     ))}
                   </div>
                 </div>
+                {estCompletionFromCreateStudyPlan && (
+                  <div className="flex items-center justify-between rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-sm">
+                    <span className="text-muted-foreground">
+                      Estimated first pass
+                    </span>
+                    <span className="font-semibold text-primary">
+                      {estCompletionFromCreateStudyPlan}
+                    </span>
+                  </div>
+                )}
               </div>
             </CardContent>
             <CardFooter className="pt-4">

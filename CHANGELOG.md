@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.2](https://github.com/sarahrdickerson/spacedalgos/compare/v0.2.1...v0.2.2) (2026-03-10)
+
+
+### Bug Fixes
+
+* problem count ([90efe94](https://github.com/sarahrdickerson/spacedalgos/commit/90efe94fe93cdda0d881e1a32995b54393a5efee))
+* reduce motion ([a880854](https://github.com/sarahrdickerson/spacedalgos/commit/a8808542bc7cd8db3424484de1dd1b39aff2bc70))
+
 ## [0.2.1](https://github.com/sarahrdickerson/spacedalgos/compare/v0.2.0...v0.2.1) (2026-03-08)
 
 

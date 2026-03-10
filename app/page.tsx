@@ -5,7 +5,7 @@ import LogoMark from "@/components/logo-mark";
 
 export default function Home() {
   // Stage item styles — matches actual app legend
-  const c: Record<string, string> = {
+  const stageClasses: Record<string, string> = {
     new: "text-[10px] leading-snug truncate text-violet-500 dark:text-violet-400 border border-dashed border-violet-300 dark:border-violet-500 rounded px-1",
     lrn: "text-[10px] leading-snug truncate bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded px-1",
     rein: "text-[10px] leading-snug truncate bg-blue-100 dark:bg-blue-900/25 text-blue-600 dark:text-blue-400 rounded px-1",
@@ -194,6 +194,14 @@ export default function Home() {
           }
           .squiggle {
             animation: none;
+            stroke-dashoffset: 0;
+          }
+          .a0,
+          .a1,
+          .a2,
+          .a3,
+          .a4 {
+            animation: none;
           }
         }
       `}</style>
@@ -326,7 +334,10 @@ export default function Home() {
                             </span>
                           )}
                           {items.map(([name, type], i) => (
-                            <span key={i} className={`block ${c[type]}`}>
+                            <span
+                              key={i}
+                              className={`block ${stageClasses[type]}`}
+                            >
                               {name}
                             </span>
                           ))}
@@ -342,7 +353,10 @@ export default function Home() {
                             {d}
                           </span>
                           {items.map(([name, type], i) => (
-                            <span key={i} className={`block ${c[type]}`}>
+                            <span
+                              key={i}
+                              className={`block ${stageClasses[type]}`}
+                            >
                               {name}
                             </span>
                           ))}
@@ -358,7 +372,10 @@ export default function Home() {
                             {d}
                           </span>
                           {items.map(([name, type], i) => (
-                            <span key={i} className={`block ${c[type]}`}>
+                            <span
+                              key={i}
+                              className={`block ${stageClasses[type]}`}
+                            >
                               {name}
                             </span>
                           ))}

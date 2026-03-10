@@ -2,7 +2,6 @@ import Link from "next/link";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import packageJson from "@/package.json";
 import LogoMark from "@/components/logo-mark";
-import { Button } from "@/components/ui/button";
 
 export default function Home() {
   // Stage item styles — matches actual app legend
@@ -13,7 +12,7 @@ export default function Home() {
     mast: "text-[10px] leading-snug truncate bg-green-100 dark:bg-green-900/25 text-green-700 dark:text-green-400 rounded px-1",
   };
   type CI = [string, string];
-  // Mon Mar 9 (today) → Sun Mar 15 — 1 review + 1 new per day
+  // Calendar data mock
   const week1: Array<{ d: number; today?: boolean; items: CI[] }> = [
     {
       d: 9,
@@ -189,6 +188,14 @@ export default function Home() {
         .card-float { animation: floatCard 5.5s ease-in-out infinite; }
         .squiggle { stroke-dasharray: 120; stroke-dashoffset: 120; animation: drawLine 0.8s ease-out 0.5s forwards; }
         @keyframes drawLine { to { stroke-dashoffset: 0; } }
+        @media (prefers-reduced-motion: reduce) {
+          .card-float {
+            animation: none;
+          }
+          .squiggle {
+            animation: none;
+          }
+        }
       `}</style>
 
       <main className="min-h-screen flex flex-col bg-background text-foreground overflow-x-hidden">
@@ -218,7 +225,7 @@ export default function Home() {
             className="absolute inset-0 overflow-hidden pointer-events-none"
             aria-hidden="true"
           >
-            <div className="dot-grid absolute inset-0" />
+            <div className="absolute inset-0" />
             <div className="absolute -top-40 -right-40 w-[520px] h-[520px] rounded-full bg-primary/10 blur-[90px]" />
             <div className="absolute -bottom-24 -left-24 w-72 h-72 rounded-full bg-primary/8 blur-[70px]" />
           </div>

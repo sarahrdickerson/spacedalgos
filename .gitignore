@@ -3,6 +3,7 @@ supabase/.temp
 supabase/migrations
 data/b75.json
 supabase/.temp/
+.claude/
 # dependencies
 /node_modules
 /.pnp

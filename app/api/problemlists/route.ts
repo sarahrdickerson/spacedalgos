@@ -17,7 +17,8 @@ export async function GET() {
 
     const lists = data?.map((list) => ({
       ...list,
-      problem_count: (list.problem_list_items as any)[0]?.count ?? 0,
+      problem_count:
+        (list.problem_list_items as { count: number }[])[0]?.count ?? 0,
       problem_list_items: undefined,
     }));
 

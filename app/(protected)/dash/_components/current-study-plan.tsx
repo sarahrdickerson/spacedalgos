@@ -86,7 +86,11 @@ const CurrentStudyPlan = ({
 
   const estCompletionFromCreateStudyPlan = React.useMemo(() => {
     if (!selectedList) return null;
-    const total = selectedList.problem_count ?? 75; // fallback to 75 if not available
+    const total = selectedList.problem_count;
+    if (total == null) {
+      // If problem count is unavailable, do not show an estimated completion date.
+      return null;
+    }
     const newPerDay =
       selectedPace === "leisurely" ? 1 : selectedPace === "accelerated" ? 3 : 2;
     const daysLeft = Math.ceil(total / newPerDay);

@@ -3,68 +3,71 @@ import { ThemeSwitcher } from "@/components/theme-switcher";
 import packageJson from "@/package.json";
 import LogoMark from "@/components/logo-mark";
 
+type CI = [string, string];
+
+// Stage item styles — matches actual app legend
+const stageClasses: Record<string, string> = {
+  new: "text-[10px] leading-snug truncate text-violet-500 dark:text-violet-400 border border-dashed border-violet-300 dark:border-violet-500 rounded px-1",
+  lrn: "text-[10px] leading-snug truncate bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded px-1",
+  rein: "text-[10px] leading-snug truncate bg-blue-100 dark:bg-blue-900/25 text-blue-600 dark:text-blue-400 rounded px-1",
+  mast: "text-[10px] leading-snug truncate bg-green-100 dark:bg-green-900/25 text-green-700 dark:text-green-400 rounded px-1",
+};
+
+// Calendar data mock
+const week1: Array<{ d: number; today?: boolean; items: CI[] }> = [
+  {
+    d: 9,
+    today: true,
+    items: [
+      ["House Robber #2", "lrn"],
+      ["Palindrome", "new"],
+    ],
+  },
+  {
+    d: 10,
+    items: [
+      ["Contains Dup #3", "rein"],
+      ["Min Window", "new"],
+    ],
+  },
+  {
+    d: 11,
+    items: [
+      ["Two Sum #2", "lrn"],
+      ["Search Rotated", "new"],
+    ],
+  },
+  {
+    d: 12,
+    items: [
+      ["Anagram #3", "rein"],
+      ["Reorder List", "new"],
+    ],
+  },
+  {
+    d: 13,
+    items: [
+      ["Two Sum #4", "mast"],
+      ["Merge K Lists", "new"],
+    ],
+  },
+  {
+    d: 14,
+    items: [
+      ["Palindrome #2", "lrn"],
+      ["Invert BTree", "new"],
+    ],
+  },
+  {
+    d: 15,
+    items: [
+      ["House Rob #3", "rein"],
+      ["Clone Graph", "new"],
+    ],
+  },
+];
+
 export default function Home() {
-  // Stage item styles — matches actual app legend
-  const stageClasses: Record<string, string> = {
-    new: "text-[10px] leading-snug truncate text-violet-500 dark:text-violet-400 border border-dashed border-violet-300 dark:border-violet-500 rounded px-1",
-    lrn: "text-[10px] leading-snug truncate bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded px-1",
-    rein: "text-[10px] leading-snug truncate bg-blue-100 dark:bg-blue-900/25 text-blue-600 dark:text-blue-400 rounded px-1",
-    mast: "text-[10px] leading-snug truncate bg-green-100 dark:bg-green-900/25 text-green-700 dark:text-green-400 rounded px-1",
-  };
-  type CI = [string, string];
-  // Calendar data mock
-  const week1: Array<{ d: number; today?: boolean; items: CI[] }> = [
-    {
-      d: 9,
-      today: true,
-      items: [
-        ["House Robber #2", "lrn"],
-        ["Palindrome", "new"],
-      ],
-    },
-    {
-      d: 10,
-      items: [
-        ["Contains Dup #3", "rein"],
-        ["Min Window", "new"],
-      ],
-    },
-    {
-      d: 11,
-      items: [
-        ["Two Sum #2", "lrn"],
-        ["Search Rotated", "new"],
-      ],
-    },
-    {
-      d: 12,
-      items: [
-        ["Anagram #3", "rein"],
-        ["Reorder List", "new"],
-      ],
-    },
-    {
-      d: 13,
-      items: [
-        ["Two Sum #4", "mast"],
-        ["Merge K Lists", "new"],
-      ],
-    },
-    {
-      d: 14,
-      items: [
-        ["Palindrome #2", "lrn"],
-        ["Invert BTree", "new"],
-      ],
-    },
-    {
-      d: 15,
-      items: [
-        ["House Rob #3", "rein"],
-        ["Clone Graph", "new"],
-      ],
-    },
-  ];
   // Mon Mar 16 → Sun Mar 22
   const week2: Array<{ d: number; items: CI[] }> = [
     {

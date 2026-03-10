@@ -47,6 +47,7 @@ export interface ProblemList {
   id: string;
   key: string;
   name: string;
+  problem_count?: number;
   description?: string;
   source?: string;
   version?: string;
@@ -84,7 +85,7 @@ interface DashboardContextType {
 }
 
 const DashboardContext = createContext<DashboardContextType | undefined>(
-  undefined
+  undefined,
 );
 
 export function useDashboard() {
@@ -111,7 +112,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
         fetch("/api/user/active-study-plan"),
         fetch("/api/problemlists"),
         fetch(
-          `/api/user/streak?localDate=${new Date().toLocaleDateString("en-CA")}`
+          `/api/user/streak?localDate=${new Date().toLocaleDateString("en-CA")}`,
         ),
       ]);
 
@@ -153,8 +154,8 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
           fetch(`/api/problemlists/${encodedKey}/stats`),
           fetch(
             `/api/problemlists/${encodedKey}/due?localDate=${new Date().toLocaleDateString(
-              "en-CA"
-            )}&tzOffset=${new Date().getTimezoneOffset()}`
+              "en-CA",
+            )}&tzOffset=${new Date().getTimezoneOffset()}`,
           ),
           fetch(`/api/problemlists/${encodedKey}/progress`),
         ]);

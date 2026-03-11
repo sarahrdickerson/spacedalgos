@@ -573,6 +573,12 @@ const CurrentStudyPlan = ({
           <CurrentPlanMenuButton
             problemList={activeList}
             onPlanRemoved={onRefresh}
+            currentPace={data?.studyPlan?.pace}
+            totalProblems={data?.stats?.total ?? 0}
+            completedProblems={
+              (data?.stats?.total ?? 0) - (data?.stats?.notStarted ?? 0)
+            }
+            onPaceChanged={onRefresh}
           />
         </CardFooter>
       </Card>

@@ -8,7 +8,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { DotsVerticalIcon, ResetIcon, TrashIcon } from "@radix-ui/react-icons";
+import {
+  DotsVerticalIcon,
+  MixerHorizontalIcon,
+  ResetIcon,
+  TrashIcon,
+} from "@radix-ui/react-icons";
 import {
   Dialog,
   DialogClose,
@@ -17,6 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ChangePaceDialog } from "./change-pace-dialog";
 
 interface ProblemList {
   id: string;
@@ -30,9 +36,14 @@ interface ProblemList {
 const CurrentPlanMenuButton = (props: {
   problemList: ProblemList | null;
   onPlanRemoved?: () => void;
+  currentPace?: string;
+  totalProblems?: number;
+  completedProblems?: number;
+  onPaceChanged?: () => void;
 }) => {
   const [isResetConfirmOpen, setIsResetConfirmOpen] = React.useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = React.useState(false);
+  const [isChangePaceOpen, setIsChangePaceOpen] = React.useState(false);
 
   const [isResetting, setIsResetting] = React.useState(false);
   const [isDeleting, setIsDeleting] = React.useState(false);
@@ -43,6 +54,9 @@ const CurrentPlanMenuButton = (props: {
   const confirmDelete = () => {
     setIsDeleteConfirmOpen(true);
   };
+  const openChangePace = () => {
+    setIsChangePaceOpen(true);
+  };
 
   const handleReset = async () => {
     if (!props.problemList?.key) return;
@@ -51,11 +65,11 @@ const CurrentPlanMenuButton = (props: {
     try {
       const response = await fetch(
         `/api/problemlists/${encodeURIComponent(
-          props.problemList.key
+          props.problemList.key,
         )}/reset-progress`,
         {
           method: "DELETE",
-        }
+        },
       );
 
       if (!response.ok) {
@@ -65,7 +79,6 @@ const CurrentPlanMenuButton = (props: {
         throw new Error(errorData.error || "Failed to reset progress");
       }
 
-      const data = await response.json();
       toast.success(`Progress reset for ${props.problemList.name}`);
       setIsResetConfirmOpen(false);
 
@@ -78,7 +91,7 @@ const CurrentPlanMenuButton = (props: {
     } catch (error) {
       console.error("Error resetting progress:", error);
       toast.error(
-        error instanceof Error ? error.message : "Failed to reset progress"
+        error instanceof Error ? error.message : "Failed to reset progress",
       );
     } finally {
       setIsResetting(false);
@@ -93,11 +106,11 @@ const CurrentPlanMenuButton = (props: {
       // First reset progress
       const resetResponse = await fetch(
         `/api/problemlists/${encodeURIComponent(
-          props.problemList.key
+          props.problemList.key,
         )}/reset-progress`,
         {
           method: "DELETE",
-        }
+        },
       );
 
       if (!resetResponse.ok) {
@@ -128,7 +141,7 @@ const CurrentPlanMenuButton = (props: {
     } catch (error) {
       console.error("Error deleting plan:", error);
       toast.error(
-        error instanceof Error ? error.message : "Failed to remove plan"
+        error instanceof Error ? error.message : "Failed to remove plan",
       );
     } finally {
       setIsDeleting(false);
@@ -145,6 +158,11 @@ const CurrentPlanMenuButton = (props: {
         </DropdownMenuTrigger>
         <DropdownMenuContent>
           <DropdownMenuGroup>
+            {props.currentPace && props.problemList?.id && (
+              <DropdownMenuItem onClick={openChangePace}>
+                <MixerHorizontalIcon /> Change Study Pace
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem onClick={confirmReset}>
               <ResetIcon /> Reset Progress
             </DropdownMenuItem>
@@ -225,6 +243,18 @@ const CurrentPlanMenuButton = (props: {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+      )}
+
+      {isChangePaceOpen && props.problemList?.id && props.currentPace && (
+        <ChangePaceDialog
+          open={isChangePaceOpen}
+          onOpenChange={setIsChangePaceOpen}
+          currentPace={props.currentPace}
+          listId={props.problemList.id}
+          totalProblems={props.totalProblems ?? 0}
+          completedProblems={props.completedProblems ?? 0}
+          onSuccess={props.onPaceChanged}
+        />
       )}
     </div>
   );

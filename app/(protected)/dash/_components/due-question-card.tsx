@@ -13,9 +13,6 @@ export function DueQuestionCard({
   onProblemClick,
   emptyMessage = "No problems to review.",
 }: DueQuestionCardProps) {
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-
   return (
     <Card className="flex flex-col max-h-[300px]">
       {problems.length > 0 ? (
@@ -50,10 +47,21 @@ export function DueQuestionCard({
                                 d.getDate(),
                               );
                             })();
-                        const diff = Math.round(
-                          (due.getTime() - todayStart.getTime()) / 86400000,
-                        );
-                        if (diff <= 0) return null;
+                        const diff = problem.projected_date
+                          ? (() => {
+                              const todayStart = new Date();
+                              todayStart.setHours(0, 0, 0, 0);
+                              const [y, m, d] = problem.projected_date
+                                .split("-")
+                                .map(Number);
+                              return Math.round(
+                                (new Date(y, m - 1, d).getTime() -
+                                  todayStart.getTime()) /
+                                  86400000,
+                              );
+                            })()
+                          : (problem.progress?.days_until ?? null);
+                        if (!diff || diff <= 0) return null;
                         return (
                           <span className="ml-1.5 text-xs text-muted-foreground/60">
                             +{diff}d
@@ -64,9 +72,7 @@ export function DueQuestionCard({
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     {!problem.is_new &&
-                      problem.progress?.next_review_at &&
-                      new Date(problem.progress.next_review_at) <
-                        todayStart && (
+                      (problem.progress?.days_overdue ?? 0) > 0 && (
                         <Badge className="bg-red-500/10 text-red-700 dark:text-red-400 border border-red-500/30 hover:bg-red-500/20">
                           Overdue
                         </Badge>

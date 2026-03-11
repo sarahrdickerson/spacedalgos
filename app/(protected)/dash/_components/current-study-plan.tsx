@@ -343,6 +343,7 @@ const CurrentStudyPlan = ({
                 {/* Completion Percentage Circle */}
                 <div className="relative flex items-center justify-center flex-shrink-0">
                   <svg className="w-16 h-16 -rotate-90">
+                    {/* Track */}
                     <circle
                       cx="32"
                       cy="32"
@@ -352,6 +353,7 @@ const CurrentStudyPlan = ({
                       fill="none"
                       className="text-muted"
                     />
+                    {/* In Progress arc (renders first, underneath) */}
                     <circle
                       cx="32"
                       cy="32"
@@ -364,22 +366,31 @@ const CurrentStudyPlan = ({
                         2 *
                         Math.PI *
                         28 *
-                        (stats.total > 0
-                          ? 1 -
-                            (stats.mastered * 3 + stats.inProgress * 1.5) /
-                              (stats.total * 3)
-                          : 1)
+                        (1 - (stats.mastered + stats.inProgress) / stats.total)
                       }`}
-                      className="text-green-600 dark:text-green-400 transition-all duration-500"
-                      strokeLinecap="round"
+                      className="text-blue-500 transition-all duration-500"
+                    />
+                    {/* Mastered arc (renders on top) */}
+                    <circle
+                      cx="32"
+                      cy="32"
+                      r="28"
+                      stroke="currentColor"
+                      strokeWidth="6"
+                      fill="none"
+                      strokeDasharray={`${2 * Math.PI * 28}`}
+                      strokeDashoffset={`${
+                        2 * Math.PI * 28 * (1 - stats.mastered / stats.total)
+                      }`}
+                      className="text-green-500 transition-all duration-500"
                     />
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-xl font-bold">
+                    <span className="text-xl font-bold leading-none">
                       {stats.total > 0
                         ? Math.round(
-                            ((stats.mastered * 3 + stats.inProgress * 1.5) /
-                              (stats.total * 3)) *
+                            ((stats.mastered + stats.inProgress) /
+                              stats.total) *
                               100,
                           )
                         : 0}

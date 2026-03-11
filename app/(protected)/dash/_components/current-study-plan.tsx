@@ -364,7 +364,11 @@ const CurrentStudyPlan = ({
                         2 *
                         Math.PI *
                         28 *
-                        (stats.total > 0 ? 1 - stats.mastered / stats.total : 1)
+                        (stats.total > 0
+                          ? 1 -
+                            (stats.mastered * 3 + stats.inProgress * 1.5) /
+                              (stats.total * 3)
+                          : 1)
                       }`}
                       className="text-green-600 dark:text-green-400 transition-all duration-500"
                       strokeLinecap="round"
@@ -373,7 +377,11 @@ const CurrentStudyPlan = ({
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
                     <span className="text-xl font-bold">
                       {stats.total > 0
-                        ? Math.round((stats.mastered / stats.total) * 100)
+                        ? Math.round(
+                            ((stats.mastered * 3 + stats.inProgress * 1.5) /
+                              (stats.total * 3)) *
+                              100,
+                          )
                         : 0}
                       %
                     </span>

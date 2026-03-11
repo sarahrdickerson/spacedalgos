@@ -257,7 +257,7 @@ const CurrentStudyPlan = ({
                     className="grid grid-cols-3 gap-2"
                   >
                     {PACE_OPTIONS.map(({ key: value, label, emoji, new_per_day, review_per_day }) => {
-                      const sub = `${new_per_day} new · ${review_per_day} review`;
+                      const sub = `${new_per_day} new · ${review_per_day} review${review_per_day === 1 ? "" : "s"}`;
                       const displayLabel = `${label} ${emoji}`;
                       return (
                       <label

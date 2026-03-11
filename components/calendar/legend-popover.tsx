@@ -25,7 +25,9 @@ const LegendPopover = () => {
               <div className="flex items-center gap-2 text-xs">
                 <div className="w-4 h-4 rounded bg-gray-500/20 border border-gray-500/30 flex-shrink-0"></div>
                 <span className="font-medium">First Attempt</span>
-                <span className="text-muted-foreground">(review next day)</span>
+                <span className="text-muted-foreground">
+                  (review soon after)
+                </span>
               </div>
               <div className="flex items-center gap-2 text-xs">
                 <div className="w-4 h-4 rounded bg-yellow-500/20 border border-yellow-500/30 flex-shrink-0"></div>
@@ -69,13 +71,32 @@ const LegendPopover = () => {
                 </div>
               </div>
               <div className="flex items-start gap-2 text-xs">
+                <div className="w-4 h-4 rounded bg-red-500/30 border-2 border-double border-red-500/50 flex-shrink-0 mt-0.5"></div>
+                <div>
+                  <div className="font-medium text-xs mt-0.5">Overdue</div>
+                  <div className="text-muted-foreground">
+                    Scheduled review was missed - shown on today's date
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-start gap-2 text-xs">
                 <div className="w-4 h-4 rounded border border-dashed border-violet-400/50 bg-violet-500/5 flex-shrink-0 mt-0.5"></div>
                 <div>
                   <div className="font-medium">Projected New</div>
                   <div className="text-muted-foreground">
-                    Estimated schedule — click to start early
+                    Suggested order only - any new problem counts toward your
+                    daily quota
                   </div>
                 </div>
+              </div>
+              <div className="rounded-md bg-muted/50 border border-border px-3 py-2 mb-3">
+                <p className="text-xs text-muted-foreground">
+                  <span className="font-medium text-foreground">
+                    New problems are paused
+                  </span>{" "}
+                  when you have overdue reviews. Clear your backlog first to
+                  unlock your daily new problem quota.
+                </p>
               </div>
             </div>
           </div>

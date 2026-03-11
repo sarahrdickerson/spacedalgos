@@ -29,9 +29,41 @@ export function DueQuestionCard({
                     <p className="font-medium truncate">{problem.title}</p>
                     <p className="text-sm text-muted-foreground">
                       {problem.category}
+                      {(() => {
+                        const dateStr =
+                          problem.projected_date ??
+                          problem.progress?.next_review_at;
+                        if (!dateStr) return null;
+                        const diff = problem.projected_date
+                          ? (() => {
+                              const todayStart = new Date();
+                              todayStart.setHours(0, 0, 0, 0);
+                              const [y, m, d] = problem.projected_date
+                                .split("-")
+                                .map(Number);
+                              return Math.round(
+                                (new Date(y, m - 1, d).getTime() -
+                                  todayStart.getTime()) /
+                                  86400000,
+                              );
+                            })()
+                          : (problem.progress?.days_until ?? null);
+                        if (!diff || diff <= 0) return null;
+                        return (
+                          <span className="ml-1.5 text-xs text-muted-foreground/60">
+                            +{diff}d
+                          </span>
+                        );
+                      })()}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
+                    {!problem.is_new &&
+                      (problem.progress?.days_overdue ?? 0) > 0 && (
+                        <Badge className="bg-red-500/10 text-red-700 dark:text-red-400 border border-red-500/30 hover:bg-red-500/20">
+                          Overdue
+                        </Badge>
+                      )}
                     {problem.is_new ? (
                       <Badge className="bg-blue-500/10 text-blue-700 dark:text-blue-400 hover:bg-blue-500/20">
                         New

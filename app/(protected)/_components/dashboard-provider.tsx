@@ -19,7 +19,8 @@ export interface ProblemProgress {
   success_count: number;
   fail_count: number;
   interval_days: number | null;
-  days_overdue: number;
+  days_overdue?: number;
+  days_until?: number;
 }
 
 export interface Problem {

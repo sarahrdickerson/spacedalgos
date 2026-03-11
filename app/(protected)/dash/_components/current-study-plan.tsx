@@ -400,7 +400,7 @@ const CurrentStudyPlan = ({
                 </div>
 
                 {/* Streak */}
-                <div className="flex-1 min-w-0 pl-4">
+                <div className="min-w-0">
                   <p className="text-sm text-muted-foreground mb-1">
                     Current Streak
                   </p>
@@ -435,10 +435,17 @@ const CurrentStudyPlan = ({
 
                 {/* Pace */}
                 {studyPlan && (
-                  <div className="flex-1 min-w-0">
+                  <div className="min-w-0">
                     <p className="text-sm text-muted-foreground mb-1">Pace</p>
                     <p className="text-2xl font-bold capitalize">
-                      {studyPlan.pace}
+                      <span className="hidden sm:inline">{studyPlan.pace}</span>
+                      <span className="sm:hidden">
+                        {studyPlan.pace === "accelerated"
+                          ? "Fast"
+                          : studyPlan.pace === "leisurely"
+                            ? "Slow"
+                            : "Normal"}
+                      </span>
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
                       {studyPlan.new_per_day} new · {studyPlan.review_per_day}{" "}
@@ -449,7 +456,7 @@ const CurrentStudyPlan = ({
 
                 {/* Est. completion */}
                 {estCompletionLabel && (
-                  <div className="hidden sm:block flex-1 min-w-0">
+                  <div className="hidden md:block min-w-0">
                     <p className="text-sm text-muted-foreground mb-1">
                       Est. First Pass
                     </p>

@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.2.3](https://github.com/sarahrdickerson/spacedalgos/compare/v0.2.2...v0.2.3) (2026-03-11)
+
+
+### Bug Fixes
+
+* current plan dynamic sizing issues ([296c6ff](https://github.com/sarahrdickerson/spacedalgos/commit/296c6ff5b620823baace0dc284463f3354d50016))
+* divide by 0 error in stat calculation ([ac46b7c](https://github.com/sarahrdickerson/spacedalgos/commit/ac46b7c09c08b2597f757480d1a240707f0f143c))
+* percent complete stat accounts in progress ([a2b8c66](https://github.com/sarahrdickerson/spacedalgos/commit/a2b8c6688ae4a49044494b40c026de6bf77b1519))
+* update progress circle to show in progress percentage too ([ff78574](https://github.com/sarahrdickerson/spacedalgos/commit/ff78574d8d77d0fe4e069f8c2d354587a9044b20))
+
 ## [0.2.2](https://github.com/sarahrdickerson/spacedalgos/compare/v0.2.1...v0.2.2) (2026-03-10)
 
 

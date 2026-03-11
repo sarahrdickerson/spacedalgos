@@ -34,19 +34,6 @@ export function DueQuestionCard({
                           problem.projected_date ??
                           problem.progress?.next_review_at;
                         if (!dateStr) return null;
-                        const due = problem.projected_date
-                          ? (() => {
-                              const [y, m, d] = dateStr.split("-").map(Number);
-                              return new Date(y, m - 1, d);
-                            })()
-                          : (() => {
-                              const d = new Date(dateStr);
-                              return new Date(
-                                d.getFullYear(),
-                                d.getMonth(),
-                                d.getDate(),
-                              );
-                            })();
                         const diff = problem.projected_date
                           ? (() => {
                               const todayStart = new Date();

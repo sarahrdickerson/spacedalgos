@@ -301,7 +301,7 @@ export default function Home() {
                 <div className="rounded-2xl border border-border bg-card shadow-2xl shadow-black/10 overflow-hidden">
                   {/* Day headers */}
                   <div className="grid grid-cols-7 bg-muted/30 border-b border-border/50">
-                    {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
+                    {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(
                       (d) => (
                         <div
                           key={d}
@@ -317,7 +317,7 @@ export default function Home() {
                   <div className="relative">
                     <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-card to-transparent z-10 pointer-events-none" />
 
-                    {/* Week 1*/}
+                    {/* Week 1 */}
                     <div className="grid grid-cols-7 divide-x divide-border/40 border-b border-border/40">
                       {week1.map(({ d, today, items }) => (
                         <div

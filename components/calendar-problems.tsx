@@ -59,6 +59,7 @@ interface CalendarEvent {
   leetcode_url?: string | null;
   date: Date;
   isPast: boolean;
+  isOverdue?: boolean;
   isProjected?: boolean;
   stage?: number;
   grade?: 0 | 1 | 2;
@@ -84,7 +85,7 @@ export function CalendarProblems({
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [viewAttemptOpen, setViewAttemptOpen] = React.useState(false);
   const [calendarData, setCalendarData] = React.useState<CalendarData | null>(
-    null
+    null,
   );
   const [calendarLoading, setCalendarLoading] = React.useState(true);
   const [calendarError, setCalendarError] = React.useState<string | null>(null);
@@ -132,11 +133,11 @@ export function CalendarProblems({
       try {
         const response = await fetch(
           `/api/problemlists/${encodeURIComponent(
-            activeListKey
+            activeListKey,
           )}/calendar?localDate=${new Date().toLocaleDateString(
-            "en-CA"
+            "en-CA",
           )}&tzOffset=${new Date().getTimezoneOffset()}`,
-          { signal }
+          { signal },
         );
 
         if (!response.ok) {
@@ -158,7 +159,7 @@ export function CalendarProblems({
         }
         if (!signal.aborted) {
           setCalendarError(
-            err instanceof Error ? err.message : "Unknown error"
+            err instanceof Error ? err.message : "Unknown error",
           );
         }
       } finally {
@@ -167,7 +168,7 @@ export function CalendarProblems({
         }
       }
     },
-    [data?.activeList?.key]
+    [data?.activeList?.key],
   );
 
   // Fetch calendar data when active list changes or when dashboard data refreshes
@@ -202,21 +203,33 @@ export function CalendarProblems({
         stage: attempt.stage,
         difficulty: attempt.difficulty,
         attemptNumber: attempt.attempt_number,
-      })
+      }),
+    );
+
+    const today = new Date();
+    const todayStart = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate(),
     );
 
     const upcomingEvents: CalendarEvent[] = calendarData.upcoming_reviews.map(
-      (review) => ({
-        id: `upcoming-${review.problem_id}`,
-        title: review.problem_title,
-        problemKey: review.problem_key,
-        leetcode_url: review.leetcode_url || "",
-        date: new Date(review.next_review_at),
-        isPast: false,
-        stage: review.stage,
-        difficulty: review.difficulty,
-        attemptNumber: review.attempt_count + 1,
-      })
+      (review) => {
+        const reviewDate = new Date(review.next_review_at);
+        const isOverdue = reviewDate < todayStart;
+        return {
+          id: `upcoming-${review.problem_id}`,
+          title: review.problem_title,
+          problemKey: review.problem_key,
+          leetcode_url: review.leetcode_url || "",
+          date: isOverdue ? todayStart : reviewDate,
+          isPast: false,
+          isOverdue,
+          stage: review.stage,
+          difficulty: review.difficulty,
+          attemptNumber: review.attempt_count + 1,
+        };
+      },
     );
 
     // Parse projected_date as local date (YYYY-MM-DD) to avoid UTC-midnight timezone shift.
@@ -253,8 +266,8 @@ export function CalendarProblems({
       error instanceof Error
         ? error.message
         : typeof error === "string"
-        ? error
-        : "An unknown error occurred while loading the dashboard";
+          ? error
+          : "An unknown error occurred while loading the dashboard";
 
     return (
       <div className="w-full">
@@ -317,7 +330,7 @@ export function CalendarProblems({
 
   const getEventsForDate = (date: Date): CalendarEvent[] => {
     return events.filter(
-      (event) => event.date.toDateString() === date.toDateString()
+      (event) => event.date.toDateString() === date.toDateString(),
     );
   };
 
@@ -333,10 +346,10 @@ export function CalendarProblems({
               event.stage === 3
                 ? "bg-green-500/5 text-green-700/60 dark:text-green-400/60 hover:bg-green-500/10"
                 : event.stage === 2
-                ? "bg-blue-500/5 text-blue-700/60 dark:text-blue-400/60 hover:bg-blue-500/10"
-                : event.stage === 1
-                ? "bg-yellow-500/5 text-yellow-700/60 dark:text-yellow-400/60 hover:bg-yellow-500/10"
-                : "bg-gray-500/5 text-gray-700/60 dark:text-gray-400/60 hover:bg-gray-500/10";
+                  ? "bg-blue-500/5 text-blue-700/60 dark:text-blue-400/60 hover:bg-blue-500/10"
+                  : event.stage === 1
+                    ? "bg-yellow-500/5 text-yellow-700/60 dark:text-yellow-400/60 hover:bg-yellow-500/10"
+                    : "bg-gray-500/5 text-gray-700/60 dark:text-gray-400/60 hover:bg-gray-500/10";
 
             return (
               <button
@@ -344,7 +357,7 @@ export function CalendarProblems({
                 type="button"
                 className={cn(
                   "text-xs px-2 py-1 rounded text-left w-full opacity-60 transition-colors cursor-pointer",
-                  stageColor
+                  stageColor,
                 )}
                 title={`${event.title} - Stage ${
                   event.stage || 0
@@ -382,8 +395,8 @@ export function CalendarProblems({
               event.stage === 1
                 ? "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 hover:bg-yellow-500/20"
                 : event.stage === 2
-                ? "bg-blue-500/10 text-blue-700 dark:text-blue-400 hover:bg-blue-500/20"
-                : "bg-green-500/10 text-green-700 dark:text-green-400 hover:bg-green-500/20";
+                  ? "bg-blue-500/10 text-blue-700 dark:text-blue-400 hover:bg-blue-500/20"
+                  : "bg-green-500/10 text-green-700 dark:text-green-400 hover:bg-green-500/20";
 
             return (
               <button
@@ -391,7 +404,9 @@ export function CalendarProblems({
                 type="button"
                 className={cn(
                   "text-xs px-2 py-1 rounded transition-colors text-left w-full",
-                  stageColor
+                  stageColor,
+                  event.isOverdue &&
+                    "border-2 border-double border-red-600 dark:border-red-400/70",
                 )}
                 title={`${event.title} - Stage ${event.stage} (Due for review)`}
                 onClick={() => {

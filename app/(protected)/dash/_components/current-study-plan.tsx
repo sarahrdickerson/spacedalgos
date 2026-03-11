@@ -343,6 +343,7 @@ const CurrentStudyPlan = ({
                 {/* Completion Percentage Circle */}
                 <div className="relative flex items-center justify-center flex-shrink-0">
                   <svg className="w-16 h-16 -rotate-90">
+                    {/* Track */}
                     <circle
                       cx="32"
                       cy="32"
@@ -352,6 +353,7 @@ const CurrentStudyPlan = ({
                       fill="none"
                       className="text-muted"
                     />
+                    {/* In Progress arc (renders first, underneath) */}
                     <circle
                       cx="32"
                       cy="32"
@@ -364,16 +366,47 @@ const CurrentStudyPlan = ({
                         2 *
                         Math.PI *
                         28 *
-                        (stats.total > 0 ? 1 - stats.mastered / stats.total : 1)
+                        (1 -
+                          Math.min(
+                            1,
+                            stats.total > 0
+                              ? (stats.mastered + stats.inProgress) /
+                                  stats.total
+                              : 0,
+                          ))
                       }`}
-                      className="text-green-600 dark:text-green-400 transition-all duration-500"
-                      strokeLinecap="round"
+                      className="text-blue-500 transition-all duration-500"
+                    />
+                    {/* Mastered arc (renders on top) */}
+                    <circle
+                      cx="32"
+                      cy="32"
+                      r="28"
+                      stroke="currentColor"
+                      strokeWidth="6"
+                      fill="none"
+                      strokeDasharray={`${2 * Math.PI * 28}`}
+                      strokeDashoffset={`${
+                        2 *
+                        Math.PI *
+                        28 *
+                        (1 -
+                          Math.min(
+                            1,
+                            stats.total > 0 ? stats.mastered / stats.total : 0,
+                          ))
+                      }`}
+                      className="text-green-500 transition-all duration-500"
                     />
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-xl font-bold">
+                    <span className="text-xl font-bold leading-none">
                       {stats.total > 0
-                        ? Math.round((stats.mastered / stats.total) * 100)
+                        ? Math.round(
+                            ((stats.mastered + stats.inProgress) /
+                              stats.total) *
+                              100,
+                          )
                         : 0}
                       %
                     </span>
@@ -381,7 +414,7 @@ const CurrentStudyPlan = ({
                 </div>
 
                 {/* Streak */}
-                <div className="flex-1 min-w-0 pl-4">
+                <div className="min-w-0">
                   <p className="text-sm text-muted-foreground mb-1">
                     Current Streak
                   </p>
@@ -416,10 +449,17 @@ const CurrentStudyPlan = ({
 
                 {/* Pace */}
                 {studyPlan && (
-                  <div className="flex-1 min-w-0">
+                  <div className="min-w-0">
                     <p className="text-sm text-muted-foreground mb-1">Pace</p>
                     <p className="text-2xl font-bold capitalize">
-                      {studyPlan.pace}
+                      <span className="hidden sm:inline">{studyPlan.pace}</span>
+                      <span className="sm:hidden">
+                        {studyPlan.pace === "accelerated"
+                          ? "Fast"
+                          : studyPlan.pace === "leisurely"
+                            ? "Slow"
+                            : "Normal"}
+                      </span>
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
                       {studyPlan.new_per_day} new · {studyPlan.review_per_day}{" "}
@@ -430,7 +470,7 @@ const CurrentStudyPlan = ({
 
                 {/* Est. completion */}
                 {estCompletionLabel && (
-                  <div className="hidden sm:block flex-1 min-w-0">
+                  <div className="hidden md:block min-w-0">
                     <p className="text-sm text-muted-foreground mb-1">
                       Est. First Pass
                     </p>

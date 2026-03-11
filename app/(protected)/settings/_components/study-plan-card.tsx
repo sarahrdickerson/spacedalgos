@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ChangePaceDialog } from "../../dash/_components/change-pace-dialog";
 import { useDashboard } from "../../_components/dashboard-provider";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const PACE_LABELS: Record<string, string> = {
   leisurely: "Leisurely",
@@ -35,7 +36,10 @@ export function StudyPlanCard() {
           <CardDescription>Your active study pace.</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">Loading…</p>
+          <div className="flex flex-row">
+            <Skeleton className="w-48 h-6 mr-4" />
+            <Skeleton className="w-16 h-6" />
+          </div>
         </CardContent>
       </Card>
     );

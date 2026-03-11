@@ -25,7 +25,9 @@ const LegendPopover = () => {
               <div className="flex items-center gap-2 text-xs">
                 <div className="w-4 h-4 rounded bg-gray-500/20 border border-gray-500/30 flex-shrink-0"></div>
                 <span className="font-medium">First Attempt</span>
-                <span className="text-muted-foreground">(review next day)</span>
+                <span className="text-muted-foreground">
+                  (review soon after)
+                </span>
               </div>
               <div className="flex items-center gap-2 text-xs">
                 <div className="w-4 h-4 rounded bg-yellow-500/20 border border-yellow-500/30 flex-shrink-0"></div>
@@ -86,6 +88,15 @@ const LegendPopover = () => {
                     daily quota
                   </div>
                 </div>
+              </div>
+              <div className="rounded-md bg-muted/50 border border-border px-3 py-2 mb-3">
+                <p className="text-xs text-muted-foreground">
+                  <span className="font-medium text-foreground">
+                    New problems are paused
+                  </span>{" "}
+                  when you have overdue reviews. Clear your backlog first to
+                  unlock your daily new problem quota.
+                </p>
               </div>
             </div>
           </div>

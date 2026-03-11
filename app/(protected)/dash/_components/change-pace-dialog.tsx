@@ -13,19 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useDashboard } from "../../_components/dashboard-provider";
-
-const PACE_OPTIONS = [
-  { key: "leisurely", label: "Leisurely", new_per_day: 1, review_per_day: 2 },
-  { key: "normal", label: "Normal", new_per_day: 2, review_per_day: 4 },
-  {
-    key: "accelerated",
-    label: "Accelerated",
-    new_per_day: 3,
-    review_per_day: 6,
-  },
-] as const;
-
-type Pace = "leisurely" | "normal" | "accelerated";
+import { PACE_OPTIONS, Pace, normalizePace } from "@/lib/pace-options";
 
 interface ChangePaceDialogProps {
   open: boolean;
@@ -47,10 +35,6 @@ function calcEstDate(remaining: number, newPerDay: number): string {
   });
 }
 
-function normalizePace(pace: string): Pace {
-  return (PACE_OPTIONS.find((p) => p.key === pace)?.key ?? "normal") as Pace;
-}
-
 export function ChangePaceDialog({
   open,
   onOpenChange,
@@ -60,9 +44,9 @@ export function ChangePaceDialog({
   completedProblems,
 }: ChangePaceDialogProps) {
   const { refreshData } = useDashboard();
-  const [selectedPace, setSelectedPace] = React.useState<Pace>(
-    normalizePace(currentPace),
-  );
+  const normalizedCurrent = normalizePace(currentPace);
+  const [selectedPace, setSelectedPace] =
+    React.useState<Pace>(normalizedCurrent);
   const [isSaving, setIsSaving] = React.useState(false);
 
   React.useEffect(() => {
@@ -72,9 +56,9 @@ export function ChangePaceDialog({
   }, [open, currentPace]);
 
   const remaining = totalProblems - completedProblems;
-  const currentOption = PACE_OPTIONS.find((p) => p.key === currentPace);
+  const currentOption = PACE_OPTIONS.find((p) => p.key === normalizedCurrent);
   const selectedOption = PACE_OPTIONS.find((p) => p.key === selectedPace);
-  const isPaceChanged = selectedPace !== currentPace;
+  const isPaceChanged = selectedPace !== normalizedCurrent;
 
   const currentEstDate =
     currentOption && remaining > 0
@@ -133,23 +117,35 @@ export function ChangePaceDialog({
 
         <div className="pb-2 px-6 flex flex-col gap-4">
           {/* Pace options */}
-          <div className="flex flex-col gap-2">
+          <div
+            role="radiogroup"
+            aria-label="Pace options"
+            className="flex flex-col gap-2"
+          >
             {PACE_OPTIONS.map((option) => {
               const isSelected = selectedPace === option.key;
-              const isCurrent = currentPace === option.key;
+              const isCurrent = normalizedCurrent === option.key;
               return (
-                <button
+                <label
                   key={option.key}
-                  type="button"
-                  onClick={() => setSelectedPace(option.key)}
-                  className={`w-full text-left rounded-lg border px-4 py-3 text-sm transition-colors ${
+                  className={`w-full rounded-lg border px-4 py-3 text-sm transition-colors cursor-pointer ${
                     isSelected
                       ? "border-primary bg-primary/5 ring-1 ring-primary"
                       : "border-border hover:border-muted-foreground/40 hover:bg-muted/30"
                   }`}
                 >
+                  <input
+                    type="radio"
+                    name="change-pace"
+                    value={option.key}
+                    checked={isSelected}
+                    onChange={() => setSelectedPace(option.key)}
+                    className="sr-only"
+                  />
                   <div className="flex items-center justify-between">
-                    <span className="font-medium">{option.label}</span>
+                    <span className="font-medium">
+                      {option.label} {option.emoji}
+                    </span>
                     {isCurrent && (
                       <span className="text-xs text-muted-foreground">
                         current
@@ -160,7 +156,7 @@ export function ChangePaceDialog({
                     {option.new_per_day} new/day · {option.review_per_day}{" "}
                     reviews/day
                   </p>
-                </button>
+                </label>
               );
             })}
           </div>

@@ -12,15 +12,10 @@ import { Button } from "@/components/ui/button";
 import { ChangePaceDialog } from "../../dash/_components/change-pace-dialog";
 import { useDashboard } from "../../_components/dashboard-provider";
 import { Skeleton } from "@/components/ui/skeleton";
-
-const PACE_LABELS: Record<string, string> = {
-  leisurely: "Leisurely",
-  normal: "Normal",
-  accelerated: "Accelerated",
-};
+import { PACE_OPTIONS } from "@/lib/pace-options";
 
 export function StudyPlanCard() {
-  const { data, loading } = useDashboard();
+  const { data, loading, error } = useDashboard();
   const [isChangePaceOpen, setIsChangePaceOpen] = React.useState(false);
 
   const plan = data?.studyPlan ?? null;
@@ -40,6 +35,22 @@ export function StudyPlanCard() {
             <Skeleton className="w-48 h-6 mr-4" />
             <Skeleton className="w-16 h-6" />
           </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Study Plan</CardTitle>
+          <CardDescription>Your active study pace.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-destructive">
+            Failed to load study plan. Please refresh the page.
+          </p>
         </CardContent>
       </Card>
     );
@@ -72,7 +83,8 @@ export function StudyPlanCard() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium">
-                {PACE_LABELS[plan.pace] ?? plan.pace}
+                {PACE_OPTIONS.find((p) => p.key === plan.pace)?.label ??
+                  plan.pace}
               </p>
               <p className="text-sm text-muted-foreground">
                 {plan.new_per_day} new/day · {plan.review_per_day} reviews/day

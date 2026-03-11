@@ -30,29 +30,46 @@ export function StudyPlanCard() {
   const [totalProblems, setTotalProblems] = React.useState(0);
   const [completedProblems, setCompletedProblems] = React.useState(0);
 
+  const resetPlanState = React.useCallback(() => {
+    setPlan(null);
+    setListId(null);
+    setTotalProblems(0);
+    setCompletedProblems(0);
+  }, []);
+
   const fetchPlanData = React.useCallback(async () => {
     setIsLoading(true);
     try {
       const res = await fetch("/api/user/active-study-plan");
-      if (!res.ok) return;
+      if (!res.ok) {
+        resetPlanState();
+        return;
+      }
       const data = await res.json();
-      if (!data.study_plan || !data.active_list) return;
+      if (!data.study_plan || !data.active_list) {
+        resetPlanState();
+        return;
+      }
 
       setPlan(data.study_plan);
       setListId(data.active_list.id);
 
       const encodedKey = encodeURIComponent(data.active_list.key);
       const statsRes = await fetch(`/api/problemlists/${encodedKey}/stats`);
-      if (!statsRes.ok) return;
+      if (!statsRes.ok) {
+        resetPlanState();
+        return;
+      }
       const stats = await statsRes.json();
       setTotalProblems(stats.total ?? 0);
       setCompletedProblems((stats.total ?? 0) - (stats.notStarted ?? 0));
     } catch {
       // silently fail — settings page should still render
+      resetPlanState();
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [resetPlanState]);
 
   React.useEffect(() => {
     fetchPlanData();

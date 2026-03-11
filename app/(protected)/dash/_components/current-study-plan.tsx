@@ -578,7 +578,6 @@ const CurrentStudyPlan = ({
             completedProblems={
               (data?.stats?.total ?? 0) - (data?.stats?.notStarted ?? 0)
             }
-            onPaceChanged={onRefresh}
           />
         </CardFooter>
       </Card>

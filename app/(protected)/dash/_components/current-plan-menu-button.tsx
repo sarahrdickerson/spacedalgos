@@ -39,7 +39,6 @@ const CurrentPlanMenuButton = (props: {
   currentPace?: string;
   totalProblems?: number;
   completedProblems?: number;
-  onPaceChanged?: () => void;
 }) => {
   const [isResetConfirmOpen, setIsResetConfirmOpen] = React.useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = React.useState(false);
@@ -253,7 +252,6 @@ const CurrentPlanMenuButton = (props: {
           listId={props.problemList.id}
           totalProblems={props.totalProblems ?? 0}
           completedProblems={props.completedProblems ?? 0}
-          onSuccess={props.onPaceChanged}
         />
       )}
     </div>

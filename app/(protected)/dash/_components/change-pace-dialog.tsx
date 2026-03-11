@@ -34,7 +34,6 @@ interface ChangePaceDialogProps {
   listId: string;
   totalProblems: number;
   completedProblems: number;
-  onSuccess?: () => void;
 }
 
 function calcEstDate(remaining: number, newPerDay: number): string {
@@ -48,6 +47,10 @@ function calcEstDate(remaining: number, newPerDay: number): string {
   });
 }
 
+function normalizePace(pace: string): Pace {
+  return (PACE_OPTIONS.find((p) => p.key === pace)?.key ?? "normal") as Pace;
+}
+
 export function ChangePaceDialog({
   open,
   onOpenChange,
@@ -55,17 +58,16 @@ export function ChangePaceDialog({
   listId,
   totalProblems,
   completedProblems,
-  onSuccess,
 }: ChangePaceDialogProps) {
   const { refreshData } = useDashboard();
   const [selectedPace, setSelectedPace] = React.useState<Pace>(
-    (currentPace as Pace) || "normal",
+    normalizePace(currentPace),
   );
   const [isSaving, setIsSaving] = React.useState(false);
 
   React.useEffect(() => {
     if (open) {
-      setSelectedPace((currentPace as Pace) || "normal");
+      setSelectedPace(normalizePace(currentPace));
     }
   }, [open, currentPace]);
 
@@ -85,7 +87,8 @@ export function ChangePaceDialog({
 
   const handleSave = async () => {
     if (!isPaceChanged) return;
-    const option = PACE_OPTIONS.find((p) => p.key === selectedPace)!;
+    const option = PACE_OPTIONS.find((p) => p.key === selectedPace);
+    if (!option) return;
 
     setIsSaving(true);
     try {
@@ -109,7 +112,6 @@ export function ChangePaceDialog({
 
       toast.success(`Pace updated to ${option.label}`);
       onOpenChange(false);
-      onSuccess?.();
       refreshData();
     } catch (error) {
       toast.error(

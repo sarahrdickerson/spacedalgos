@@ -9,8 +9,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { ChangePaceDialog } from "../../dash/_components/change-pace-dialog";
+import { useDashboard } from "../../_components/dashboard-provider";
 
 const PACE_LABELS: Record<string, string> = {
   leisurely: "Leisurely",
@@ -19,60 +19,23 @@ const PACE_LABELS: Record<string, string> = {
 };
 
 export function StudyPlanCard() {
-  const [isLoading, setIsLoading] = React.useState(true);
+  const { data, loading } = useDashboard();
   const [isChangePaceOpen, setIsChangePaceOpen] = React.useState(false);
-  const [plan, setPlan] = React.useState<{
-    pace: string;
-    new_per_day: number;
-    review_per_day: number;
-  } | null>(null);
-  const [listId, setListId] = React.useState<string | null>(null);
-  const [totalProblems, setTotalProblems] = React.useState(0);
-  const [completedProblems, setCompletedProblems] = React.useState(0);
 
-  const fetchPlanData = React.useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const res = await fetch("/api/user/active-study-plan");
-      if (!res.ok) return;
-      const data = await res.json();
-      if (!data.study_plan || !data.active_list) return;
+  const plan = data?.studyPlan ?? null;
+  const listId = data?.activeList?.id ?? null;
+  const totalProblems = data?.stats?.total ?? 0;
+  const completedProblems = totalProblems - (data?.stats?.notStarted ?? 0);
 
-      setPlan(data.study_plan);
-      setListId(data.active_list.id);
-
-      const encodedKey = encodeURIComponent(data.active_list.key);
-      const statsRes = await fetch(`/api/problemlists/${encodedKey}/stats`);
-      if (!statsRes.ok) return;
-      const stats = await statsRes.json();
-      setTotalProblems(stats.total ?? 0);
-      setCompletedProblems((stats.total ?? 0) - (stats.notStarted ?? 0));
-    } catch {
-      // silently fail — settings page should still render
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  React.useEffect(() => {
-    fetchPlanData();
-  }, [fetchPlanData]);
-
-  if (isLoading) {
+  if (loading) {
     return (
       <Card>
         <CardHeader>
           <CardTitle>Study Plan</CardTitle>
           <CardDescription>Your active study pace.</CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <div className="flex flex-col gap-1">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-3 w-40" />
-            </div>
-            <Skeleton className="h-9 w-28" />
-          </div>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">Loading…</p>
         </CardContent>
       </Card>
     );
@@ -129,7 +92,6 @@ export function StudyPlanCard() {
         listId={listId}
         totalProblems={totalProblems}
         completedProblems={completedProblems}
-        onSuccess={fetchPlanData}
       />
     </>
   );

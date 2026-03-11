@@ -238,7 +238,7 @@ export default function Home() {
             <div className="absolute -bottom-24 -left-24 w-72 h-72 rounded-full bg-primary/8 blur-[70px]" />
           </div>
 
-          <div className="relative px-5 sm:px-8 py-8 lg:py-12 flex flex-col lg:flex-row items-center gap-10 lg:gap-12 2xl:gap-16 2xl:px-32">
+          <div className="relative px-5 sm:px-8 py-8 lg:py-12 flex flex-col lg:flex-row items-center gap-10 lg:gap-12 lg:px-16 2xl:gap-16 2xl:px-32">
             {/* ── Left text ── */}
             <div className="flex-1 flex flex-col gap-6 text-center lg:text-left order-1 2xl:min-w-[420px] 2xl:flex-none">
               <div className="a0 flex justify-center lg:justify-start">
@@ -296,7 +296,7 @@ export default function Home() {
             </div>
 
             {/* ── Right: mini calendar mockup ── */}
-            <div className="a4 flex-shrink-0 w-full max-w-[420px] lg:w-[560px] lg:max-w-none mx-auto lg:mx-0 lg:-mr-16 2xl:flex-1 2xl:w-auto 2xl:mr-0 order-2">
+            <div className="a4 w-full max-w-[420px] mx-auto lg:flex-1 lg:max-w-none lg:mx-0 2xl:mr-0 order-2">
               <div className="card-float">
                 <div className="rounded-2xl border border-border bg-card shadow-2xl shadow-black/10 overflow-hidden">
                   {/* Day headers */}

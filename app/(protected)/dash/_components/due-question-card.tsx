@@ -42,8 +42,15 @@ export function DueQuestionCard({
                               const [y, m, d] = dateStr.split("-").map(Number);
                               return new Date(y, m - 1, d);
                             })()
-                          : new Date(dateStr);
-                        const diff = Math.ceil(
+                          : (() => {
+                              const d = new Date(dateStr);
+                              return new Date(
+                                d.getFullYear(),
+                                d.getMonth(),
+                                d.getDate(),
+                              );
+                            })();
+                        const diff = Math.round(
                           (due.getTime() - todayStart.getTime()) / 86400000,
                         );
                         if (diff <= 0) return null;

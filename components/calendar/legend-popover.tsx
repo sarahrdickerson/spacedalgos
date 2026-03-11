@@ -69,11 +69,21 @@ const LegendPopover = () => {
                 </div>
               </div>
               <div className="flex items-start gap-2 text-xs">
+                <div className="w-4 h-4 rounded bg-red-500/30 border-2 border-double border-red-500/50 flex-shrink-0 mt-0.5"></div>
+                <div>
+                  <div className="font-medium text-xs mt-0.5">Overdue</div>
+                  <div className="text-muted-foreground">
+                    Scheduled review was missed - shown on today's date
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-start gap-2 text-xs">
                 <div className="w-4 h-4 rounded border border-dashed border-violet-400/50 bg-violet-500/5 flex-shrink-0 mt-0.5"></div>
                 <div>
                   <div className="font-medium">Projected New</div>
                   <div className="text-muted-foreground">
-                    Estimated schedule — click to start early
+                    Suggested order only - any new problem counts toward your
+                    daily quota
                   </div>
                 </div>
               </div>

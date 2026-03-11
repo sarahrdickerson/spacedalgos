@@ -366,7 +366,14 @@ const CurrentStudyPlan = ({
                         2 *
                         Math.PI *
                         28 *
-                        (1 - (stats.mastered + stats.inProgress) / stats.total)
+                        (1 -
+                          Math.min(
+                            1,
+                            stats.total > 0
+                              ? (stats.mastered + stats.inProgress) /
+                                  stats.total
+                              : 0,
+                          ))
                       }`}
                       className="text-blue-500 transition-all duration-500"
                     />
@@ -380,7 +387,14 @@ const CurrentStudyPlan = ({
                       fill="none"
                       strokeDasharray={`${2 * Math.PI * 28}`}
                       strokeDashoffset={`${
-                        2 * Math.PI * 28 * (1 - stats.mastered / stats.total)
+                        2 *
+                        Math.PI *
+                        28 *
+                        (1 -
+                          Math.min(
+                            1,
+                            stats.total > 0 ? stats.mastered / stats.total : 0,
+                          ))
                       }`}
                       className="text-green-500 transition-all duration-500"
                     />

@@ -238,9 +238,9 @@ export default function Home() {
             <div className="absolute -bottom-24 -left-24 w-72 h-72 rounded-full bg-primary/8 blur-[70px]" />
           </div>
 
-          <div className="relative px-5 sm:px-8 py-8 lg:py-12 flex flex-col lg:flex-row items-center gap-10 lg:gap-12">
-            {/* ── Left: copy ── */}
-            <div className="flex-1 flex flex-col gap-6 text-center lg:text-left order-1">
+          <div className="relative px-5 sm:px-8 py-8 lg:py-12 flex flex-col lg:flex-row items-center gap-10 lg:gap-12 2xl:gap-16 2xl:px-32">
+            {/* ── Left text ── */}
+            <div className="flex-1 flex flex-col gap-6 text-center lg:text-left order-1 2xl:min-w-[420px] 2xl:flex-none">
               <div className="a0 flex justify-center lg:justify-start">
                 <span className="inline-flex items-center gap-1.5 font-mono text-[11px] tracking-widest text-primary uppercase bg-primary/10 px-3 py-1.5 rounded-full border border-primary/20">
                   <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
@@ -295,13 +295,13 @@ export default function Home() {
               </div>
             </div>
 
-            {/* ── Right: mini calendar mockup — bleeds off right edge on desktop ── */}
-            <div className="a4 flex-shrink-0 w-full max-w-[420px] lg:w-[560px] lg:max-w-none mx-auto lg:mx-0 lg:-mr-16 order-2">
+            {/* ── Right: mini calendar mockup ── */}
+            <div className="a4 flex-shrink-0 w-full max-w-[420px] lg:w-[560px] lg:max-w-none mx-auto lg:mx-0 lg:-mr-16 2xl:flex-1 2xl:w-auto 2xl:mr-0 order-2">
               <div className="card-float">
                 <div className="rounded-2xl border border-border bg-card shadow-2xl shadow-black/10 overflow-hidden">
-                  {/* Day headers — Mon start so today is first cell */}
+                  {/* Day headers */}
                   <div className="grid grid-cols-7 bg-muted/30 border-b border-border/50">
-                    {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(
+                    {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
                       (d) => (
                         <div
                           key={d}
@@ -317,7 +317,7 @@ export default function Home() {
                   <div className="relative">
                     <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-card to-transparent z-10 pointer-events-none" />
 
-                    {/* Week 1: Mar 9–15 */}
+                    {/* Week 1*/}
                     <div className="grid grid-cols-7 divide-x divide-border/40 border-b border-border/40">
                       {week1.map(({ d, today, items }) => (
                         <div
@@ -345,7 +345,7 @@ export default function Home() {
                       ))}
                     </div>
 
-                    {/* Week 2: Mar 16–22 */}
+                    {/* Week 2 */}
                     <div className="grid grid-cols-7 divide-x divide-border/40 border-b border-border/40">
                       {week2.map(({ d, items }) => (
                         <div key={d} className="p-2 flex flex-col gap-1">
@@ -364,7 +364,7 @@ export default function Home() {
                       ))}
                     </div>
 
-                    {/* Week 3: Mar 23–29 */}
+                    {/* Week 3 */}
                     <div className="grid grid-cols-7 divide-x divide-border/40">
                       {week3.map(({ d, items }) => (
                         <div key={d} className="p-2 flex flex-col gap-1">

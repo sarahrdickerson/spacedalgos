@@ -46,8 +46,7 @@ const CurrentStudyPlan = ({
   const [selectedList, setSelectedList] = React.useState<ProblemList | null>(
     null,
   );
-  const [selectedPace, setSelectedPace] =
-    React.useState<Pace>("normal"); // TODO: add custom pace option in the future
+  const [selectedPace, setSelectedPace] = React.useState<Pace>("normal"); // TODO: add custom pace option in the future
   const [submitting, setSubmitting] = React.useState(false);
 
   // Auto-select the first available list when the list loads
@@ -207,8 +206,8 @@ const CurrentStudyPlan = ({
           <CardHeader>
             <CardTitle>Create a Study Plan</CardTitle>
             <CardDescription>
-              You haven&apos;t set a study plan yet. Choose a problem list and pace
-              to start practicing.
+              You haven&apos;t set a study plan yet. Choose a problem list and
+              pace to start practicing.
             </CardDescription>
           </CardHeader>
           <form onSubmit={handleSubmit}>
@@ -256,33 +255,43 @@ const CurrentStudyPlan = ({
                     aria-labelledby="pace-group-label"
                     className="grid grid-cols-3 gap-2"
                   >
-                    {PACE_OPTIONS.map(({ key: value, label, emoji, new_per_day, review_per_day }) => {
-                      const sub = `${new_per_day} new · ${review_per_day} review${review_per_day === 1 ? "" : "s"}`;
-                      const displayLabel = `${label} ${emoji}`;
-                      return (
-                      <label
-                        key={value}
-                        aria-label={`${label} — ${sub}`}
-                        className={`flex flex-col items-center rounded-lg border p-3 text-sm transition-colors cursor-pointer ${
-                          selectedPace === value
-                            ? "border-primary bg-primary/5 text-primary"
-                            : "border-muted hover:border-muted-foreground/50 text-muted-foreground"
-                        }`}
-                      >
-                        {/* Native radio: keyboard + screen-reader behaviour for free */}
-                        <input
-                          type="radio"
-                          name="pace"
-                          value={value}
-                          checked={selectedPace === value}
-                          onChange={() => setSelectedPace(value)}
-                          className="sr-only"
-                        />
-                        <span className="font-medium">{displayLabel}</span>
-                        <span className="text-xs mt-0.5 opacity-70">{sub}</span>
-                      </label>
-                    );
-                    })}
+                    {PACE_OPTIONS.map(
+                      ({
+                        key: value,
+                        label,
+                        emoji,
+                        new_per_day,
+                        review_per_day,
+                      }) => {
+                        const sub = `${new_per_day} new · ${review_per_day} review`;
+                        const displayLabel = `${label} ${emoji}`;
+                        return (
+                          <label
+                            key={value}
+                            aria-label={`${label} — ${sub}`}
+                            className={`flex flex-col items-center rounded-lg border p-3 text-sm transition-colors cursor-pointer ${
+                              selectedPace === value
+                                ? "border-primary bg-primary/5 text-primary"
+                                : "border-muted hover:border-muted-foreground/50 text-muted-foreground"
+                            }`}
+                          >
+                            {/* Native radio: keyboard + screen-reader behaviour for free */}
+                            <input
+                              type="radio"
+                              name="pace"
+                              value={value}
+                              checked={selectedPace === value}
+                              onChange={() => setSelectedPace(value)}
+                              className="sr-only"
+                            />
+                            <span className="font-medium">{displayLabel}</span>
+                            <span className="text-xs mt-0.5 opacity-70">
+                              {sub}
+                            </span>
+                          </label>
+                        );
+                      },
+                    )}
                   </div>
                 </div>
                 {estCompletionFromCreateStudyPlan && (

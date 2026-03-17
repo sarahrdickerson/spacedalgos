@@ -28,6 +28,7 @@ import {
   DashboardData,
   ProblemList,
 } from "../../_components/dashboard-provider";
+import { PACE_OPTIONS, Pace } from "@/lib/pace-options";
 
 interface CurrentStudyPlanProps {
   data: DashboardData | null;
@@ -45,9 +46,7 @@ const CurrentStudyPlan = ({
   const [selectedList, setSelectedList] = React.useState<ProblemList | null>(
     null,
   );
-  const [selectedPace, setSelectedPace] = React.useState<
-    "leisurely" | "normal" | "accelerated"
-  >("normal"); // TODO: add custom pace option in the future
+  const [selectedPace, setSelectedPace] = React.useState<Pace>("normal"); // TODO: add custom pace option in the future
   const [submitting, setSubmitting] = React.useState(false);
 
   // Auto-select the first available list when the list loads
@@ -92,7 +91,7 @@ const CurrentStudyPlan = ({
       return null;
     }
     const newPerDay =
-      selectedPace === "leisurely" ? 1 : selectedPace === "accelerated" ? 3 : 2;
+      PACE_OPTIONS.find((p) => p.key === selectedPace)?.new_per_day ?? 2;
     const daysLeft = Math.ceil(total / newPerDay);
     const est = new Date();
     est.setDate(est.getDate() + daysLeft);
@@ -207,8 +206,8 @@ const CurrentStudyPlan = ({
           <CardHeader>
             <CardTitle>Create a Study Plan</CardTitle>
             <CardDescription>
-              You haven't set a study plan yet. Choose a problem list and pace
-              to start practicing.
+              You haven&apos;t set a study plan yet. Choose a problem list and
+              pace to start practicing.
             </CardDescription>
           </CardHeader>
           <form onSubmit={handleSubmit}>
@@ -256,47 +255,42 @@ const CurrentStudyPlan = ({
                     aria-labelledby="pace-group-label"
                     className="grid grid-cols-3 gap-2"
                   >
-                    {(
-                      [
-                        {
-                          value: "leisurely",
-                          label: "Leisurely ⏳",
-                          sub: "1 new · 2 review",
-                        },
-                        {
-                          value: "normal",
-                          label: "Normal 🚶‍♀️‍➡️",
-                          sub: "2 new · 4 review",
-                        },
-                        {
-                          value: "accelerated",
-                          label: "Accelerated 🏎️💨",
-                          sub: "3 new · 6 review",
-                        },
-                      ] as const
-                    ).map(({ value, label, sub }) => (
-                      <label
-                        key={value}
-                        aria-label={`${label} — ${sub}`}
-                        className={`flex flex-col items-center rounded-lg border p-3 text-sm transition-colors cursor-pointer ${
-                          selectedPace === value
-                            ? "border-primary bg-primary/5 text-primary"
-                            : "border-muted hover:border-muted-foreground/50 text-muted-foreground"
-                        }`}
-                      >
-                        {/* Native radio: keyboard + screen-reader behaviour for free */}
-                        <input
-                          type="radio"
-                          name="pace"
-                          value={value}
-                          checked={selectedPace === value}
-                          onChange={() => setSelectedPace(value)}
-                          className="sr-only"
-                        />
-                        <span className="font-medium">{label}</span>
-                        <span className="text-xs mt-0.5 opacity-70">{sub}</span>
-                      </label>
-                    ))}
+                    {PACE_OPTIONS.map(
+                      ({
+                        key: value,
+                        label,
+                        emoji,
+                        new_per_day,
+                        review_per_day,
+                      }) => {
+                        const sub = `${new_per_day} new · ${review_per_day} review`;
+                        const displayLabel = `${label} ${emoji}`;
+                        return (
+                          <label
+                            key={value}
+                            aria-label={`${label} — ${sub}`}
+                            className={`flex flex-col items-center rounded-lg border p-3 text-sm transition-colors cursor-pointer ${
+                              selectedPace === value
+                                ? "border-primary bg-primary/5 text-primary"
+                                : "border-muted hover:border-muted-foreground/50 text-muted-foreground"
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name="pace"
+                              value={value}
+                              checked={selectedPace === value}
+                              onChange={() => setSelectedPace(value)}
+                              className="sr-only"
+                            />
+                            <span className="font-medium">{displayLabel}</span>
+                            <span className="text-xs mt-0.5 opacity-70">
+                              {sub}
+                            </span>
+                          </label>
+                        );
+                      },
+                    )}
                   </div>
                 </div>
                 {estCompletionFromCreateStudyPlan && (
@@ -573,6 +567,11 @@ const CurrentStudyPlan = ({
           <CurrentPlanMenuButton
             problemList={activeList}
             onPlanRemoved={onRefresh}
+            currentPace={data?.studyPlan?.pace}
+            totalProblems={data?.stats?.total ?? 0}
+            completedProblems={
+              (data?.stats?.total ?? 0) - (data?.stats?.notStarted ?? 0)
+            }
           />
         </CardFooter>
       </Card>

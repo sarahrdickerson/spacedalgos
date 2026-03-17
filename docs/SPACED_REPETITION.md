@@ -26,8 +26,10 @@ Stages are a UI label showing conceptual mastery level. They do **not** affect t
 
 ### Stage Progression
 
-- **Grade 1 or 2 (success)**: advance one stage (max 3). First attempt always → Stage 1.
-- **Grade 0 (fail)**: drop one stage (min 1). First attempt always → Stage 1.
+- **Grade 2 (Easy)**: advance one stage (max 3). Only Easy can reach Mastered.
+- **Grade 1 (Good)**: advance one stage, capped at Stage 2 (Reinforcing).
+- **Grade 0 (Again)**: drop one stage (min 1).
+- First attempt always → Stage 1 regardless of grade.
 
 ## Interval Calculations
 

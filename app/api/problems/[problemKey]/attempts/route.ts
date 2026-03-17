@@ -50,11 +50,15 @@ function computeNextProgress(params: {
   const fail_count = (prevFailCount ?? 0) + (!isSuccess ? 1 : 0);
 
   // Stage drives the UI label (Learning / Reinforcing / Mastered) — not intervals.
-  // Grade 0 drops one stage (min 1); Grade 1/2 advances one stage (max 3).
+  // Grade 0 drops one stage (min 1).
+  // Grade 1 (Good) advances one stage, capped at 2 (Reinforcing) — only Easy can reach Mastered.
+  // Grade 2 (Easy) advances one stage, capped at 3 (Mastered).
   // First attempt (prevStage null/0) always lands at stage 1 regardless of grade.
   let stage = prevStage ?? 0;
   if (grade === 0) {
     stage = Math.max(1, stage - 1);
+  } else if (grade === 1) {
+    stage = Math.min(2, Math.max(1, stage + 1));
   } else {
     stage = Math.min(3, Math.max(1, stage + 1));
   }

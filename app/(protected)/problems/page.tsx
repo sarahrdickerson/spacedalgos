@@ -27,7 +27,7 @@ const ProblemsPage = () => {
   const problems = dashboardData?.allProblems ?? [];
 
   const [openCategories, setOpenCategories] = React.useState<Set<string>>(
-    new Set()
+    new Set(),
   );
 
   // Group problems by category and sort by order_index
@@ -47,29 +47,43 @@ const ProblemsPage = () => {
     // Sort each group by order_index
     Object.keys(groups).forEach((category) => {
       groups[category].sort(
-        (a, b) => (a.order_index ?? 0) - (b.order_index ?? 0)
+        (a, b) => (a.order_index ?? 0) - (b.order_index ?? 0),
       );
     });
 
     return groups;
   }, [activeList, problems]);
 
-  // Automatically open categories that have problems with progress
+  // Calculate progress percentage for each category
+  const categoryProgress = React.useMemo(() => {
+    const progress: Record<string, number> = {};
+
+    Object.entries(groupedProblems).forEach(([category, problems]) => {
+      // Stage 0 (no progress) = 0 points, Stage 1 = 1 point, Stage 2 = 2 points, Stage 3 = 3 points
+      const totalPoints = problems.reduce((sum, p) => {
+        const stage = p.progress?.stage || 0;
+        return sum + stage;
+      }, 0);
+      const maxPoints = problems.length * 3;
+      progress[category] = maxPoints > 0 ? (totalPoints / maxPoints) * 100 : 0;
+    });
+
+    return progress;
+  }, [groupedProblems]);
+
+  // Automatically open categories that have progress but aren't fully complete
   React.useEffect(() => {
     if (!activeList) return;
 
     const categoriesToOpen = new Set<string>();
-    Object.entries(groupedProblems).forEach(([category, problems]) => {
-      const hasProgress = problems.some(
-        (problem) => problem.progress && problem.progress.stage > 0
-      );
-      if (hasProgress) {
+    Object.entries(categoryProgress).forEach(([category, percentage]) => {
+      if (percentage > 0 && percentage < 100) {
         categoriesToOpen.add(category);
       }
     });
 
     setOpenCategories(categoriesToOpen);
-  }, [activeList, groupedProblems]);
+  }, [activeList, categoryProgress]);
   const handleRandomProblem = (filterType: "all" | "weak" | "unattempted") => {
     if (!problems || problems.length === 0) return;
 
@@ -77,11 +91,11 @@ const ProblemsPage = () => {
 
     if (filterType === "weak") {
       filteredProblems = problems.filter(
-        (p) => p.progress?.stage === 1 || p.progress?.stage === 2
+        (p) => p.progress?.stage === 1 || p.progress?.stage === 2,
       );
     } else if (filterType === "unattempted") {
       filteredProblems = problems.filter(
-        (p) => !p.progress || p.progress.stage === 0
+        (p) => !p.progress || p.progress.stage === 0,
       );
     }
 
@@ -170,15 +184,7 @@ const ProblemsPage = () => {
           </div>
           <div className="flex flex-col gap-4 w-full">
             {Object.entries(groupedProblems).map(([category, problems]) => {
-              // Calculate category progress weighted by stage
-              // Stage 0 (no progress) = 0 points, Stage 1 = 1 point, Stage 2 = 2 points, Stage 3 = 3 points
-              const totalPoints = problems.reduce((sum, p) => {
-                const stage = p.progress?.stage || 0;
-                return sum + stage;
-              }, 0);
-              const maxPoints = problems.length * 3;
-              const progressPercentage =
-                maxPoints > 0 ? (totalPoints / maxPoints) * 100 : 0;
+              const progressPercentage = categoryProgress[category] || 0;
 
               return (
                 <Collapsible
@@ -232,11 +238,11 @@ const ProblemsPage = () => {
                             progress?.stage
                           ) {
                             const nextReview = new Date(
-                              progress.next_review_at
+                              progress.next_review_at,
                             );
                             const diffMs = nextReview.getTime() - now.getTime();
                             daysUntilReview = Math.ceil(
-                              diffMs / (1000 * 60 * 60 * 24)
+                              diffMs / (1000 * 60 * 60 * 24),
                             );
 
                             // Calculate decay: as we approach next_review_at, progress decays to previous stage
@@ -247,7 +253,7 @@ const ProblemsPage = () => {
                             if (daysSinceLastAttempt >= 0 && intervalDays > 0) {
                               const decayRatio = Math.min(
                                 1,
-                                daysSinceLastAttempt / intervalDays
+                                daysSinceLastAttempt / intervalDays,
                               );
                               const currentStageProgress =
                                 (progress.stage / 3) * 100;
@@ -264,16 +270,16 @@ const ProblemsPage = () => {
                               // Clamp to ensure it doesn't go below previous stage
                               progressValue = Math.max(
                                 previousStageProgress,
-                                Math.min(currentStageProgress, progressValue)
+                                Math.min(currentStageProgress, progressValue),
                               );
                             }
                           } else if (progress?.next_review_at) {
                             const nextReview = new Date(
-                              progress.next_review_at
+                              progress.next_review_at,
                             );
                             const diffMs = nextReview.getTime() - now.getTime();
                             daysUntilReview = Math.ceil(
-                              diffMs / (1000 * 60 * 60 * 24)
+                              diffMs / (1000 * 60 * 60 * 24),
                             );
                           }
 
@@ -305,8 +311,8 @@ const ProblemsPage = () => {
                                       problem.difficulty === "Easy"
                                         ? "bg-green-500/10 text-green-700 dark:text-green-400 hover:bg-green-500/20"
                                         : problem.difficulty === "Medium"
-                                        ? "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 hover:bg-yellow-500/20"
-                                        : "bg-red-500/10 text-red-700 dark:text-red-400 hover:bg-red-500/20"
+                                          ? "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 hover:bg-yellow-500/20"
+                                          : "bg-red-500/10 text-red-700 dark:text-red-400 hover:bg-red-500/20"
                                     }
                                   >
                                     {problem.difficulty}
@@ -341,10 +347,10 @@ const ProblemsPage = () => {
                                         {daysUntilReview > 0
                                           ? `Due in ${daysUntilReview}d`
                                           : daysUntilReview === 0
-                                          ? "Due today"
-                                          : `Overdue by ${Math.abs(
-                                              daysUntilReview
-                                            )}d`}
+                                            ? "Due today"
+                                            : `Overdue by ${Math.abs(
+                                                daysUntilReview,
+                                              )}d`}
                                       </>
                                     )}
                                   </p>

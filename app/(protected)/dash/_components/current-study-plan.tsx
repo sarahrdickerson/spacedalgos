@@ -275,7 +275,6 @@ const CurrentStudyPlan = ({
                                 : "border-muted hover:border-muted-foreground/50 text-muted-foreground"
                             }`}
                           >
-                            {/* Native radio: keyboard + screen-reader behaviour for free */}
                             <input
                               type="radio"
                               name="pace"

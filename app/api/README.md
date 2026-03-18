@@ -156,19 +156,23 @@ This document provides an overview of all API routes available in the applicatio
 }
 ```
 
+**Notes:**
+- `dueToday` counts problems where `next_review_at ≤ now` (currently past their scheduled time). This is intentionally stricter than "scheduled any time today" — it represents the urgent/overdue count shown on the study plan card, distinct from the broader "due today" count in the review queue UI which includes reviews scheduled for later in the day.
+
 ---
 
 ### Get Due Problems
 
 **Endpoint:** `GET /api/problemlists/[listKey]/due`
 
-**Description:** Fetches the user's review queue for a specific problem list. Returns three categories of problems merged into `due_problems`:
+**Description:** Fetches the user's review queue for a specific problem list. Returns four categories of problems merged into `due_problems`:
 
-1. **Scheduled reviews** — problems with a `next_review_at` due any time today or earlier
-2. **New problems (today)** — unseen problems filling today's `new_per_day` quota (only when no overdue reviews exist). These have `is_new: true` and no `projected_date`
-3. **Upcoming new problems** — projected unseen problems for the rest of this calendar week (through Saturday). These have `is_new: true` and a `projected_date` (ISO date string)
+1. **Overdue reviews** — problems with `next_review_at` before today's local day start. Always returned uncapped (urgent catch-up).
+2. **Today's scheduled reviews** — problems with `next_review_at` within today's local calendar day. Capped to the study plan's `review_per_day`.
+3. **Future scheduled reviews** — problems with `next_review_at` after today's local day end. Returned uncapped (powers the "this week" view on the client).
+4. **New problems** — unseen problems filling today's `new_per_day` quota (`is_new: true`, no `projected_date`), plus projected new problems for the rest of this calendar week (`is_new: true`, `projected_date` set).
 
-New problems are only surfaced when all overdue reviews are caught up. Today's new quota is reduced by any new problems already logged today, so completing one new problem does not pull the next unseen problem into the same day's quota.
+New problems are only surfaced when there are zero overdue reviews. Today's new quota is reduced by any new problems already logged today, so completing one new problem does not pull the next unseen problem into the same day's quota.
 
 **Authentication:** Required
 
@@ -240,9 +244,10 @@ New problems are only surfaced when all overdue reviews are caught up. Today's n
 ```
 
 **Notes:**
-- `days_until` is negative when overdue
+- `days_until` is a local calendar day offset from today's local midnight: `0` = due today, negative = overdue, positive = days until due. It is computed as `floor((next_review_at − localDayStartUTC) / 86400000)` — not raw hours from the current moment — so a review scheduled for 10 PM tonight still shows `days_until: 0`, not `1`.
 - Problems with `is_new: true` and `projected_date: null` are today's new problems
 - Problems with `is_new: true` and a `projected_date` are projected for a future day this week
+- Future scheduled reviews (`days_until > 0`) are included uncapped so the client "this week" view has full visibility. The `review_per_day` cap only applies to today's scheduled reviews; when those future days arrive they will be capped at that point.
 
 ---
 
@@ -411,8 +416,9 @@ Intervals grow purely from the previous interval value — no stage-based multip
 
 **Stage transitions:**
 - First attempt (any grade) → Stage 1
-- Grade ≥ 1 → `min(3, stage + 1)`
-- Grade 0 → `max(1, stage - 1)`
+- Grade 2 (Easy) → `min(3, stage + 1)` — only Easy can reach Stage 3 (Mastered)
+- Grade 1 (Good) → `min(2, max(1, stage + 1))` — capped at Stage 2 (Reinforcing)
+- Grade 0 (Again) → `max(1, stage - 1)`
 
 **Interval calculation:**
 

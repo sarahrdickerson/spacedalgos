@@ -244,7 +244,7 @@ New problems are only surfaced when there are zero overdue reviews. Today's new 
 ```
 
 **Notes:**
-- `days_until` is a local calendar day offset from today's local midnight: `0` = due today, negative = overdue, positive = days until due. It is computed as `floor((next_review_at − localDayStartUTC) / 86400000)` — not raw hours from the current moment — so a review scheduled for 10 PM tonight still shows `days_until: 0`, not `1`.
+- `days_until` is a local calendar day offset from today's local midnight: `0` = due today, negative = overdue, positive = days until due. It is computed by converting both today and `next_review_at` to local date-only midnights and then taking `Math.round((nextReviewLocalMidnight − todayLocalMidnight) / 86400000)` — not raw hours from the current moment — so a review scheduled for 10 PM tonight still shows `days_until: 0`, not `1`.
 - Problems with `is_new: true` and `projected_date: null` are today's new problems
 - Problems with `is_new: true` and a `projected_date` are projected for a future day this week
 - Future scheduled reviews (`days_until > 0`) are included uncapped so the client "this week" view has full visibility. The `review_per_day` cap only applies to today's scheduled reviews; when those future days arrive they will be capped at that point.

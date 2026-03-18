@@ -102,6 +102,28 @@ const CurrentStudyPlan = ({
     });
   }, [selectedList, selectedPace]);
 
+  // Compute due-today and overdue counts from dueProblems
+  const { dueTodayCount, overdueCount } = React.useMemo(() => {
+    const dueProblems = data?.dueProblems ?? [];
+    let due = 0;
+    let overdue = 0;
+    for (const p of dueProblems) {
+      if (p.is_new && !p.projected_date) {
+        due++;
+        continue;
+      }
+      const daysUntil = p.progress?.days_until;
+      if (daysUntil === undefined || daysUntil === null) continue;
+      if (daysUntil <= 0) {
+        due++;
+      }
+      if (daysUntil < 0) {
+        overdue++;
+      }
+    }
+    return { dueTodayCount: due, overdueCount: overdue };
+  }, [data?.dueProblems]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -530,14 +552,23 @@ const CurrentStudyPlan = ({
               </div>
 
               {/* Key Stats */}
-              {stats.dueToday > 0 && (
-                <div className="flex items-baseline gap-2 pt-2 border-t">
-                  <span className="text-2xl font-bold text-orange-600 dark:text-orange-400">
-                    {stats.dueToday}
-                  </span>
-                  <span className="text-sm text-muted-foreground">
-                    problems due for review
-                  </span>
+              {dueTodayCount > 0 && (
+                <div className="flex items-center gap-3 pt-2 border-t flex-wrap">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                      {dueTodayCount}
+                    </span>
+                    <span className="text-sm text-muted-foreground">
+                      due today
+                    </span>
+                  </div>
+                  {overdueCount > 0 && (
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-sm font-semibold text-red-600 dark:text-red-400">
+                        {overdueCount} overdue
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

@@ -222,7 +222,6 @@ export async function GET(
         localMonth,
         localDay,
         todayMidnightUTC,
-        tomorrowMidnightUTC,
         localDayStartUTC,
         localDayEndUTC,
       } = dateBounds;

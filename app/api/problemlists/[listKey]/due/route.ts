@@ -131,8 +131,6 @@ export async function GET(
       : (studyPlan?.review_per_day ?? 0);
 
     // 7) Build the review queue (all problems that have a progress row)
-    const now = new Date();
-
     // Use client's local date/timezone so "today" boundaries match the user's clock.
     const { searchParams } = new URL(request.url);
     const dateBounds = parseLocalDateBounds(searchParams);
@@ -160,10 +158,13 @@ export async function GET(
         if (!progress) return null; // Only include problems with progress
         if (!progress.next_review_at) return null; // No review scheduled yet — skip
 
-        // Calculate days until/overdue
+        // Calculate days until/overdue using local calendar days so that a review
+        // scheduled for later today shows 0 ("today"), not 1.
         const nextReview = new Date(progress.next_review_at);
-        const diffMs = nextReview.getTime() - now.getTime();
-        const daysUntil = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+        const daysUntil = Math.floor(
+          (nextReview.getTime() - new Date(localDayStartUTC).getTime()) /
+            (1000 * 60 * 60 * 24)
+        );
 
         return {
           ...problem,

@@ -148,6 +148,10 @@ export async function GET(
       localDayEndUTC,
     } = dateBounds;
 
+    const localDayStartMs = Date.parse(localDayStartUTC);
+    const localDayEndMs = Date.parse(localDayEndUTC);
+    const MS_PER_DAY = 1000 * 60 * 60 * 24;
+
     const reviewProblems = items
       .map((item: any) => {
         const problem = item.problems;
@@ -158,13 +162,11 @@ export async function GET(
         if (!progress.next_review_at) return null; // No review scheduled yet — skip
 
         // Calculate days until/overdue using the user's local-day boundaries.
-        // localDayStartUTC represents the start of the current local calendar day
-        // (in UTC ms). Any next_review_at in [localDayStartUTC, localDayEndUTC)
-        // should yield days_until = 0; earlier reviews negative; later positive.
+        // Any next_review_at in [localDayStartMs, localDayEndMs) yields days_until = 0;
+        // earlier is negative (overdue); later is positive (future).
         const nextReview = new Date(progress.next_review_at);
-        const MS_PER_DAY = 1000 * 60 * 60 * 24;
         const daysUntil = Math.floor(
-          (nextReview.getTime() - localDayStartUTC) / MS_PER_DAY,
+          (nextReview.getTime() - localDayStartMs) / MS_PER_DAY,
         );
 
         return {
@@ -188,13 +190,10 @@ export async function GET(
       })
       .filter(Boolean);
 
-    // 7b) Split reviews into three buckets using localDayStartUTC / localDayEndUTC:
-    //   - overdue:   next_review_at < localDayStartUTC (before today in user's TZ) — shown uncapped
-    //   - today:     localDayStartUTC <= next_review_at < localDayEndUTC — capped to review_per_day
-    //   - future:    next_review_at >= localDayEndUTC — always included uncapped (for "this week" view)
-    const localDayStartMs = new Date(localDayStartUTC).getTime();
-    const localDayEndMs = new Date(localDayEndUTC).getTime();
-
+    // 7b) Split reviews into three buckets using localDayStartMs / localDayEndMs:
+    //   - overdue:   next_review_at < localDayStartMs — shown uncapped
+    //   - today:     localDayStartMs <= next_review_at < localDayEndMs — capped to review_per_day
+    //   - future:    next_review_at >= localDayEndMs — uncapped (powers "this week" view)
     const getNextReviewMs = (p: any) =>
       p?.progress?.next_review_at
         ? new Date(p.progress.next_review_at).getTime()
@@ -234,14 +233,11 @@ export async function GET(
       ...futureScheduled,
     ];
 
-    // 8) Check if any reviews are overdue using localDayStartUTC (consistent with
-    // the local-day-based daysUntil logic above and correct for non-UTC timezones).
-    const hasOverdueReviews = (dueProgressData ?? []).some((p: any) => {
-      if (!p.next_review_at) return false;
-      const nextReviewTime = new Date(p.next_review_at).getTime();
-      const localDayStartTime = localDayStartMs;
-      return nextReviewTime < localDayStartTime;
-    });
+    // 8) Check if any reviews are overdue using localDayStartUTC
+    const hasOverdueReviews = (dueProgressData ?? []).some(
+      (p: any) =>
+        p.next_review_at && Date.parse(p.next_review_at) < localDayStartMs,
+    );
 
     // 9) Add new problems only when all reviews are caught up
     let newProblems: any[] = [];
@@ -255,19 +251,9 @@ export async function GET(
       // Use timezone-aware local-day bounds so post-6PM CST attempts (which are
       // already UTC "tomorrow") are still counted as today's consumed slot.
       const newSlotsUsedToday = (dueProgressData ?? []).filter((p: any) => {
-        if (
-          p.attempt_count !== 1 ||
-          !p.last_attempt_at
-        ) {
-          return false;
-        }
-        const lastAttemptTime = new Date(p.last_attempt_at).getTime();
-        const localDayStartTimeUTC = new Date(localDayStartUTC).getTime();
-        const localDayEndTimeUTC = new Date(localDayEndUTC).getTime();
-        return (
-          lastAttemptTime >= localDayStartTimeUTC &&
-          lastAttemptTime < localDayEndTimeUTC
-        );
+        if (p.attempt_count !== 1 || !p.last_attempt_at) return false;
+        const t = Date.parse(p.last_attempt_at);
+        return t >= localDayStartMs && t < localDayEndMs;
       }).length;
       const effectiveNewPerDay = Math.max(0, newPerDay - newSlotsUsedToday);
 

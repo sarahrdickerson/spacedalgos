@@ -554,16 +554,18 @@ const CurrentStudyPlan = ({
               </div>
 
               {/* Key Stats */}
-              {dueTodayCount > 0 && (
+              {(dueTodayCount > 0 || overdueCount > 0) && (
                 <div className="flex items-center gap-3 pt-2 border-t flex-wrap">
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-2xl font-bold text-orange-600 dark:text-orange-400">
-                      {dueTodayCount}
-                    </span>
-                    <span className="text-sm text-muted-foreground">
-                      due today
-                    </span>
-                  </div>
+                  {dueTodayCount > 0 && (
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                        {dueTodayCount}
+                      </span>
+                      <span className="text-sm text-muted-foreground">
+                        due today
+                      </span>
+                    </div>
+                  )}
                   {overdueCount > 0 && (
                     <div className="flex items-baseline gap-1.5">
                       <span className="text-sm font-semibold text-red-600 dark:text-red-400">

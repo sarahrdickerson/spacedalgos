@@ -232,9 +232,12 @@ export async function GET(
 
     // 8) Check if any reviews are overdue using localDayStartUTC (consistent with
     // the local-day-based daysUntil logic above and correct for non-UTC timezones).
-    const hasOverdueReviews = (dueProgressData ?? []).some(
-      (p: any) => p.next_review_at && p.next_review_at < localDayStartUTC,
-    );
+    const hasOverdueReviews = (dueProgressData ?? []).some((p: any) => {
+      if (!p.next_review_at) return false;
+      const nextReviewTime = new Date(p.next_review_at).getTime();
+      const localDayStartTime = new Date(localDayStartUTC).getTime();
+      return nextReviewTime < localDayStartTime;
+    });
 
     // 9) Add new problems only when all reviews are caught up
     let newProblems: any[] = [];
@@ -247,13 +250,21 @@ export async function GET(
       // was logged today (attempt_count === 1 and last_attempt_at is today).
       // Use timezone-aware local-day bounds so post-6PM CST attempts (which are
       // already UTC "tomorrow") are still counted as today's consumed slot.
-      const newSlotsUsedToday = (dueProgressData ?? []).filter(
-        (p: any) =>
-          p.attempt_count === 1 &&
-          p.last_attempt_at &&
-          p.last_attempt_at >= localDayStartUTC &&
-          p.last_attempt_at < localDayEndUTC,
-      ).length;
+      const newSlotsUsedToday = (dueProgressData ?? []).filter((p: any) => {
+        if (
+          p.attempt_count !== 1 ||
+          !p.last_attempt_at
+        ) {
+          return false;
+        }
+        const lastAttemptTime = new Date(p.last_attempt_at).getTime();
+        const localDayStartTimeUTC = new Date(localDayStartUTC).getTime();
+        const localDayEndTimeUTC = new Date(localDayEndUTC).getTime();
+        return (
+          lastAttemptTime >= localDayStartTimeUTC &&
+          lastAttemptTime < localDayEndTimeUTC
+        );
+      }).length;
       const effectiveNewPerDay = Math.max(0, newPerDay - newSlotsUsedToday);
 
       const unseenItems = items

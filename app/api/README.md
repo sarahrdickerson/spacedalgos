@@ -157,7 +157,7 @@ This document provides an overview of all API routes available in the applicatio
 ```
 
 **Notes:**
-- `dueToday` counts problems where `next_review_at ≤ now` (currently past their scheduled time). This is intentionally stricter than "scheduled any time today" — it represents the urgent/overdue count shown on the study plan card, distinct from the broader "due today" count in the review queue UI which includes reviews scheduled for later in the day.
+- `dueToday` counts problems where `next_review_at ≤ now` (currently past their scheduled time). This is intentionally stricter than "scheduled any time today" and is intended as an urgent/overdue count; it may differ from broader "due today" counts derived from the `/due` endpoint, which can include reviews scheduled for later in the day.
 
 ---
 

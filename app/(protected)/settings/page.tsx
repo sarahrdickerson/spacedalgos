@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ThemeSwitcherInline } from "@/components/theme-switcher-inline";
 import { DeleteAccountButton } from "./_components/delete-account-button";
+import { StudyPlanCard } from "./_components/study-plan-card";
 
 async function AccountCard() {
   await connection();
@@ -98,6 +99,9 @@ export default function SettingsPage() {
       <Suspense fallback={<AccountCardSkeleton />}>
         <AccountCard />
       </Suspense>
+
+      {/* Study Plan */}
+      <StudyPlanCard />
 
       {/* Appearance */}
       <Card>

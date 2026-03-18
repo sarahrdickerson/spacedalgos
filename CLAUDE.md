@@ -61,6 +61,16 @@ Implemented in `app/api/problems/[problemKey]/attempts/route.ts` in `computeNext
 - First attempt always → 1 day interval (Easy → 3 days); second attempt has fixed intervals
 - Subsequent: Good ×2.0 capped at 30 days, Easy ×2.3 capped at 90 days, Fail ×0.25 min 1 day
 - Stages (1 Learning / 2 Reinforcing / 3 Mastered) are cosmetic UI labels only — they do not affect intervals
+- Stage progression: Good advances one stage max stage 2 (Reinforcing); only Easy can reach stage 3 (Mastered)
+
+### Review queue (`/due` endpoint)
+
+The `/due` endpoint enforces `review_per_day` from the study plan with three separate buckets:
+- **Overdue** (`next_review_at < localDayStartUTC`): always shown uncapped — urgent catch-up
+- **Today's scheduled** (`localDayStartUTC ≤ next_review_at < localDayEndUTC`): capped to `review_per_day`
+- **Future scheduled** (`next_review_at ≥ localDayEndUTC`): always included uncapped (powers "this week" view)
+
+New problems are only surfaced when there are zero overdue reviews. Once overdue are cleared, today's new quota unlocks. `days_until` is computed as local calendar days from `localDayStartUTC` (0 = due today, negative = overdue) — not raw hours from the current moment.
 
 ### Timezone handling
 

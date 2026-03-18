@@ -51,8 +51,8 @@ function computeNextProgress(params: {
 
   // Stage drives the UI label (Learning / Reinforcing / Mastered) — not intervals.
   // Grade 0 drops one stage (min 1).
-  // Grade 1 (Good) advances one stage, capped at 2 (Reinforcing) — only Easy can reach Mastered.
-  // Grade 2 (Easy) advances one stage, capped at 3 (Mastered).
+  // Grade 1 (Good): from stage 1 → 2, from 2 → 2 (stay), from 3 → 2 (demote; Good cannot stay Mastered).
+  // Grade 2 (Easy): from stage 1 → 2, from 2 → 3, from 3 → 3 (Mastered).
   // First attempt (prevStage null/0) always lands at stage 1 regardless of grade.
   let stage = prevStage ?? 0;
   if (grade === 0) {

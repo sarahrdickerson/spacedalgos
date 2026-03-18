@@ -233,7 +233,7 @@ export async function GET(
       ...futureScheduled,
     ];
 
-    // 8) Check if any reviews are overdue using localDayStartUTC
+    // 8) Check if any reviews are overdue using the local-day start (localDayStartMs)
     const hasOverdueReviews = (dueProgressData ?? []).some(
       (p: any) =>
         p.next_review_at && Date.parse(p.next_review_at) < localDayStartMs,

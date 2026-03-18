@@ -32,7 +32,6 @@ Stages are a UI label showing conceptual mastery level. They do **not** affect t
   - From **Stage 2** → stay at **Stage 2 (Reinforcing)**.
   - From **Stage 3 (Mastered)** → drop to **Stage 2 (Reinforcing)**.
 - **Grade 0 (Again)**: drop one stage (min 1).
--
 - First attempt always → Stage 1 regardless of grade.
   > When you are currently at **Stage 3 (Mastered)**:
   >
@@ -46,7 +45,13 @@ Intervals grow purely from the **previous interval × a grade multiplier**, with
 
 ### First Attempt
 
-Always **1 day** — regardless of grade. Reviewing the next day confirms the memory is forming before extending the interval.
+On the first attempt, the next review interval depends on the grade:
+
+- **Grade 0 (Again)** → **1 day**
+- **Grade 1 (Good)** → **1 day**
+- **Grade 2 (Easy)** → **3 days**
+
+Reviewing within a few days confirms the memory is forming before extending the interval further.
 
 ### Subsequent Attempts
 
@@ -54,7 +59,7 @@ Always **1 day** — regardless of grade. Reviewing the next day confirms the me
 | ------------- | ---------------- | ------- | ----------------------------------------------- |
 | **0 (Again)** | ×0.25, min 1 day | —       | Shrinks to ~¼ of current (same/next-day repair) |
 | **1 (Good)**  | ×2.0             | 30 days | 1 → 2 → 4 → 8 → 16 → 30 → 30 → …                |
-| **2 (Easy)**  | ×2.3             | 90 days | 1 → 3 → 7 → 17 → 40 → 90 → 90 → …               |
+| **2 (Easy)**  | ×2.3             | 90 days | 3 → 7 → 17 → 40 → 90 → 90 → …                   |
 
 Once an interval hits its cap it stays there, functioning as maintenance review (monthly for Good, quarterly for Easy).
 
@@ -76,12 +81,11 @@ Once an interval hits its cap it stays there, functioning as maintenance review 
 
 | Attempt | Grade | Interval              |
 | ------- | ----- | --------------------- |
-| 1st     | Easy  | 1 day                 |
-| 2nd     | Easy  | 3 days                |
-| 3rd     | Easy  | 7 days                |
-| 4th     | Easy  | 17 days               |
-| 5th     | Easy  | 40 days               |
-| 6th+    | Easy  | 90 days (maintenance) |
+| 1st     | Easy  | 3 days                |
+| 2nd     | Easy  | 7 days                |
+| 3rd     | Easy  | 17 days               |
+| 4th     | Easy  | 40 days               |
+| 5th+    | Easy  | 90 days (maintenance) |
 
 ### Scenario 2: Steady progress (all Good)
 

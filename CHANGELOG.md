@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.3.0](https://github.com/sarahrdickerson/spacedalgos/compare/v0.2.3...v0.3.0) (2026-03-18)
+
+
+### Features
+
+* add change pace feature after creating study plan ([c6c76ea](https://github.com/sarahrdickerson/spacedalgos/commit/c6c76ea68ae5702e8f91417817bf2a183636173c))
+
+
+### Bug Fixes
+
+* inconsistencies between due today card and calendar and study plan stats ([2166793](https://github.com/sarahrdickerson/spacedalgos/commit/21667938a282e57d95db9543c39ab27557bd3ff2))
+* merge conflict ([6b2f2dc](https://github.com/sarahrdickerson/spacedalgos/commit/6b2f2dcb1f3b0eb430e784c08cb5bfea81bc51bb))
+* only auto expand categories with problems started but not mastered ([a00984a](https://github.com/sarahrdickerson/spacedalgos/commit/a00984a882e7294c4e1ecaf3bb7b14c585ddf479))
+* only auto expand categories with problems started but not mastered ([a0a3acd](https://github.com/sarahrdickerson/spacedalgos/commit/a0a3acd26a68dc3c8fcfa1adce93e9569192ccd3))
+* only easy review can progress to mastered, good caps at reinforcing ([606192c](https://github.com/sarahrdickerson/spacedalgos/commit/606192cd1aa6bc78a10e8e8f0853917b923d9481))
+* review per day ([fd7af02](https://github.com/sarahrdickerson/spacedalgos/commit/fd7af0287053f9b0b0d7efbdc223882cf84ce826))
+* scheduled reviews cap at study plan pace reviews per day and cascade overflow ([b462714](https://github.com/sarahrdickerson/spacedalgos/commit/b4627143dd2df118ad0d0ac92343954d2bb9bc67))
+* separate future scheduled and today scheduled ([674874e](https://github.com/sarahrdickerson/spacedalgos/commit/674874ed98fe8b187aa2ab396e9726586ff9ffc7))
+* suggestions ([633694c](https://github.com/sarahrdickerson/spacedalgos/commit/633694cfb257eb97459839bc85513b62eac88846))
+* type errors ([cf80ae1](https://github.com/sarahrdickerson/spacedalgos/commit/cf80ae1a9288f3b84fe16cb1024f8a407b56269f))
+
 ## [0.2.3](https://github.com/sarahrdickerson/spacedalgos/compare/v0.2.2...v0.2.3) (2026-03-11)
 
 

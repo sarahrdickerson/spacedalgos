@@ -144,7 +144,6 @@ export async function GET(
       localYear,
       localMonth,
       localDay,
-      todayMidnightUTC,
       localDayStartUTC,
       localDayEndUTC,
     } = dateBounds;
@@ -187,13 +186,26 @@ export async function GET(
       })
       .filter(Boolean);
 
-    // 7b) Split into overdue (before today) and scheduled for today.
-    // Overdue reviews are shown uncapped as they're urgent catch-up.
-    // Scheduled reviews are capped to review_per_day.
+    // 7b) Split reviews into three buckets using localDayStartUTC / localDayEndUTC:
+    //   - overdue:   next_review_at < localDayStartUTC (before today in user's TZ) — shown uncapped
+    //   - today:     localDayStartUTC <= next_review_at < localDayEndUTC — capped to review_per_day
+    //   - future:    next_review_at >= localDayEndUTC — always included uncapped (for "this week" view)
+    const localDayStart = new Date(localDayStartUTC);
+    const localDayEnd = new Date(localDayEndUTC);
+
     const overdueProblems = reviewProblems
+      .filter((p: any) => new Date(p.progress.next_review_at) < localDayStart)
+      .sort(
+        (a: any, b: any) =>
+          new Date(a.progress.next_review_at).getTime() -
+          new Date(b.progress.next_review_at).getTime(),
+      );
+
+    const todayScheduled = reviewProblems
       .filter(
         (p: any) =>
-          new Date(p.progress.next_review_at) < new Date(localDayStartUTC),
+          new Date(p.progress.next_review_at) >= localDayStart &&
+          new Date(p.progress.next_review_at) < localDayEnd,
       )
       .sort(
         (a: any, b: any) =>
@@ -201,27 +213,27 @@ export async function GET(
           new Date(b.progress.next_review_at).getTime(),
       );
 
-    const scheduledProblems = reviewProblems
-      .filter(
-        (p: any) =>
-          new Date(p.progress.next_review_at) >= new Date(localDayStartUTC),
-      )
+    const futureScheduled = reviewProblems
+      .filter((p: any) => new Date(p.progress.next_review_at) >= localDayEnd)
       .sort(
         (a: any, b: any) =>
           new Date(a.progress.next_review_at).getTime() -
           new Date(b.progress.next_review_at).getTime(),
       );
 
-    const cappedScheduled =
-      reviewPerDay > 0
-        ? scheduledProblems.slice(0, reviewPerDay)
-        : scheduledProblems;
+    const cappedToday =
+      reviewPerDay > 0 ? todayScheduled.slice(0, reviewPerDay) : todayScheduled;
 
-    const cappedReviewProblems = [...overdueProblems, ...cappedScheduled];
+    const cappedReviewProblems = [
+      ...overdueProblems,
+      ...cappedToday,
+      ...futureScheduled,
+    ];
 
-    // 8) Check if any reviews are overdue (scheduled before today's midnight UTC)
+    // 8) Check if any reviews are overdue using localDayStartUTC (consistent with
+    // the local-day-based daysUntil logic above and correct for non-UTC timezones).
     const hasOverdueReviews = (dueProgressData ?? []).some(
-      (p: any) => p.next_review_at && p.next_review_at < todayMidnightUTC,
+      (p: any) => p.next_review_at && p.next_review_at < localDayStartUTC,
     );
 
     // 9) Add new problems only when all reviews are caught up

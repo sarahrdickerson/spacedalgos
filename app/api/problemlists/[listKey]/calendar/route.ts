@@ -221,7 +221,6 @@ export async function GET(
         localYear,
         localMonth,
         localDay,
-        todayMidnightUTC,
         localDayStartUTC,
         localDayEndUTC,
       } = dateBounds;
@@ -246,7 +245,7 @@ export async function GET(
       const todayNewSlots = Math.max(0, newPerDay - newSlotsUsedToday);
 
       const hasOverdueReviews = (progress ?? []).some(
-        (p: any) => p.next_review_at && p.next_review_at < todayMidnightUTC
+        (p: any) => p.next_review_at && p.next_review_at < localDayStartUTC
       );
 
       // When no overdue reviews the first todayNewSlots unseen problems are in today's

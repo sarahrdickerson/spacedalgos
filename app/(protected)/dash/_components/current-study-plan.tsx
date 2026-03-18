@@ -102,7 +102,9 @@ const CurrentStudyPlan = ({
     });
   }, [selectedList, selectedPace]);
 
-  // Compute due-today and overdue counts from dueProblems
+  // Compute due-today and overdue counts from dueProblems.
+  // dueTodayCount = scheduled for today (days_until === 0) + today's new problems.
+  // overdueCount  = past due (days_until < 0). Kept separate to avoid double-counting.
   const { dueTodayCount, overdueCount } = React.useMemo(() => {
     const dueProblems = data?.dueProblems ?? [];
     let due = 0;
@@ -114,7 +116,7 @@ const CurrentStudyPlan = ({
       }
       const daysUntil = p.progress?.days_until;
       if (daysUntil === undefined || daysUntil === null) continue;
-      if (daysUntil <= 0) {
+      if (daysUntil === 0) {
         due++;
       }
       if (daysUntil < 0) {

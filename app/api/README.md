@@ -23,6 +23,7 @@ This document provides an overview of all API routes available in the applicatio
 **Authentication:** Not required
 
 **Response:**
+
 ```json
 {
   "data": [
@@ -50,9 +51,11 @@ This document provides an overview of all API routes available in the applicatio
 **Authentication:** Not required
 
 **URL Parameters:**
+
 - `listKey` - The unique key identifier for the problem list (e.g., "blind75")
 
 **Response:**
+
 ```json
 {
   "list": {
@@ -92,9 +95,11 @@ This document provides an overview of all API routes available in the applicatio
 **Authentication:** Required
 
 **URL Parameters:**
+
 - `listKey` - The unique key identifier for the problem list
 
 **Response:**
+
 ```json
 {
   "list": {
@@ -128,6 +133,7 @@ This document provides an overview of all API routes available in the applicatio
 ```
 
 **Progress Stages:**
+
 - `1` - Learning
 - `2` - Reinforcing
 - `3` - Mastered
@@ -143,9 +149,11 @@ This document provides an overview of all API routes available in the applicatio
 **Authentication:** Required
 
 **URL Parameters:**
+
 - `listKey` - The unique key identifier for the problem list
 
 **Response:**
+
 ```json
 {
   "total": 75,
@@ -156,30 +164,38 @@ This document provides an overview of all API routes available in the applicatio
 }
 ```
 
+**Notes:**
+
+- `dueToday` counts problems where `next_review_at ≤ now` (currently past their scheduled time). This is intentionally stricter than "scheduled any time today" and is intended as an urgent/overdue count; it may differ from broader "due today" counts derived from the `/due` endpoint, which can include reviews scheduled for later in the day.
+
 ---
 
 ### Get Due Problems
 
 **Endpoint:** `GET /api/problemlists/[listKey]/due`
 
-**Description:** Fetches the user's review queue for a specific problem list. Returns three categories of problems merged into `due_problems`:
+**Description:** Fetches the user's review queue for a specific problem list. Returns four categories of problems merged into `due_problems`:
 
-1. **Scheduled reviews** — problems with a `next_review_at` due any time today or earlier
-2. **New problems (today)** — unseen problems filling today's `new_per_day` quota (only when no overdue reviews exist). These have `is_new: true` and no `projected_date`
-3. **Upcoming new problems** — projected unseen problems for the rest of this calendar week (through Saturday). These have `is_new: true` and a `projected_date` (ISO date string)
+1. **Overdue reviews** — problems with `next_review_at` before today's local day start. Always returned uncapped (urgent catch-up).
+2. **Today's scheduled reviews** — problems with `next_review_at` within today's local calendar day. Capped to the study plan's `review_per_day`.
+3. **Future scheduled reviews** — problems with `next_review_at` after today's local day end. Returned uncapped (powers the "this week" view on the client).
+4. **New problems** — unseen problems filling today's `new_per_day` quota (`is_new: true`, no `projected_date`), plus projected new problems for the rest of this calendar week (`is_new: true`, `projected_date` set).
 
-New problems are only surfaced when all overdue reviews are caught up. Today's new quota is reduced by any new problems already logged today, so completing one new problem does not pull the next unseen problem into the same day's quota.
+New problems are only surfaced when there are zero overdue reviews. Today's new quota is reduced by any new problems already logged today, so completing one new problem does not pull the next unseen problem into the same day's quota.
 
 **Authentication:** Required
 
 **URL Parameters:**
+
 - `listKey` - The unique key identifier for the problem list
 
 **Query Parameters:**
+
 - `localDate` (optional) - The client's current local date in `YYYY-MM-DD` format (e.g. `2026-03-06`). When provided, all "today" boundaries are derived from this date rather than the server's UTC clock, preventing problems from appearing a day early for users in UTC-offset timezones after 6 PM local time. Must match `/^\d{4}-\d{2}-\d{2}$/` or a 400 is returned.
 - `tzOffset` (optional) - The client's `Date.prototype.getTimezoneOffset()` value in minutes (e.g. `360` for CST). Used together with `localDate` to compute the true UTC bounds of the user's local calendar day for slot-consumed counting, so attempts logged after 6 PM local time (which are already UTC "tomorrow") are still counted as today's consumed new slots.
 
 **Response:**
+
 ```json
 {
   "list": {
@@ -240,9 +256,11 @@ New problems are only surfaced when all overdue reviews are caught up. Today's n
 ```
 
 **Notes:**
-- `days_until` is negative when overdue
+
+- `days_until` is a local calendar day offset from today's local midnight: `0` = due today, negative = overdue, positive = days until due. It is computed by taking the millisecond difference between `next_review_at` and today's local midnight (`nextReviewMs - localDayStartMs`), dividing by `86400000` (milliseconds per day), and applying `Math.floor(...)`, so a review scheduled for 10 PM tonight still shows `days_until: 0`, not `1`.
 - Problems with `is_new: true` and `projected_date: null` are today's new problems
 - Problems with `is_new: true` and a `projected_date` are projected for a future day this week
+- Future scheduled reviews (`days_until > 0`) are included uncapped so the client "this week" view has full visibility. The `review_per_day` cap only applies to today's scheduled reviews; when those future days arrive they will be capped at that point.
 
 ---
 
@@ -255,13 +273,16 @@ New problems are only surfaced when all overdue reviews are caught up. Today's n
 **Authentication:** Required
 
 **URL Parameters:**
+
 - `listKey` - The unique key identifier for the problem list
 
 **Query Parameters:**
+
 - `localDate` (optional) - The client's current local date in `YYYY-MM-DD` format. Prevents projected new problems from appearing on the wrong calendar day for users in UTC-offset timezones. Must match `/^\d{4}-\d{2}-\d{2}$/` or a 400 is returned.
 - `tzOffset` (optional) - The client's `Date.prototype.getTimezoneOffset()` value in minutes. Used together with `localDate` to compute timezone-aware slot-consumed boundaries so post-6 PM local-time attempts are still counted as today's consumed new slots.
 
 **Response:**
+
 ```json
 {
   "past_attempts": [
@@ -315,6 +336,7 @@ New problems are only surfaced when all overdue reviews are caught up. Today's n
 ```
 
 **Notes:**
+
 - `past_attempts` are ordered by `attempted_at` descending (most recent first)
 - `attempt_number` is calculated in O(n) time using a decrementing counter
 - `upcoming_reviews` only includes problems with a scheduled `next_review_at`
@@ -332,9 +354,11 @@ New problems are only surfaced when all overdue reviews are caught up. Today's n
 **Authentication:** Required
 
 **URL Parameters:**
+
 - `listKey` - The unique key identifier for the problem list
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -359,9 +383,11 @@ New problems are only surfaced when all overdue reviews are caught up. Today's n
 **Authentication:** Required
 
 **URL Parameters:**
+
 - `problemKey` - The unique key identifier for the problem (e.g., "two-sum")
 
 **Request Body:**
+
 ```json
 {
   "grade": 1,
@@ -373,6 +399,7 @@ New problems are only surfaced when all overdue reviews are caught up. Today's n
 ```
 
 **Body Parameters:**
+
 - `grade` (required) - Performance rating: `0` (fail/again), `1` (good), `2` (easy)
 - `time_bucket` (optional) - Time taken: `"0-15m"`, `"15-30m"`, `"30-45m"`, `"45-60m"`, `"60m+"`
 - `note` (optional) - Notes about the attempt
@@ -380,6 +407,7 @@ New problems are only surfaced when all overdue reviews are caught up. Today's n
 - `localDate` (optional) - The client's current local date in `YYYY-MM-DD` format. Used to record `user_daily_activity` on the correct calendar day and compute streak boundaries for users in UTC-offset timezones. Must match `/^\d{4}-\d{2}-\d{2}$/` or a 400 is returned.
 
 **Response:**
+
 ```json
 {
   "attempt": {
@@ -410,20 +438,23 @@ New problems are only surfaced when all overdue reviews are caught up. Today's n
 Intervals grow purely from the previous interval value — no stage-based multipliers. Stages are cosmetic labels only.
 
 **Stage transitions:**
+
 - First attempt (any grade) → Stage 1
-- Grade ≥ 1 → `min(3, stage + 1)`
-- Grade 0 → `max(1, stage - 1)`
+- Grade 2 (Easy) → `min(3, stage + 1)` — only Easy can reach Stage 3 (Mastered)
+- Grade 1 (Good) → `min(2, max(1, stage + 1))` — capped at Stage 2 (Reinforcing)
+- Grade 0 (Again) → `max(1, stage - 1)`
 
 **Interval calculation:**
 
-| Condition | Formula | Cap |
-|-----------|---------|-----|
-| First attempt | 1 day | — |
-| Grade 0 (Fail) | `floor(prev × 0.25)` | min 1 day |
-| Grade 1 (Good) | `ceil(prev × 2.0)` | max 30 days |
-| Grade 2 (Easy) | `ceil(prev × 2.3)` | max 90 days |
+| Condition      | Formula              | Cap         |
+| -------------- | -------------------- | ----------- |
+| First attempt  | 1 day                | —           |
+| Grade 0 (Fail) | `floor(prev × 0.25)` | min 1 day   |
+| Grade 1 (Good) | `ceil(prev × 2.0)`   | max 30 days |
+| Grade 2 (Easy) | `ceil(prev × 2.3)`   | max 90 days |
 
 **Example sequences:**
+
 - **Good (grade 1):** 1 → 2 → 4 → 8 → 16 → 30 → 30 days (monthly maintenance)
 - **Easy (grade 2):** 1 → 3 → 7 → 17 → 40 → 90 → 90 days (quarterly maintenance)
 - **Fail (grade 0) from 8 days:** 8 → 2 → 1 days
@@ -439,9 +470,11 @@ Intervals grow purely from the previous interval value — no stage-based multip
 **Authentication:** Required
 
 **URL Parameters:**
+
 - `problemKey` - The unique key identifier for the problem
 
 **Response:**
+
 ```json
 {
   "problem": {
@@ -479,9 +512,11 @@ Intervals grow purely from the previous interval value — no stage-based multip
 **Authentication:** Required
 
 **URL Parameters:**
+
 - `problemKey` - The unique key identifier for the problem
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -506,6 +541,7 @@ Intervals grow purely from the previous interval value — no stage-based multip
 **Authentication:** Required
 
 **Response:**
+
 ```json
 {
   "active_list": {
@@ -527,6 +563,7 @@ Intervals grow purely from the previous interval value — no stage-based multip
 ```
 
 **Response (No Active Plan):**
+
 ```json
 {
   "active_list": null,
@@ -545,6 +582,7 @@ Intervals grow purely from the previous interval value — no stage-based multip
 **Authentication:** Required
 
 **Request Body:**
+
 ```json
 {
   "list_id": "uuid",
@@ -555,6 +593,7 @@ Intervals grow purely from the previous interval value — no stage-based multip
 ```
 
 **Body Parameters:**
+
 - `list_id` (required) - UUID of the problem list to activate
 - `pace` (optional, default `"normal"`) - One of: `"leisurely"`, `"normal"`, `"accelerated"`, `"custom"`
 - `new_per_day` (optional) - New problems per day; required when `pace` is `"custom"`, otherwise defaults from preset
@@ -562,15 +601,16 @@ Intervals grow purely from the previous interval value — no stage-based multip
 
 **Preset values:**
 
-| Pace | new_per_day | review_per_day |
-|------|-------------|----------------|
-| leisurely | 1 | 2 |
-| normal | 2 | 4 |
-| accelerated | 3 | 6 |
+| Pace        | new_per_day | review_per_day |
+| ----------- | ----------- | -------------- |
+| leisurely   | 1           | 2              |
+| normal      | 2           | 4              |
+| accelerated | 3           | 6              |
 
 Both `new_per_day` and `review_per_day` must be finite positive integers after preset resolution.
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -595,6 +635,7 @@ Both `new_per_day` and `review_per_day` must be finite positive integers after p
 **Authentication:** Required
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -613,9 +654,11 @@ Both `new_per_day` and `review_per_day` must be finite positive integers after p
 **Authentication:** Required
 
 **Query Parameters:**
+
 - `localDate` (optional) - The client's current local date in `YYYY-MM-DD` format. Used to compute the "yesterday" boundary for streak staleness checks, so users in UTC-offset timezones don't have their streak incorrectly reset after 6 PM local time. Must match `/^\d{4}-\d{2}-\d{2}$/` or a 400 is returned.
 
 **Response:**
+
 ```json
 {
   "current_streak": 5,
@@ -637,6 +680,7 @@ Both `new_per_day` and `review_per_day` must be finite positive integers after p
 ```
 
 **Response (No Activity):**
+
 ```json
 {
   "current_streak": 0,
@@ -657,6 +701,7 @@ Both `new_per_day` and `review_per_day` must be finite positive integers after p
 **Authentication:** Required
 
 **Data deleted (in order):**
+
 1. `user_problem_attempts`
 2. `user_problem_progress`
 3. `user_daily_activity`
@@ -666,11 +711,13 @@ Both `new_per_day` and `review_per_day` must be finite positive integers after p
 7. Auth user record (via service role)
 
 **Response:**
+
 ```json
 { "ok": true }
 ```
 
 **Notes:**
+
 - Uses the Supabase service-role client (bypasses RLS) for all deletions to ensure rows are removed regardless of each table's DELETE policy.
 - Requires `SUPABASE_SERVICE_ROLE_KEY` environment variable.
 
@@ -687,6 +734,7 @@ Both `new_per_day` and `review_per_day` must be finite positive integers after p
 **Authentication:** Required
 
 **Request Body:**
+
 ```json
 {
   "message": "Love the spaced repetition system!"
@@ -694,14 +742,17 @@ Both `new_per_day` and `review_per_day` must be finite positive integers after p
 ```
 
 **Body Parameters:**
+
 - `message` (required) - Feedback text, 1–2000 characters
 
 **Response:**
+
 ```json
 { "ok": true }
 ```
 
 **Error Responses:**
+
 - `400` — message missing or exceeds 2000 characters
 - `401` — unauthenticated
 
@@ -720,19 +771,23 @@ Most endpoints require authentication via Supabase Auth (session cookie). Unauth
 ## Error Responses
 
 **400 Bad Request:**
+
 ```json
 { "error": "list_id is required" }
 ```
 
 **404 Not Found:**
+
 ```json
 { "error": "Problem list not found" }
 ```
 
 **500 Internal Server Error:**
+
 ```json
 { "error": "Failed to fetch problem lists" }
 ```
+
 ---
 
 ## Timezone Handling
@@ -742,6 +797,7 @@ Several routes accept `localDate` and/or `tzOffset` query parameters (or `localD
 ### The problem
 
 The server runs in UTC. At 6 PM CST the UTC clock has already flipped to the next day, so a naive `new Date().toISOString().split("T")[0]` on the server returns tomorrow's date. This causes:
+
 - Tomorrow's new problems appearing in today's review queue
 - Logged attempts after 6 PM not counting as today's consumed new slots
 - Streak staleness checks incorrectly treating today's activity as yesterday's
@@ -750,10 +806,10 @@ The server runs in UTC. At 6 PM CST the UTC clock has already flipped to the nex
 
 The client sends two values with every time-sensitive request:
 
-| Parameter | Source | Format | Example |
-|-----------|--------|--------|---------|
-| `localDate` | `new Date().toLocaleDateString('en-CA')` | `YYYY-MM-DD` | `2026-03-06` |
-| `tzOffset` | `new Date().getTimezoneOffset()` | integer minutes (UTC − local) | `360` (CST) |
+| Parameter   | Source                                   | Format                        | Example      |
+| ----------- | ---------------------------------------- | ----------------------------- | ------------ |
+| `localDate` | `new Date().toLocaleDateString('en-CA')` | `YYYY-MM-DD`                  | `2026-03-06` |
+| `tzOffset`  | `new Date().getTimezoneOffset()`         | integer minutes (UTC − local) | `360` (CST)  |
 
 The server uses `localDate` to derive UTC midnight boundaries for the user's calendar day, and `tzOffset` to shift those boundaries to cover the true 24-hour window of that local day in UTC (so a 7 PM CST timestamp stored as `2026-03-07T01:00Z` is still recognised as belonging to March 6 local time).
 

@@ -221,11 +221,10 @@ export async function GET(
         localYear,
         localMonth,
         localDay,
-        todayMidnightUTC,
-        tomorrowMidnightUTC,
         localDayStartUTC,
         localDayEndUTC,
       } = dateBounds;
+      const localDayStartTime = Date.parse(localDayStartUTC);
 
       // Count "new" slots already consumed today: problems whose very first attempt
       // was logged today. Attempts are sorted descending, so the last write per
@@ -247,7 +246,9 @@ export async function GET(
       const todayNewSlots = Math.max(0, newPerDay - newSlotsUsedToday);
 
       const hasOverdueReviews = (progress ?? []).some(
-        (p: any) => p.next_review_at && p.next_review_at < todayMidnightUTC
+        (p: any) =>
+          p.next_review_at &&
+          Date.parse(p.next_review_at) < localDayStartTime
       );
 
       // When no overdue reviews the first todayNewSlots unseen problems are in today's

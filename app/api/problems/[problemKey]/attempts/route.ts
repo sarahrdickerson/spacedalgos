@@ -50,11 +50,15 @@ function computeNextProgress(params: {
   const fail_count = (prevFailCount ?? 0) + (!isSuccess ? 1 : 0);
 
   // Stage drives the UI label (Learning / Reinforcing / Mastered) — not intervals.
-  // Grade 0 drops one stage (min 1); Grade 1/2 advances one stage (max 3).
+  // Grade 0 drops one stage (min 1).
+  // Grade 1 (Good): from stage 1 → 2, from 2 → 2 (stay), from 3 → 2 (demote; Good cannot stay Mastered).
+  // Grade 2 (Easy): from stage 1 → 2, from 2 → 3, from 3 → 3 (Mastered).
   // First attempt (prevStage null/0) always lands at stage 1 regardless of grade.
   let stage = prevStage ?? 0;
   if (grade === 0) {
     stage = Math.max(1, stage - 1);
+  } else if (grade === 1) {
+    stage = Math.min(2, Math.max(1, stage + 1));
   } else {
     stage = Math.min(3, Math.max(1, stage + 1));
   }
@@ -83,16 +87,17 @@ function computeNextProgress(params: {
     interval_days = Math.max(1, Math.floor(prevIntervalDays * 0.25));
   } else if (grade === 1) {
     // Good: double the previous interval, capped at MAX_INTERVAL_GOOD to prevent runaway growth
+    // If mastered, a good review demotes to reinforcing but still gets the easier monthly maintenance interval instead of quarterly
     interval_days = Math.min(
       MAX_INTERVAL_GOOD,
-      Math.ceil(prevIntervalDays * 2.0)
+      Math.ceil(prevIntervalDays * 2.0),
     );
   } else {
     // Easy: multiply previous interval by 2.3, capped at MAX_INTERVAL_EASY to prevent runaway growth
     // grade === 2
     interval_days = Math.min(
       MAX_INTERVAL_EASY,
-      Math.ceil(prevIntervalDays * 2.3)
+      Math.ceil(prevIntervalDays * 2.3),
     );
   }
 
@@ -112,7 +117,7 @@ function computeNextProgress(params: {
 
 export async function POST(
   req: Request,
-  { params }: { params: Promise<{ problemKey: string }> }
+  { params }: { params: Promise<{ problemKey: string }> },
 ) {
   try {
     const supabase = await createClient();
@@ -135,7 +140,7 @@ export async function POST(
       if (err instanceof URIError) {
         return NextResponse.json(
           { error: "Invalid problem key" },
-          { status: 400 }
+          { status: 400 },
         );
       }
       throw err;
@@ -150,7 +155,7 @@ export async function POST(
     if (![0, 1, 2].includes(body.grade)) {
       return NextResponse.json(
         { error: "grade must be 0 (again), 1 (good), or 2 (easy)" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -158,14 +163,14 @@ export async function POST(
     if (Number.isNaN(now.getTime())) {
       return NextResponse.json(
         { error: "attempted_at must be ISO date string" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (body.localDate != null && !/^\d{4}-\d{2}-\d{2}$/.test(body.localDate)) {
       return NextResponse.json(
         { error: "localDate must be YYYY-MM-DD" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -179,7 +184,7 @@ export async function POST(
     if (problemErr || !problemRow) {
       return NextResponse.json(
         { error: `Problem not found: ${problemKey}` },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -196,7 +201,7 @@ export async function POST(
     if (progressReadErr) {
       return NextResponse.json(
         { error: progressReadErr.message },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -259,7 +264,7 @@ export async function POST(
           fail_count: next.fail_count,
           interval_days: next.interval_days,
         },
-        { onConflict: "user_id,problem_id" }
+        { onConflict: "user_id,problem_id" },
       )
       .select("*")
       .single();
@@ -267,7 +272,7 @@ export async function POST(
     if (progressUpsertErr) {
       return NextResponse.json(
         { error: progressUpsertErr.message },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -277,7 +282,7 @@ export async function POST(
       user.id,
       now,
       wasDue,
-      body.localDate ?? null
+      body.localDate ?? null,
     );
 
     return NextResponse.json({
@@ -288,7 +293,7 @@ export async function POST(
     console.error(e);
     return NextResponse.json(
       { error: "Unexpected error logging attempt" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -299,7 +304,7 @@ async function updateDailyActivityAndStreak(
   userId: string,
   attemptDate: Date,
   wasDue: boolean,
-  localDate?: string | null
+  localDate?: string | null,
 ) {
   // Use the client's local date if provided so activity is recorded on the correct
   // calendar day even after 6 PM CST when UTC has already flipped to the next day.
@@ -323,7 +328,7 @@ async function updateDailyActivityAndStreak(
         problems_due_completed:
           (existingActivity?.problems_due_completed ?? 0) + (wasDue ? 1 : 0),
       },
-      { onConflict: "user_id,activity_date" }
+      { onConflict: "user_id,activity_date" },
     );
 
   if (activityErr) {
@@ -383,7 +388,7 @@ async function updateDailyActivityAndStreak(
     const currentDate = new Date(activities[i].activity_date);
     const nextDate = new Date(activities[i + 1].activity_date);
     const diffDays = Math.floor(
-      (currentDate.getTime() - nextDate.getTime()) / 86400000
+      (currentDate.getTime() - nextDate.getTime()) / 86400000,
     );
 
     if (diffDays === 1) {
@@ -405,7 +410,7 @@ async function updateDailyActivityAndStreak(
   const newLongestStreak = Math.max(
     longestStreak,
     currentStreak,
-    prefs?.longest_streak ?? 0
+    prefs?.longest_streak ?? 0,
   );
 
   await supabase.from("user_preferences").upsert(
@@ -415,6 +420,6 @@ async function updateDailyActivityAndStreak(
       longest_streak: newLongestStreak,
       last_activity_date: activityDate,
     },
-    { onConflict: "user_id" }
+    { onConflict: "user_id" },
   );
 }

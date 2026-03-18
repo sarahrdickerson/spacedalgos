@@ -157,12 +157,26 @@ export async function GET(
         if (!progress) return null; // Only include problems with progress
         if (!progress.next_review_at) return null; // No review scheduled yet — skip
 
-        // Calculate days until/overdue using local calendar days so that a review
-        // scheduled for later today shows 0 ("today"), not 1.
+        // Calculate days until/overdue using calendar dates rather than raw
+        // millisecond durations, so DST transitions (23h/25h days) do not cause
+        // off-by-one errors.
         const nextReview = new Date(progress.next_review_at);
-        const daysUntil = Math.floor(
-          (nextReview.getTime() - new Date(localDayStartUTC).getTime()) /
-            (1000 * 60 * 60 * 24)
+        const startDate = new Date(localDayStartUTC);
+
+        // Normalize both timestamps to their UTC "date-only" midnights.
+        const startUtcMidnight = Date.UTC(
+          startDate.getUTCFullYear(),
+          startDate.getUTCMonth(),
+          startDate.getUTCDate(),
+        );
+        const reviewUtcMidnight = Date.UTC(
+          nextReview.getUTCFullYear(),
+          nextReview.getUTCMonth(),
+          nextReview.getUTCDate(),
+        );
+
+        const daysUntil = Math.round(
+          (reviewUtcMidnight - startUtcMidnight) / (1000 * 60 * 60 * 24),
         );
 
         return {
@@ -190,36 +204,41 @@ export async function GET(
     //   - overdue:   next_review_at < localDayStartUTC (before today in user's TZ) — shown uncapped
     //   - today:     localDayStartUTC <= next_review_at < localDayEndUTC — capped to review_per_day
     //   - future:    next_review_at >= localDayEndUTC — always included uncapped (for "this week" view)
-    const localDayStart = new Date(localDayStartUTC);
-    const localDayEnd = new Date(localDayEndUTC);
+    const localDayStartMs = new Date(localDayStartUTC).getTime();
+    const localDayEndMs = new Date(localDayEndUTC).getTime();
 
-    const overdueProblems = reviewProblems
-      .filter((p: any) => new Date(p.progress.next_review_at) < localDayStart)
-      .sort(
-        (a: any, b: any) =>
-          new Date(a.progress.next_review_at).getTime() -
-          new Date(b.progress.next_review_at).getTime(),
-      );
+    const reviewProblemsWithMs = (reviewProblems ?? []).map((p: any) => ({
+      ...p,
+      progress: {
+        ...p.progress,
+        nextReviewMs: p.progress?.next_review_at
+          ? new Date(p.progress.next_review_at).getTime()
+          : NaN,
+      },
+    }));
 
-    const todayScheduled = reviewProblems
+    const compareNextReviewMs = (a: any, b: any) => {
+      const aMs = a.progress?.nextReviewMs;
+      const bMs = b.progress?.nextReviewMs;
+      if (!Number.isFinite(aMs) || !Number.isFinite(bMs)) return 0;
+      return aMs - bMs;
+    };
+
+    const overdueProblems = reviewProblemsWithMs
+      .filter((p: any) => p.progress.nextReviewMs < localDayStartMs)
+      .sort(compareNextReviewMs);
+
+    const todayScheduled = reviewProblemsWithMs
       .filter(
         (p: any) =>
-          new Date(p.progress.next_review_at) >= localDayStart &&
-          new Date(p.progress.next_review_at) < localDayEnd,
+          p.progress.nextReviewMs >= localDayStartMs &&
+          p.progress.nextReviewMs < localDayEndMs,
       )
-      .sort(
-        (a: any, b: any) =>
-          new Date(a.progress.next_review_at).getTime() -
-          new Date(b.progress.next_review_at).getTime(),
-      );
+      .sort(compareNextReviewMs);
 
-    const futureScheduled = reviewProblems
-      .filter((p: any) => new Date(p.progress.next_review_at) >= localDayEnd)
-      .sort(
-        (a: any, b: any) =>
-          new Date(a.progress.next_review_at).getTime() -
-          new Date(b.progress.next_review_at).getTime(),
-      );
+    const futureScheduled = reviewProblemsWithMs
+      .filter((p: any) => p.progress.nextReviewMs >= localDayEndMs)
+      .sort(compareNextReviewMs);
 
     const cappedToday =
       reviewPerDay > 0 ? todayScheduled.slice(0, reviewPerDay) : todayScheduled;
@@ -235,7 +254,7 @@ export async function GET(
     const hasOverdueReviews = (dueProgressData ?? []).some((p: any) => {
       if (!p.next_review_at) return false;
       const nextReviewTime = new Date(p.next_review_at).getTime();
-      const localDayStartTime = new Date(localDayStartUTC).getTime();
+      const localDayStartTime = localDayStartMs;
       return nextReviewTime < localDayStartTime;
     });
 

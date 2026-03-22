@@ -248,6 +248,11 @@ export async function POST(
       existingProgress?.next_review_at &&
       new Date(existingProgress.next_review_at) <= now;
 
+    // 6b) Cascade next_review_at to the first date with capacity under review_per_day.
+    // interval_days stays as computed (reflects actual algorithm output); only the
+    // scheduled date shifts to avoid overloading a single day.
+    await cascadeNextReviewDate(supabase, user.id, problemId, next);
+
     // 7) Upsert progress
     const { data: progress, error: progressUpsertErr } = await supabase
       .from("user_problem_progress")
@@ -296,6 +301,83 @@ export async function POST(
       { status: 500 },
     );
   }
+}
+
+// Shift next_review_at forward until it lands on a day with remaining capacity.
+// interval_days is left unchanged — it reflects the algorithm's output, not the
+// scheduling offset. Only next_review_at on the `next` object is mutated.
+async function cascadeNextReviewDate(
+  supabase: any,
+  userId: string,
+  problemId: string,
+  next: { next_review_at: string; interval_days: number },
+) {
+  // Find which list this problem belongs to and get its study plan cap.
+  const { data: listItem } = await supabase
+    .from("problem_list_items")
+    .select("list_id")
+    .eq("problem_id", problemId)
+    .limit(1)
+    .maybeSingle();
+
+  if (!listItem) return; // Problem not in any list — no cap to enforce
+
+  const { data: planData } = await supabase
+    .from("user_study_plans")
+    .select("review_per_day")
+    .eq("user_id", userId)
+    .eq("list_id", listItem.list_id)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  const reviewPerDay: number = planData?.review_per_day ?? 0;
+  if (reviewPerDay <= 0) return; // No cap configured
+
+  // Fetch all problem IDs in this list except the current one (its old slot is being freed).
+  const { data: allListItems } = await supabase
+    .from("problem_list_items")
+    .select("problem_id")
+    .eq("list_id", listItem.list_id);
+
+  const listProblemIds: string[] = (allListItems ?? [])
+    .map((item: any) => item.problem_id as string)
+    .filter((id: string) => id !== problemId);
+
+  if (listProblemIds.length === 0) return;
+
+  // Walk forward from the computed date until we find a day with capacity.
+  // Safety limit: never push more than 7 days out.
+  //
+  // Important: preserve the original time-of-day from next_review_at when bumping.
+  // Normalizing to T00:00:00Z causes timezone bugs — midnight UTC is still "today"
+  // for users in negative UTC offsets (e.g. CST = UTC-6).
+  const originalTimeOfDay = next.next_review_at.slice(10); // "THH:MM:SS.sssZ"
+  let dateStr = next.next_review_at.slice(0, 10);
+  for (let i = 0; i < 7; i++) {
+    const dayStart = `${dateStr}T00:00:00.000Z`;
+    const nextDay = new Date(`${dateStr}T00:00:00Z`);
+    nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+    const dayEnd = nextDay.toISOString().slice(0, 19) + ".000Z";
+
+    const { count } = await supabase
+      .from("user_problem_progress")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .in("problem_id", listProblemIds)
+      .gte("next_review_at", dayStart)
+      .lt("next_review_at", dayEnd);
+
+    if ((count ?? 0) < reviewPerDay) {
+      // Only mutate if we actually bumped to a new date; otherwise keep addDays output as-is.
+      if (i > 0) {
+        next.next_review_at = `${dateStr}${originalTimeOfDay}`;
+      }
+      return;
+    }
+
+    dateStr = nextDay.toISOString().slice(0, 10);
+  }
+  // If no slot found within 7 days, keep original date (better than pushing indefinitely).
 }
 
 // Update daily activity table and calculate streak
@@ -350,7 +432,6 @@ async function updateDailyActivityAndStreak(
 
   // Calculate current streak
   let currentStreak = 0;
-  const today = localDate ?? new Date().toISOString().split("T")[0];
   const yesterday = localDate
     ? (() => {
         const [y, m, d] = localDate.split("-").map(Number);

@@ -194,6 +194,8 @@ export async function GET(
     //   - overdue:   next_review_at < localDayStartMs — shown uncapped
     //   - today:     localDayStartMs <= next_review_at < localDayEndMs — capped to review_per_day
     //   - future:    next_review_at >= localDayEndMs — uncapped (powers "this week" view)
+    // Overflow beyond review_per_day is prevented at write time (attempts route) so
+    // any excess here is from pre-existing data or plan changes — it still gets sliced.
     const getNextReviewMs = (p: any) =>
       p?.progress?.next_review_at
         ? new Date(p.progress.next_review_at).getTime()

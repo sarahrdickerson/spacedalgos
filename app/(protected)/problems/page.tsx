@@ -307,7 +307,7 @@ const ProblemsPage = () => {
                                       {problem.title}
                                     </span>
                                     {problem.is_premium && (
-                                      <span className="text-yellow-500 text-sm">
+                                      <span className="text-yellow-500 dark:text-yellow-400/80 text-sm">
                                         <LockClosedIcon className="size-4" />
                                       </span>
                                     )}
@@ -327,17 +327,9 @@ const ProblemsPage = () => {
                                     {problem.difficulty}
                                   </Badge>
                                   <div className="hidden sm:block">
-                                    <LogSolveButton
-                                      problemKey={problem.key}
-                                      problemTitle={problem.title}
-                                      problemLink={problem.leetcode_url}
-                                    />
+                                    <LogSolveButton problem={problem} />
                                   </div>
-                                  <MenuButton
-                                    problemKey={problem.key}
-                                    problemTitle={problem.title}
-                                    problemLink={problem.leetcode_url}
-                                  />
+                                  <MenuButton problem={problem} />
                                 </div>
                               </div>
                               {hasProgress && (

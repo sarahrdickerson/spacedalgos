@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LogAttemptDialog } from "@/components/log-attempt-dialog";
 import { ViewAttemptDialog } from "@/components/view-attempt-dialog";
-import { DashboardData } from "@/app/(protected)/_components/dashboard-provider";
+import { DashboardData, Problem } from "@/app/(protected)/_components/dashboard-provider";
 import LegendPopover from "./calendar/legend-popover";
 import { CustomCalendar } from "./ui/custom-calendar";
 
@@ -15,6 +15,7 @@ interface PastAttempt {
   problem_title: string;
   difficulty: "Easy" | "Medium" | "Hard";
   category: string;
+  is_premium: boolean;
   leetcode_url: string | null;
   attempted_at: string;
   grade: 0 | 1 | 2;
@@ -28,6 +29,7 @@ interface UpcomingReview {
   problem_title: string;
   difficulty: "Easy" | "Medium" | "Hard";
   category: string;
+  is_premium: boolean;
   leetcode_url: string | null;
   next_review_at: string;
   stage: number;
@@ -40,6 +42,7 @@ interface ProjectedNew {
   problem_title: string;
   difficulty: "Easy" | "Medium" | "Hard";
   category: string;
+  is_premium: boolean;
   leetcode_url: string | null;
   projected_date: string | null;
   is_today_new: boolean;
@@ -54,16 +57,13 @@ interface CalendarData {
 
 interface CalendarEvent {
   id: string;
-  title: string;
-  problemKey: string;
-  leetcode_url?: string | null;
+  problem: Problem;
   date: Date;
   isPast: boolean;
   isOverdue?: boolean;
   isProjected?: boolean;
   stage?: number;
   grade?: 0 | 1 | 2;
-  difficulty: "Easy" | "Medium" | "Hard";
   attemptNumber?: number;
 }
 
@@ -194,14 +194,19 @@ export function CalendarProblems({
     const pastEvents: CalendarEvent[] = calendarData.past_attempts.map(
       (attempt) => ({
         id: `past-${attempt.problem_id}-${attempt.attempted_at}`,
-        title: attempt.problem_title,
-        problemKey: attempt.problem_key,
-        leetcode_url: attempt.leetcode_url || "",
+        problem: {
+          id: attempt.problem_id,
+          key: attempt.problem_key,
+          title: attempt.problem_title,
+          category: attempt.category,
+          difficulty: attempt.difficulty,
+          leetcode_url: attempt.leetcode_url || "",
+          is_premium: attempt.is_premium,
+        },
         date: new Date(attempt.attempted_at),
         isPast: true,
         grade: attempt.grade,
         stage: attempt.stage,
-        difficulty: attempt.difficulty,
         attemptNumber: attempt.attempt_number,
       }),
     );
@@ -219,14 +224,19 @@ export function CalendarProblems({
         const isOverdue = reviewDate < todayStart;
         return {
           id: `upcoming-${review.problem_id}`,
-          title: review.problem_title,
-          problemKey: review.problem_key,
-          leetcode_url: review.leetcode_url || "",
+          problem: {
+            id: review.problem_id,
+            key: review.problem_key,
+            title: review.problem_title,
+            category: review.category,
+            difficulty: review.difficulty,
+            leetcode_url: review.leetcode_url || "",
+            is_premium: review.is_premium,
+          },
           date: isOverdue ? todayStart : reviewDate,
           isPast: false,
           isOverdue,
           stage: review.stage,
-          difficulty: review.difficulty,
           attemptNumber: review.attempt_count + 1,
         };
       },
@@ -247,13 +257,18 @@ export function CalendarProblems({
       }
       return {
         id: `projected-${proj.problem_id}`,
-        title: proj.problem_title,
-        problemKey: proj.problem_key,
-        leetcode_url: proj.leetcode_url || "",
+        problem: {
+          id: proj.problem_id,
+          key: proj.problem_key,
+          title: proj.problem_title,
+          category: proj.category,
+          difficulty: proj.difficulty,
+          leetcode_url: proj.leetcode_url || "",
+          is_premium: proj.is_premium,
+        },
         date,
         isPast: false,
         isProjected: true,
-        difficulty: proj.difficulty,
       };
     });
 
@@ -359,7 +374,7 @@ export function CalendarProblems({
                   "text-xs px-2 py-1 rounded text-left w-full opacity-60 transition-colors cursor-pointer",
                   stageColor,
                 )}
-                title={`${event.title} - Stage ${
+                title={`${event.problem.title} - Stage ${
                   event.stage || 0
                 } attempt (Grade ${event.grade})`}
                 onClick={() => {
@@ -367,7 +382,7 @@ export function CalendarProblems({
                   setViewAttemptOpen(true);
                 }}
               >
-                {event.title}{" "}
+                {event.problem.title}{" "}
                 <span className="text-muted-foreground">
                   #{event.attemptNumber}
                 </span>
@@ -380,13 +395,13 @@ export function CalendarProblems({
                 key={event.id}
                 type="button"
                 className="text-xs px-2 py-1 rounded text-left w-full border border-dashed border-violet-400/50 bg-violet-500/5 text-violet-700/60 dark:text-violet-400/60 hover:bg-violet-500/10 transition-colors"
-                title={`${event.title} — projected new problem (click to start)`}
+                title={`${event.problem.title} — projected new problem (click to start)`}
                 onClick={() => {
                   setSelectedEvent(event);
                   setDialogOpen(true);
                 }}
               >
-                {event.title}
+                {event.problem.title}
               </button>
             );
           } else {
@@ -408,13 +423,13 @@ export function CalendarProblems({
                   event.isOverdue &&
                     "border-2 border-double border-red-600 dark:border-red-400/70",
                 )}
-                title={`${event.title} - Stage ${event.stage} (Due for review)`}
+                title={`${event.problem.title} - Stage ${event.stage} (Due for review)`}
                 onClick={() => {
                   setSelectedEvent(event);
                   setDialogOpen(true);
                 }}
               >
-                {event.title}{" "}
+                {event.problem.title}{" "}
                 <span className="text-muted-foreground">
                   #{event.attemptNumber}
                 </span>
@@ -496,9 +511,7 @@ export function CalendarProblems({
 
       {selectedEvent && dialogOpen && !selectedEvent.isPast && (
         <LogAttemptDialog
-          problemKey={selectedEvent.problemKey}
-          problemTitle={selectedEvent.title}
-          problemLink={selectedEvent.leetcode_url}
+          problem={selectedEvent.problem}
           open={dialogOpen}
           onOpenChange={setDialogOpen}
           onSuccess={handleRefresh}
@@ -516,8 +529,8 @@ export function CalendarProblems({
 
           return (
             <ViewAttemptDialog
-              problemKey={selectedEvent.problemKey}
-              problemTitle={selectedEvent.title}
+              problemKey={selectedEvent.problem.key}
+              problemTitle={selectedEvent.problem.title}
               attemptDate={selectedEvent.date.toISOString()}
               grade={validGrade}
               open={viewAttemptOpen}

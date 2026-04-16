@@ -58,7 +58,8 @@ export async function GET(
           title,
           difficulty,
           category,
-          leetcode_slug
+          leetcode_slug,
+          is_premium
         )
       `
       )
@@ -153,6 +154,7 @@ export async function GET(
         problem_title: problem?.title,
         difficulty: problem?.difficulty,
         category: problem?.category,
+        is_premium: problem?.is_premium ?? false,
         leetcode_url: problem?.leetcode_slug
           ? `https://leetcode.com/problems/${problem.leetcode_slug}/`
           : null,
@@ -174,6 +176,7 @@ export async function GET(
           problem_title: problem?.title,
           difficulty: problem?.difficulty,
           category: problem?.category,
+          is_premium: problem?.is_premium ?? false,
           leetcode_url: problem?.leetcode_slug
             ? `https://leetcode.com/problems/${problem.leetcode_slug}/`
             : null,
@@ -265,6 +268,7 @@ export async function GET(
             problem_title: problem?.title,
             difficulty: problem?.difficulty,
             category: problem?.category,
+            is_premium: problem?.is_premium ?? false,
             leetcode_url: problem?.leetcode_slug
               ? `https://leetcode.com/problems/${problem.leetcode_slug}/`
               : null,
@@ -302,6 +306,7 @@ export async function GET(
             problem_title: problem?.title,
             difficulty: problem?.difficulty,
             category: problem?.category,
+            is_premium: problem?.is_premium ?? false,
             leetcode_url: problem?.leetcode_slug
               ? `https://leetcode.com/problems/${problem.leetcode_slug}/`
               : null,

@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import {
+  utcToLocalDateStr,
+  localDayBoundsUTC,
+  nextLocalDateStr,
+} from "@/lib/api/localDateUtils";
 
 // Grade meaning:
 // 0 = again/fail, 1 = good, 2 = easy
@@ -11,6 +16,7 @@ type Body = {
   note?: string | null;
   attempted_at?: string | null; // ISO string optional
   localDate?: string | null; // YYYY-MM-DD in client's local timezone
+  tzOffset?: number | null; // minutes from getTimezoneOffset() — positive = west of UTC
 };
 
 function addDays(date: Date, days: number) {
@@ -174,6 +180,29 @@ export async function POST(
       );
     }
 
+    const MIN_TZ_OFFSET_MINUTES = -720;
+    const MAX_TZ_OFFSET_MINUTES = 840;
+
+    const roundedTzOffset =
+      body.tzOffset != null && Number.isFinite(body.tzOffset)
+        ? Math.round(body.tzOffset)
+        : null;
+
+    if (
+      roundedTzOffset != null &&
+      (roundedTzOffset < MIN_TZ_OFFSET_MINUTES ||
+        roundedTzOffset > MAX_TZ_OFFSET_MINUTES)
+    ) {
+      return NextResponse.json(
+        {
+          error: `tzOffset must be between ${MIN_TZ_OFFSET_MINUTES} and ${MAX_TZ_OFFSET_MINUTES} minutes`,
+        },
+        { status: 400 },
+      );
+    }
+
+    const tzOffset: number | null = roundedTzOffset;
+
     // 3) Resolve problem id by key
     const { data: problemRow, error: problemErr } = await supabase
       .from("problems")
@@ -248,6 +277,11 @@ export async function POST(
       existingProgress?.next_review_at &&
       new Date(existingProgress.next_review_at) <= now;
 
+    // 6b) Cascade next_review_at to the first date with capacity under review_per_day.
+    // interval_days stays as computed (reflects actual algorithm output); only the
+    // scheduled date shifts to avoid overloading a single day.
+    await cascadeNextReviewDate(supabase, user.id, problemId, next, tzOffset);
+
     // 7) Upsert progress
     const { data: progress, error: progressUpsertErr } = await supabase
       .from("user_problem_progress")
@@ -296,6 +330,151 @@ export async function POST(
       { status: 500 },
     );
   }
+}
+
+// Shift next_review_at forward until it lands on a day with remaining capacity.
+// interval_days is left unchanged — it reflects the algorithm's output, not the
+// scheduling offset. Only next_review_at on the `next` object is mutated.
+//
+// Uses the client's local day boundaries (via tzOffset) so the cap is enforced
+// against the same day the user sees in the calendar, not UTC midnight boundaries.
+async function cascadeNextReviewDate(
+  supabase: any,
+  userId: string,
+  problemId: string,
+  next: { next_review_at: string; interval_days: number },
+  tzOffset: number | null,
+) {
+  // Find which list this problem belongs to and get its study plan cap.
+  const { data: listItem, error: listItemError } = await supabase
+    .from("problem_list_items")
+    .select("list_id")
+    .eq("problem_id", problemId)
+    .limit(1)
+    .maybeSingle();
+
+  if (listItemError) {
+    console.error("Failed to look up problem list membership for review cap enforcement", {
+      userId,
+      problemId,
+      error: listItemError,
+    });
+    return;
+  }
+
+  if (!listItem) return; // Problem not in any list — no cap to enforce
+
+  const { data: planData, error: planDataError } = await supabase
+    .from("user_study_plans")
+    .select("review_per_day")
+    .eq("user_id", userId)
+    .eq("list_id", listItem.list_id)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (planDataError) {
+    console.error("Failed to look up study plan for review cap enforcement", {
+      userId,
+      problemId,
+      listId: listItem.list_id,
+      error: planDataError,
+    });
+    return;
+  }
+
+  const reviewPerDay: number = planData?.review_per_day ?? 0;
+  if (reviewPerDay <= 0) return; // No cap configured
+
+  // Fetch all problem IDs in this list except the current one (its old slot is being freed).
+  const { data: allListItems, error: allListItemsError } = await supabase
+    .from("problem_list_items")
+    .select("problem_id")
+    .eq("list_id", listItem.list_id);
+
+  if (allListItemsError) {
+    console.error("Failed to look up list problems for review cap enforcement", {
+      userId,
+      problemId,
+      listId: listItem.list_id,
+      error: allListItemsError,
+    });
+    return;
+  }
+
+  const listProblemIds: string[] = (allListItems ?? [])
+    .map((item: any) => item.problem_id as string)
+    .filter((id: string) => id !== problemId);
+
+  if (listProblemIds.length === 0) return;
+
+  // Walk forward from the computed local date until we find a day with capacity.
+  // Safety limit: never push more than 7 days out.
+  //
+  // Uses local day boundaries derived from tzOffset so the cap matches what the
+  // user sees in the calendar. Without this, a review at 10 PM CST (= next UTC day
+  // 04:00Z) would be counted on a different UTC date than the calendar shows it,
+  // allowing the daily cap to be silently exceeded in the local view.
+  //
+  // If tzOffset is unavailable, falls back to UTC midnight boundaries.
+
+  let dateStr = utcToLocalDateStr(next.next_review_at, tzOffset);
+
+  const originalDate = dateStr;
+  const { startMs: windowStartMs } = localDayBoundsUTC(originalDate, tzOffset);
+  let windowEndDate = originalDate;
+  for (let i = 0; i < 6; i++) {
+    windowEndDate = nextLocalDateStr(windowEndDate);
+  }
+  const { endMs: windowEndMs } = localDayBoundsUTC(windowEndDate, tzOffset);
+
+  const {
+    data: scheduledReviews,
+    error: scheduledReviewsError,
+  } = await supabase
+    .from("user_problem_progress")
+    .select("next_review_at")
+    .eq("user_id", userId)
+    .in("problem_id", listProblemIds)
+    .gte("next_review_at", new Date(windowStartMs).toISOString())
+    .lt("next_review_at", new Date(windowEndMs).toISOString());
+
+  if (scheduledReviewsError) {
+    console.error("Failed to fetch scheduled reviews for daily cap check", {
+      userId,
+      problemId,
+      windowStart: new Date(windowStartMs).toISOString(),
+      windowEnd: new Date(windowEndMs).toISOString(),
+      error: scheduledReviewsError,
+    });
+    throw scheduledReviewsError;
+  }
+
+  const reviewCountsByLocalDate = new Map<string, number>();
+  for (const row of scheduledReviews ?? []) {
+    if (!row?.next_review_at) continue;
+    const localReviewDate = utcToLocalDateStr(row.next_review_at, tzOffset);
+    reviewCountsByLocalDate.set(
+      localReviewDate,
+      (reviewCountsByLocalDate.get(localReviewDate) ?? 0) + 1,
+    );
+  }
+
+  for (let i = 0; i < 7; i++) {
+    const { startMs } = localDayBoundsUTC(dateStr, tzOffset);
+    const count = reviewCountsByLocalDate.get(dateStr) ?? 0;
+
+    if (count < reviewPerDay) {
+      if (dateStr !== originalDate) {
+        // Bumped to a new local date — place at the start of that local day (UTC).
+        next.next_review_at = new Date(startMs).toISOString();
+      }
+      // If no bump, keep addDays output as-is (preserves timezone-safe time-of-day).
+      return;
+    }
+
+    dateStr = nextLocalDateStr(dateStr);
+  }
+  // If no slot found within 7 days, keep original date (better than pushing indefinitely).
 }
 
 // Update daily activity table and calculate streak
@@ -350,7 +529,6 @@ async function updateDailyActivityAndStreak(
 
   // Calculate current streak
   let currentStreak = 0;
-  const today = localDate ?? new Date().toISOString().split("T")[0];
   const yesterday = localDate
     ? (() => {
         const [y, m, d] = localDate.split("-").map(Number);

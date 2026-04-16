@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import {
+  utcToLocalDateStr,
+  localDayBoundsUTC,
+  nextLocalDateStr,
+} from "@/lib/api/localDateUtils";
 
 export async function GET() {
   try {
@@ -247,6 +252,20 @@ export async function POST(req: Request) {
       );
     }
 
+    const localDate: string | null =
+      typeof body.localDate === "string" ? body.localDate : null;
+    if (localDate != null && !/^\d{4}-\d{2}-\d{2}$/.test(localDate)) {
+      return NextResponse.json(
+        { error: "localDate must be YYYY-MM-DD" },
+        { status: 400 },
+      );
+    }
+
+    const tzOffset: number | null =
+      body.tzOffset != null && Number.isFinite(body.tzOffset)
+        ? Math.min(840, Math.max(-720, Math.round(body.tzOffset)))
+        : null;
+
     // 3) Validate that the problem list exists
     const { data: list, error: listErr } = await supabase
       .from("problem_lists")
@@ -261,7 +280,26 @@ export async function POST(req: Request) {
       );
     }
 
-    // 4) Upsert the new active study plan first, so the user always has an
+    // 4) Read the current plan so we can detect a review_per_day change.
+    const { data: existingPlan, error: existingPlanErr } = await supabase
+      .from("user_study_plans")
+      .select("review_per_day")
+      .eq("user_id", user.id)
+      .eq("list_id", list_id)
+      .maybeSingle();
+
+    if (existingPlanErr) {
+      console.error("Failed to fetch existing study plan", existingPlanErr);
+      return NextResponse.json(
+        { error: "Failed to fetch existing study plan" },
+        { status: 500 },
+      );
+    }
+
+    const previousReviewPerDay: number | null =
+      existingPlan?.review_per_day ?? null;
+
+    // 5) Upsert the new active study plan first, so the user always has an
     //    active plan even if the deactivation step below fails.
     const { error: planErr } = await supabase.from("user_study_plans").upsert(
       {
@@ -284,7 +322,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // 5) Deactivate all other plans for this user (excluding the one we just upserted).
+    // 6) Deactivate all other plans for this user (excluding the one we just upserted).
     //    Done after the upsert so a failure here leaves the user with a valid active plan
     //    rather than no active plan.
     const { error: deactivateErr } = await supabase
@@ -298,7 +336,7 @@ export async function POST(req: Request) {
       console.error("Error deactivating old study plans:", deactivateErr);
     }
 
-    // 6) Keep user_preferences.active_list_id in sync
+    // 7) Keep user_preferences.active_list_id in sync
     const { error: upsertErr } = await supabase.from("user_preferences").upsert(
       {
         user_id: user.id,
@@ -316,6 +354,23 @@ export async function POST(req: Request) {
       );
     }
 
+    // 8) Backfill scheduled reviews if review_per_day changed on an existing plan.
+    //    Uses last_attempt_at + interval_days as the ideal base date so the
+    //    redistribution is reversible regardless of prior pace changes.
+    if (
+      previousReviewPerDay !== null &&
+      previousReviewPerDay !== resolvedReviewPerDay
+    ) {
+      await backfillReviewSchedule(
+        supabase,
+        user.id,
+        list_id,
+        resolvedReviewPerDay,
+        localDate,
+        tzOffset,
+      );
+    }
+
     return NextResponse.json({
       success: true,
       active_list: list,
@@ -326,5 +381,120 @@ export async function POST(req: Request) {
       { error: "Unexpected error setting active study plan" },
       { status: 500 },
     );
+  }
+}
+
+// Redistribute all future scheduled reviews for a list to fit a new review_per_day cap.
+// Uses last_attempt_at + interval_days as the "ideal" date (pure algorithm output)
+// rather than the current next_review_at, making this fully reversible — changing pace
+// multiple times always produces the same result as if you'd had that pace from the start.
+//
+// Uses local day boundaries (via tzOffset) so slot counts match what the user sees in
+// the calendar, not UTC midnight boundaries.
+async function backfillReviewSchedule(
+  supabase: any,
+  userId: string,
+  listId: string,
+  newReviewPerDay: number,
+  localDate: string | null,
+  tzOffset: number | null,
+) {
+  // 1) Get all problem IDs in this list
+  const { data: listItems, error: listItemsErr } = await supabase
+    .from("problem_list_items")
+    .select("problem_id")
+    .eq("list_id", listId);
+
+  if (listItemsErr) {
+    console.error("Error fetching problem list items for backfill:", {
+      listId,
+      userId,
+      error: listItemsErr,
+    });
+    return;
+  }
+
+  const problemIds = (listItems ?? []).map(
+    (item: any) => item.problem_id as string,
+  );
+  if (problemIds.length === 0) return;
+
+  // 2) Fetch all future progress rows (overdue reviews are left untouched)
+  const nowIso = new Date().toISOString();
+  const { data: progressRows, error: progressErr } = await supabase
+    .from("user_problem_progress")
+    .select("problem_id, next_review_at, last_attempt_at, interval_days")
+    .eq("user_id", userId)
+    .in("problem_id", problemIds)
+    .not("next_review_at", "is", null)
+    .gt("next_review_at", nowIso);
+
+  if (progressErr) {
+    console.error("Error fetching progress for backfill:", progressErr);
+    return;
+  }
+  if (!progressRows || progressRows.length === 0) return;
+
+  const todayStr = localDate ?? utcToLocalDateStr(Date.now(), tzOffset);
+
+  // 3) Compute ideal LOCAL date for each row: last_attempt_at + interval_days.
+  //    Clamp to today if the ideal date is already in the past.
+  const items = progressRows.map((row: any) => {
+    const ideal = new Date(row.last_attempt_at);
+    ideal.setUTCDate(ideal.getUTCDate() + (row.interval_days ?? 1));
+    const idealLocalStr = utcToLocalDateStr(ideal.getTime(), tzOffset);
+    return {
+      problem_id: row.problem_id as string,
+      baseDate: idealLocalStr < todayStr ? todayStr : idealLocalStr,
+      sortKey: ideal.getTime(),
+    };
+  });
+
+  // 4) Sort by ideal date so earlier reviews claim slots first
+  items.sort(
+    (a: { sortKey: number }, b: { sortKey: number }) => a.sortKey - b.sortKey,
+  );
+
+  // 5) Cascade forward with the new cap, counting by LOCAL date.
+  //    Set next_review_at to the local day's UTC start so the review always
+  //    falls unambiguously within the correct local calendar day.
+  const slotsByDate = new Map<string, number>();
+  const updates: { problem_id: string; next_review_at: string }[] = [];
+
+  for (const item of items) {
+    let dateStr = item.baseDate;
+    for (let i = 0; i < 365; i++) {
+      const count = slotsByDate.get(dateStr) ?? 0;
+      if (count < newReviewPerDay) {
+        slotsByDate.set(dateStr, count + 1);
+        const { startMs } = localDayBoundsUTC(dateStr, tzOffset);
+        updates.push({
+          problem_id: item.problem_id,
+          next_review_at: new Date(startMs).toISOString(),
+        });
+        break;
+      }
+      dateStr = nextLocalDateStr(dateStr);
+    }
+  }
+
+  // 6) Apply all updates in a single upsert (one round-trip).
+  //    onConflict generates: ON CONFLICT (user_id, problem_id) DO UPDATE SET next_review_at = EXCLUDED.next_review_at
+  //    so only next_review_at is touched; all other columns are left intact.
+  if (updates.length === 0) return;
+
+  const { error: upsertErr } = await supabase
+    .from("user_problem_progress")
+    .upsert(
+      updates.map((u) => ({
+        user_id: userId,
+        problem_id: u.problem_id,
+        next_review_at: u.next_review_at,
+      })),
+      { onConflict: "user_id,problem_id" },
+    );
+
+  if (upsertErr) {
+    console.error("Error backfilling review schedule:", upsertErr);
   }
 }

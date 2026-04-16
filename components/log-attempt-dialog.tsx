@@ -68,6 +68,7 @@ export function LogAttemptDialog({
             note: note || null,
             attempted_at: new Date().toISOString(),
             localDate: new Date().toLocaleDateString("en-CA"),
+            tzOffset: new Date().getTimezoneOffset(),
           }),
         }
       );

@@ -48,10 +48,10 @@ Pages and components call `useDashboard()` instead of fetching independently.
 All under `app/api/`. Full documentation in `app/api/README.md`.
 
 Key routes:
-- `POST /api/problems/[problemKey]/attempts` — Logs an attempt, runs the spaced repetition algorithm, updates progress, updates streak/daily activity
+- `POST /api/problems/[problemKey]/attempts` — Logs an attempt, runs the spaced repetition algorithm, enforces the `review_per_day` cap via write-time cascade, updates progress, updates streak/daily activity
 - `GET /api/problemlists/[listKey]/due` — Returns today's review queue + upcoming projected new problems
 - `GET /api/problemlists/[listKey]/calendar` — Returns past attempts, scheduled reviews, and projected new problems
-- `POST /api/user/active-study-plan` — Creates/updates the user's study plan (pace, new_per_day, review_per_day)
+- `POST /api/user/active-study-plan` — Creates/updates the user's study plan (pace, new_per_day, review_per_day); backfills all future scheduled reviews when review_per_day changes
 
 ### Spaced repetition algorithm
 
@@ -63,18 +63,32 @@ Implemented in `app/api/problems/[problemKey]/attempts/route.ts` in `computeNext
 - Stages (1 Learning / 2 Reinforcing / 3 Mastered) are cosmetic UI labels only — they do not affect intervals
 - Stage progression: Good advances one stage max stage 2 (Reinforcing); only Easy can reach stage 3 (Mastered)
 
+### Review cap enforcement (write-time scheduling)
+
+`review_per_day` is enforced **at write time**, not read time. After `computeNextProgress` computes `next_review_at`, `cascadeNextReviewDate` checks whether the user's local calendar day already has `review_per_day` reviews scheduled. If so, it advances the date forward (up to 7 days) until a slot is available, then writes the authoritative date to `user_problem_progress`.
+
+This design preserves the overdue/overflow distinction: a review with `next_review_at` in the past is always genuinely overdue (missed), never a cap-overflow artifact. The `/due` endpoint's read-time slice is a safety net for pre-existing data only.
+
+When a user changes pace and `review_per_day` changes, `backfillReviewSchedule` redistributes all future reviews for the list. It uses `last_attempt_at + interval_days` as each review's ideal date (not the prior `next_review_at`), making pace changes fully reversible. See `docs/SPACED_REPETITION.md` for details.
+
 ### Review queue (`/due` endpoint)
 
-The `/due` endpoint enforces `review_per_day` from the study plan with three separate buckets:
+The `/due` endpoint splits reviews into three buckets:
 - **Overdue** (`next_review_at < localDayStartUTC`): always shown uncapped — urgent catch-up
-- **Today's scheduled** (`localDayStartUTC ≤ next_review_at < localDayEndUTC`): capped to `review_per_day`
+- **Today's scheduled** (`localDayStartUTC ≤ next_review_at < localDayEndUTC`): capped to `review_per_day` as a safety net
 - **Future scheduled** (`next_review_at ≥ localDayEndUTC`): always included uncapped (powers "this week" view)
 
 New problems are only surfaced when there are zero overdue reviews. Once overdue are cleared, today's new quota unlocks. `days_until` is computed as local calendar days from `localDayStartUTC` (0 = due today, negative = overdue) — not raw hours from the current moment.
 
 ### Timezone handling
 
-The server runs UTC; clients send `localDate` (`YYYY-MM-DD`) and `tzOffset` (minutes, from `getTimezoneOffset()`) with all time-sensitive requests. The shared helper `lib/api/parseLocalDateBounds.ts` derives UTC midnight boundaries from these. All routes that accept `localDate` validate it against `/^\d{4}-\d{2}-\d{2}$/` and return 400 on bad input.
+The server runs UTC; clients send `localDate` (`YYYY-MM-DD`) and `tzOffset` (minutes west of UTC, from `getTimezoneOffset()`) with all time-sensitive requests. Two shared helpers implement this:
+- `lib/api/parseLocalDateBounds.ts` — parses params from URL search params; used by `/due` and `/calendar`
+- `lib/api/localDateUtils.ts` — lower-level functions (`utcToLocalDateStr`, `localDayBoundsUTC`, `nextLocalDateStr`) used by write-time scheduling where params come from request bodies
+
+All routes validate `localDate` against `/^\d{4}-\d{2}-\d{2}$/` and return 400 on bad input. `tzOffset` is clamped to `[-720, 840]`.
+
+`tzOffset` convention: positive = west of UTC (CST = 360, CDT = 300), negative = east (AEST = -600). Local day start in UTC = `Date.UTC(y, m-1, d) + tzOffset * 60_000`. This convention must be applied consistently in all scheduling operations (cascade, backfill, due, calendar).
 
 ### Supabase clients
 

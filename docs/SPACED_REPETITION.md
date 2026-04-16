@@ -109,6 +109,36 @@ Once an interval hits its cap it stays there, functioning as maintenance review 
 | 5th     | Good  | 2 days   | restarting growth |
 | 6th     | Good  | 4 days   |                   |
 
+## Review Cap Enforcement (write-time scheduling)
+
+### Why write time?
+
+The `review_per_day` setting in a user's study plan caps how many reviews appear per calendar day. Enforcing this cap **at write time** (when an attempt is logged) rather than read time (when the due queue or calendar is fetched) has one critical advantage: it preserves the distinction between a review that was **bumped** (exceeded the cap) and a review that is **overdue** (genuinely missed). At read time, a `next_review_at` in the past is always ambiguous — there is no way to know whether it was a cap-overflow or a missed session.
+
+### How it works (`cascadeNextReviewDate`)
+
+After `computeNextProgress` returns the ideal `next_review_at`, the attempts route calls `cascadeNextReviewDate` before writing to the database:
+
+1. Look up which list the problem belongs to and fetch the active `review_per_day` for that list.
+2. Convert `next_review_at` to a local calendar date using the client-supplied `tzOffset` (via `utcToLocalDateStr` from `lib/api/localDateUtils.ts`).
+3. Fetch all scheduled reviews for the list within a 7-day local window in a **single query**, then build a local-date → count map in memory (one round-trip instead of one per day).
+4. If the target day is full, advance to the next local calendar day and repeat (up to 7 days).
+5. Only overwrite `next_review_at` when a bump to a later date is needed. When the original slot is available, the timestamp produced by `addDays(now, interval)` is kept as-is — this is inherently timezone-safe because it preserves the time-of-day offset from the current moment.
+6. Any DB lookup failure (list membership, study plan, scheduled reviews) is logged with structured context and causes the cascade to abort, leaving `next_review_at` at the algorithm's computed value rather than silently writing an incorrect date. A failure fetching the scheduled-reviews window is treated as fatal and throws, surfacing the error to the caller.
+
+### Pace change backfill (`backfillReviewSchedule`)
+
+When a user changes pace and `review_per_day` changes, all **future** scheduled reviews for the list must be redistributed to fit the new cap. This runs synchronously inside `POST /api/user/active-study-plan`.
+
+Key design decisions:
+
+- **Ideal date = `last_attempt_at + interval_days`** — uses the algorithm's pure output, not the prior `next_review_at` (which may have been cascade-bumped). This makes the operation **fully reversible**: changing pace multiple times always produces the same final schedule as if you had started with that pace.
+- **Overdue reviews are left untouched** — only rows with `next_review_at > now` are redistributed. Past-due reviews are genuinely owed and should not be rescheduled.
+- **Local date boundaries** — slot counts are keyed by the user's local calendar date (via `tzOffset`), matching the same "day" definition used in the due queue and calendar UI.
+- **Cascade order** — reviews are sorted by ideal date ascending so earlier-due reviews claim earlier slots; later reviews cascade forward only as far as needed.
+- **Single upsert** — all `next_review_at` updates are applied in one `upsert` call with `onConflict: "user_id,problem_id"`, generating a single SQL round-trip. Only `next_review_at` is touched; all other columns are preserved by the `DO UPDATE SET` clause.
+- **Error handling** — if fetching list items fails, the backfill aborts early and logs structured context (`listId`, `userId`, error). The attempt/pace-change response still succeeds; the backfill is best-effort.
+
 ## Statistics Tracked
 
 For each problem, the system tracks:

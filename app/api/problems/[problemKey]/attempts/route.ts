@@ -441,7 +441,7 @@ async function cascadeNextReviewDate(
   if (scheduledReviewsError) {
     console.error("Failed to fetch scheduled reviews for daily cap check", {
       userId,
-      problemKey,
+      problemId,
       windowStart: new Date(windowStartMs).toISOString(),
       windowEnd: new Date(windowEndMs).toISOString(),
       error: scheduledReviewsError,

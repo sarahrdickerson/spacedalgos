@@ -175,10 +175,28 @@ export async function POST(
       );
     }
 
-    const tzOffset: number | null =
+    const MIN_TZ_OFFSET_MINUTES = -720;
+    const MAX_TZ_OFFSET_MINUTES = 840;
+
+    const roundedTzOffset =
       body.tzOffset != null && Number.isFinite(body.tzOffset)
         ? Math.round(body.tzOffset)
         : null;
+
+    if (
+      roundedTzOffset != null &&
+      (roundedTzOffset < MIN_TZ_OFFSET_MINUTES ||
+        roundedTzOffset > MAX_TZ_OFFSET_MINUTES)
+    ) {
+      return NextResponse.json(
+        {
+          error: `tzOffset must be between ${MIN_TZ_OFFSET_MINUTES} and ${MAX_TZ_OFFSET_MINUTES} minutes`,
+        },
+        { status: 400 },
+      );
+    }
+
+    const tzOffset: number | null = roundedTzOffset;
 
     // 3) Resolve problem id by key
     const { data: problemRow, error: problemErr } = await supabase
@@ -393,20 +411,39 @@ async function cascadeNextReviewDate(
   };
 
   const originalDate = dateStr;
+  const { startMs: windowStartMs } = localDayBounds(originalDate);
+  let windowEndDate = originalDate;
+  for (let i = 0; i < 6; i++) {
+    windowEndDate = nextLocalDate(windowEndDate);
+  }
+  const { endMs: windowEndMs } = localDayBounds(windowEndDate);
+
+  const { data: scheduledReviews } = await supabase
+    .from("user_problem_progress")
+    .select("next_review_at")
+    .eq("user_id", userId)
+    .in("problem_id", listProblemIds)
+    .gte("next_review_at", new Date(windowStartMs).toISOString())
+    .lt("next_review_at", new Date(windowEndMs).toISOString());
+
+  const reviewCountsByLocalDate = new Map<string, number>();
+  for (const row of scheduledReviews ?? []) {
+    if (!row?.next_review_at) continue;
+    const localReviewDate = toLocalDateString(
+      row.next_review_at,
+      tzOffsetMinutes,
+    );
+    reviewCountsByLocalDate.set(
+      localReviewDate,
+      (reviewCountsByLocalDate.get(localReviewDate) ?? 0) + 1,
+    );
+  }
+
   for (let i = 0; i < 7; i++) {
-    const { startMs, endMs } = localDayBounds(dateStr);
-    const dayStart = new Date(startMs).toISOString();
-    const dayEnd = new Date(endMs).toISOString();
+    const { startMs } = localDayBounds(dateStr);
+    const count = reviewCountsByLocalDate.get(dateStr) ?? 0;
 
-    const { count } = await supabase
-      .from("user_problem_progress")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", userId)
-      .in("problem_id", listProblemIds)
-      .gte("next_review_at", dayStart)
-      .lt("next_review_at", dayEnd);
-
-    if ((count ?? 0) < reviewPerDay) {
+    if (count < reviewPerDay) {
       if (dateStr !== originalDate) {
         // Bumped to a new local date — place at the start of that local day (UTC).
         next.next_review_at = new Date(startMs).toISOString();

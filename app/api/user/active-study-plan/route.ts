@@ -276,12 +276,20 @@ export async function POST(req: Request) {
     }
 
     // 4) Read the current plan so we can detect a review_per_day change.
-    const { data: existingPlan } = await supabase
+    const { data: existingPlan, error: existingPlanErr } = await supabase
       .from("user_study_plans")
       .select("review_per_day")
       .eq("user_id", user.id)
       .eq("list_id", list_id)
       .maybeSingle();
+
+    if (existingPlanErr) {
+      console.error("Failed to fetch existing study plan", existingPlanErr);
+      return NextResponse.json(
+        { error: "Failed to fetch existing study plan" },
+        { status: 500 },
+      );
+    }
 
     const previousReviewPerDay: number | null =
       existingPlan?.review_per_day ?? null;

@@ -247,6 +247,15 @@ export async function POST(req: Request) {
       );
     }
 
+    const localDate: string | null =
+      typeof body.localDate === "string" ? body.localDate : null;
+    if (localDate != null && !/^\d{4}-\d{2}-\d{2}$/.test(localDate)) {
+      return NextResponse.json(
+        { error: "localDate must be YYYY-MM-DD" },
+        { status: 400 },
+      );
+    }
+
     // 3) Validate that the problem list exists
     const { data: list, error: listErr } = await supabase
       .from("problem_lists")
@@ -261,7 +270,18 @@ export async function POST(req: Request) {
       );
     }
 
-    // 4) Upsert the new active study plan first, so the user always has an
+    // 4) Read the current plan so we can detect a review_per_day change.
+    const { data: existingPlan } = await supabase
+      .from("user_study_plans")
+      .select("review_per_day")
+      .eq("user_id", user.id)
+      .eq("list_id", list_id)
+      .maybeSingle();
+
+    const previousReviewPerDay: number | null =
+      existingPlan?.review_per_day ?? null;
+
+    // 5) Upsert the new active study plan first, so the user always has an
     //    active plan even if the deactivation step below fails.
     const { error: planErr } = await supabase.from("user_study_plans").upsert(
       {
@@ -284,7 +304,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // 5) Deactivate all other plans for this user (excluding the one we just upserted).
+    // 6) Deactivate all other plans for this user (excluding the one we just upserted).
     //    Done after the upsert so a failure here leaves the user with a valid active plan
     //    rather than no active plan.
     const { error: deactivateErr } = await supabase
@@ -298,7 +318,7 @@ export async function POST(req: Request) {
       console.error("Error deactivating old study plans:", deactivateErr);
     }
 
-    // 6) Keep user_preferences.active_list_id in sync
+    // 7) Keep user_preferences.active_list_id in sync
     const { error: upsertErr } = await supabase.from("user_preferences").upsert(
       {
         user_id: user.id,
@@ -316,6 +336,22 @@ export async function POST(req: Request) {
       );
     }
 
+    // 8) Backfill scheduled reviews if review_per_day changed on an existing plan.
+    //    Uses last_attempt_at + interval_days as the ideal base date so the
+    //    redistribution is reversible regardless of prior pace changes.
+    if (
+      previousReviewPerDay !== null &&
+      previousReviewPerDay !== resolvedReviewPerDay
+    ) {
+      await backfillReviewSchedule(
+        supabase,
+        user.id,
+        list_id,
+        resolvedReviewPerDay,
+        localDate,
+      );
+    }
+
     return NextResponse.json({
       success: true,
       active_list: list,
@@ -327,4 +363,93 @@ export async function POST(req: Request) {
       { status: 500 },
     );
   }
+}
+
+// Redistribute all future scheduled reviews for a list to fit a new review_per_day cap.
+// Uses last_attempt_at + interval_days as the "ideal" date (pure algorithm output)
+// rather than the current next_review_at, making this fully reversible — changing pace
+// multiple times always produces the same result as if you'd had that pace from the start.
+async function backfillReviewSchedule(
+  supabase: any,
+  userId: string,
+  listId: string,
+  newReviewPerDay: number,
+  localDate: string | null,
+) {
+  // 1) Get all problem IDs in this list
+  const { data: listItems } = await supabase
+    .from("problem_list_items")
+    .select("problem_id")
+    .eq("list_id", listId);
+
+  const problemIds = (listItems ?? []).map((item: any) => item.problem_id as string);
+  if (problemIds.length === 0) return;
+
+  // 2) Fetch all future progress rows (overdue reviews are left untouched)
+  const nowIso = new Date().toISOString();
+  const { data: progressRows, error: progressErr } = await supabase
+    .from("user_problem_progress")
+    .select("problem_id, next_review_at, last_attempt_at, interval_days")
+    .eq("user_id", userId)
+    .in("problem_id", problemIds)
+    .not("next_review_at", "is", null)
+    .gt("next_review_at", nowIso);
+
+  if (progressErr) {
+    console.error("Error fetching progress for backfill:", progressErr);
+    return;
+  }
+  if (!progressRows || progressRows.length === 0) return;
+
+  const todayStr = localDate ?? nowIso.slice(0, 10);
+
+  // 3) Compute ideal date for each row: last_attempt_at + interval_days.
+  //    Clamp to today if the ideal date is already in the past.
+  const items = progressRows.map((row: any) => {
+    const ideal = new Date(row.last_attempt_at);
+    ideal.setUTCDate(ideal.getUTCDate() + (row.interval_days ?? 1));
+    const idealStr = ideal.toISOString().slice(0, 10);
+    return {
+      problem_id: row.problem_id as string,
+      baseDate: idealStr < todayStr ? todayStr : idealStr,
+      originalTimeOfDay: (row.next_review_at as string).slice(10),
+      sortKey: ideal.getTime(),
+    };
+  });
+
+  // 4) Sort by ideal date so earlier reviews claim slots first
+  items.sort((a, b) => a.sortKey - b.sortKey);
+
+  // 5) Cascade forward with the new cap
+  const slotsByDate = new Map<string, number>();
+  const updates: { problem_id: string; next_review_at: string }[] = [];
+
+  for (const item of items) {
+    let dateStr = item.baseDate;
+    for (let i = 0; i < 365; i++) {
+      const count = slotsByDate.get(dateStr) ?? 0;
+      if (count < newReviewPerDay) {
+        slotsByDate.set(dateStr, count + 1);
+        updates.push({
+          problem_id: item.problem_id,
+          next_review_at: `${dateStr}${item.originalTimeOfDay}`,
+        });
+        break;
+      }
+      const d = new Date(`${dateStr}T00:00:00Z`);
+      d.setUTCDate(d.getUTCDate() + 1);
+      dateStr = d.toISOString().slice(0, 10);
+    }
+  }
+
+  // 6) Apply updates in parallel
+  await Promise.all(
+    updates.map((u) =>
+      supabase
+        .from("user_problem_progress")
+        .update({ next_review_at: u.next_review_at })
+        .eq("user_id", userId)
+        .eq("problem_id", u.problem_id),
+    ),
+  );
 }

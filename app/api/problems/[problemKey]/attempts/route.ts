@@ -11,6 +11,7 @@ type Body = {
   note?: string | null;
   attempted_at?: string | null; // ISO string optional
   localDate?: string | null; // YYYY-MM-DD in client's local timezone
+  tzOffset?: number | null; // minutes from getTimezoneOffset() — positive = west of UTC
 };
 
 function addDays(date: Date, days: number) {
@@ -174,6 +175,11 @@ export async function POST(
       );
     }
 
+    const tzOffset: number | null =
+      body.tzOffset != null && Number.isFinite(body.tzOffset)
+        ? Math.round(body.tzOffset)
+        : null;
+
     // 3) Resolve problem id by key
     const { data: problemRow, error: problemErr } = await supabase
       .from("problems")
@@ -251,7 +257,7 @@ export async function POST(
     // 6b) Cascade next_review_at to the first date with capacity under review_per_day.
     // interval_days stays as computed (reflects actual algorithm output); only the
     // scheduled date shifts to avoid overloading a single day.
-    await cascadeNextReviewDate(supabase, user.id, problemId, next);
+    await cascadeNextReviewDate(supabase, user.id, problemId, next, tzOffset);
 
     // 7) Upsert progress
     const { data: progress, error: progressUpsertErr } = await supabase
@@ -306,11 +312,15 @@ export async function POST(
 // Shift next_review_at forward until it lands on a day with remaining capacity.
 // interval_days is left unchanged — it reflects the algorithm's output, not the
 // scheduling offset. Only next_review_at on the `next` object is mutated.
+//
+// Uses the client's local day boundaries (via tzOffset) so the cap is enforced
+// against the same day the user sees in the calendar, not UTC midnight boundaries.
 async function cascadeNextReviewDate(
   supabase: any,
   userId: string,
   problemId: string,
   next: { next_review_at: string; interval_days: number },
+  tzOffset: number | null,
 ) {
   // Find which list this problem belongs to and get its study plan cap.
   const { data: listItem } = await supabase
@@ -345,19 +355,48 @@ async function cascadeNextReviewDate(
 
   if (listProblemIds.length === 0) return;
 
-  // Walk forward from the computed date until we find a day with capacity.
+  // Walk forward from the computed local date until we find a day with capacity.
   // Safety limit: never push more than 7 days out.
   //
-  // Important: preserve the original time-of-day from next_review_at when bumping.
-  // Normalizing to T00:00:00Z causes timezone bugs — midnight UTC is still "today"
-  // for users in negative UTC offsets (e.g. CST = UTC-6).
-  const originalTimeOfDay = next.next_review_at.slice(10); // "THH:MM:SS.sssZ"
-  let dateStr = next.next_review_at.slice(0, 10);
+  // Uses local day boundaries derived from tzOffset so the cap matches what the
+  // user sees in the calendar. Without this, a review at 10 PM CST (= next UTC day
+  // 04:00Z) would be counted on a different UTC date than the calendar shows it,
+  // allowing the daily cap to be silently exceeded in the local view.
+  //
+  // If tzOffset is unavailable, falls back to UTC midnight boundaries.
+
+  // Derive the local date of next_review_at. For a UTC timestamp, local date =
+  // UTC date shifted by -tzOffset minutes (tzOffset is positive west of UTC).
+  const nextReviewMs = Date.parse(next.next_review_at);
+  let dateStr: string;
+  if (tzOffset != null) {
+    const localMs = nextReviewMs - tzOffset * 60 * 1000;
+    dateStr = new Date(localMs).toISOString().slice(0, 10);
+  } else {
+    dateStr = next.next_review_at.slice(0, 10);
+  }
+
+  // Helper: get UTC boundaries for a local YYYY-MM-DD given tzOffset.
+  const localDayBounds = (ds: string): { startMs: number; endMs: number } => {
+    const [y, m, d] = ds.split("-").map(Number);
+    const startMs =
+      tzOffset != null
+        ? Date.UTC(y, m - 1, d) + tzOffset * 60 * 1000
+        : Date.UTC(y, m - 1, d);
+    return { startMs, endMs: startMs + 24 * 60 * 60 * 1000 };
+  };
+
+  // Helper: advance a local date string by one day.
+  const nextLocalDate = (ds: string): string => {
+    const [y, m, d] = ds.split("-").map(Number);
+    return new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10);
+  };
+
+  const originalDate = dateStr;
   for (let i = 0; i < 7; i++) {
-    const dayStart = `${dateStr}T00:00:00.000Z`;
-    const nextDay = new Date(`${dateStr}T00:00:00Z`);
-    nextDay.setUTCDate(nextDay.getUTCDate() + 1);
-    const dayEnd = nextDay.toISOString().slice(0, 19) + ".000Z";
+    const { startMs, endMs } = localDayBounds(dateStr);
+    const dayStart = new Date(startMs).toISOString();
+    const dayEnd = new Date(endMs).toISOString();
 
     const { count } = await supabase
       .from("user_problem_progress")
@@ -368,14 +407,15 @@ async function cascadeNextReviewDate(
       .lt("next_review_at", dayEnd);
 
     if ((count ?? 0) < reviewPerDay) {
-      // Only mutate if we actually bumped to a new date; otherwise keep addDays output as-is.
-      if (i > 0) {
-        next.next_review_at = `${dateStr}${originalTimeOfDay}`;
+      if (dateStr !== originalDate) {
+        // Bumped to a new local date — place at the start of that local day (UTC).
+        next.next_review_at = new Date(startMs).toISOString();
       }
+      // If no bump, keep addDays output as-is (preserves timezone-safe time-of-day).
       return;
     }
 
-    dateStr = nextDay.toISOString().slice(0, 10);
+    dateStr = nextLocalDate(dateStr);
   }
   // If no slot found within 7 days, keep original date (better than pushing indefinitely).
 }

@@ -43,7 +43,8 @@ export function ChangePaceDialog({
   totalProblems,
   completedProblems,
 }: ChangePaceDialogProps) {
-  const { refreshData } = useDashboard();
+  const { refreshData, data } = useDashboard();
+  const currentReviewPerDay = data?.studyPlan?.review_per_day ?? null;
   const normalizedCurrent = normalizePace(currentPace);
   const [selectedPace, setSelectedPace] =
     React.useState<Pace>(normalizedCurrent);
@@ -84,6 +85,7 @@ export function ChangePaceDialog({
           pace: selectedPace,
           new_per_day: option.new_per_day,
           review_per_day: option.review_per_day,
+          localDate: new Date().toLocaleDateString("en-CA"),
         }),
       });
 
@@ -163,7 +165,7 @@ export function ChangePaceDialog({
 
           {/* Impact preview */}
           {isPaceChanged && selectedOption && currentOption && (
-            <div className="rounded-md border border-border bg-muted/30 px-4 py-3 text-sm flex flex-col gap-1">
+            <div className="rounded-md border border-border bg-muted/30 px-4 py-3 text-sm flex flex-col gap-1.5">
               {remaining > 0 && currentEstDate && newEstDate && (
                 <p className="text-muted-foreground">
                   <span className="font-medium text-foreground">
@@ -178,18 +180,32 @@ export function ChangePaceDialog({
                 </span>{" "}
                 {currentOption.new_per_day} → {selectedOption.new_per_day}
               </p>
+              {currentReviewPerDay !== null &&
+                currentReviewPerDay !== selectedOption.review_per_day && (
+                  <p className="text-muted-foreground">
+                    <span className="font-medium text-foreground">
+                      Reviews per day:
+                    </span>{" "}
+                    {currentReviewPerDay} → {selectedOption.review_per_day}
+                  </p>
+                )}
             </div>
           )}
 
-          {/* Warning */}
-          <div className="flex gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
-            <TriangleAlertIcon className="mt-0.5 h-4 w-4 shrink-0" />
-            <p>
-              Changing your pace may have unintended effects on your review
-              schedule. Your existing intervals are preserved, but your daily
-              queue and estimated completion date will update immediately.
-            </p>
-          </div>
+          {/* Warning — only shown when review_per_day is changing */}
+          {isPaceChanged &&
+            selectedOption &&
+            currentReviewPerDay !== null &&
+            currentReviewPerDay !== selectedOption.review_per_day && (
+              <div className="flex gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
+                <TriangleAlertIcon className="mt-0.5 h-4 w-4 shrink-0" />
+                <p>
+                  {selectedOption.review_per_day < currentReviewPerDay
+                    ? "Your scheduled reviews will be spread across more days to fit the new daily limit. Some reviews you expected soon may be pushed out."
+                    : "Your scheduled reviews will be consolidated to fill the increased daily limit. You may see more reviews on upcoming days."}
+                </p>
+              </div>
+            )}
         </div>
 
         <DialogFooter className="px-6 pb-6">

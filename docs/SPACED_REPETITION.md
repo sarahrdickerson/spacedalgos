@@ -120,10 +120,11 @@ The `review_per_day` setting in a user's study plan caps how many reviews appear
 After `computeNextProgress` returns the ideal `next_review_at`, the attempts route calls `cascadeNextReviewDate` before writing to the database:
 
 1. Look up which list the problem belongs to and fetch the active `review_per_day` for that list.
-2. Convert `next_review_at` to a local calendar date using the client-supplied `tzOffset`.
-3. Count reviews already scheduled on that local day by querying `user_problem_progress` for rows whose `next_review_at` falls within the UTC bounds of that local day (`Date.UTC(y, m-1, d) + tzOffset * 60_000` to `+24h`).
-4. If the day is full, advance to the next local calendar day and repeat (up to 7 days).
+2. Convert `next_review_at` to a local calendar date using the client-supplied `tzOffset` (via `utcToLocalDateStr` from `lib/api/localDateUtils.ts`).
+3. Fetch all scheduled reviews for the list within a 7-day local window in a **single query**, then build a local-date → count map in memory (one round-trip instead of one per day).
+4. If the target day is full, advance to the next local calendar day and repeat (up to 7 days).
 5. Only overwrite `next_review_at` when a bump to a later date is needed. When the original slot is available, the timestamp produced by `addDays(now, interval)` is kept as-is — this is inherently timezone-safe because it preserves the time-of-day offset from the current moment.
+6. Any DB lookup failure (list membership, study plan, scheduled reviews) is logged with structured context and causes the cascade to abort, leaving `next_review_at` at the algorithm's computed value rather than silently writing an incorrect date. A failure fetching the scheduled-reviews window is treated as fatal and throws, surfacing the error to the caller.
 
 ### Pace change backfill (`backfillReviewSchedule`)
 
@@ -135,6 +136,8 @@ Key design decisions:
 - **Overdue reviews are left untouched** — only rows with `next_review_at > now` are redistributed. Past-due reviews are genuinely owed and should not be rescheduled.
 - **Local date boundaries** — slot counts are keyed by the user's local calendar date (via `tzOffset`), matching the same "day" definition used in the due queue and calendar UI.
 - **Cascade order** — reviews are sorted by ideal date ascending so earlier-due reviews claim earlier slots; later reviews cascade forward only as far as needed.
+- **Single upsert** — all `next_review_at` updates are applied in one `upsert` call with `onConflict: "user_id,problem_id"`, generating a single SQL round-trip. Only `next_review_at` is touched; all other columns are preserved by the `DO UPDATE SET` clause.
+- **Error handling** — if fetching list items fails, the backfill aborts early and logs structured context (`listId`, `userId`, error). The attempt/pace-change response still succeeds; the backfill is best-effort.
 
 ## Statistics Tracked
 

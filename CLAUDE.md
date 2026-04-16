@@ -82,7 +82,11 @@ New problems are only surfaced when there are zero overdue reviews. Once overdue
 
 ### Timezone handling
 
-The server runs UTC; clients send `localDate` (`YYYY-MM-DD`) and `tzOffset` (minutes west of UTC, from `getTimezoneOffset()`) with all time-sensitive requests. The shared helper `lib/api/parseLocalDateBounds.ts` derives UTC midnight boundaries from these. All routes that accept `localDate` validate it against `/^\d{4}-\d{2}-\d{2}$/` and return 400 on bad input.
+The server runs UTC; clients send `localDate` (`YYYY-MM-DD`) and `tzOffset` (minutes west of UTC, from `getTimezoneOffset()`) with all time-sensitive requests. Two shared helpers implement this:
+- `lib/api/parseLocalDateBounds.ts` — parses params from URL search params; used by `/due` and `/calendar`
+- `lib/api/localDateUtils.ts` — lower-level functions (`utcToLocalDateStr`, `localDayBoundsUTC`, `nextLocalDateStr`) used by write-time scheduling where params come from request bodies
+
+All routes validate `localDate` against `/^\d{4}-\d{2}-\d{2}$/` and return 400 on bad input. `tzOffset` is clamped to `[-720, 840]`.
 
 `tzOffset` convention: positive = west of UTC (CST = 360, CDT = 300), negative = east (AEST = -600). Local day start in UTC = `Date.UTC(y, m-1, d) + tzOffset * 60_000`. This convention must be applied consistently in all scheduling operations (cascade, backfill, due, calendar).
 

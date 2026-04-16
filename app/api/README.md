@@ -859,4 +859,12 @@ The server uses `localDate` to derive UTC midnight boundaries for the user's cal
 | `POST /api/user/active-study-plan` | `localDate`, `tzOffset` (body) | Backfill slot counting when `review_per_day` changes |
 | `GET /api/user/streak` | `localDate` (query) | Yesterday boundary for streak staleness check |
 
-The shared helper `lib/api/parseLocalDateBounds.ts` implements local-day-bounds derivation and is used by the `/due` and `/calendar` routes. All `localDate` values are validated against `/^\d{4}-\d{2}-\d{2}$/` before use; malformed values return a 400.
+Two shared helpers implement timezone logic:
+
+- **`lib/api/parseLocalDateBounds.ts`** — parses `localDate`/`tzOffset` from URL search params and returns structured UTC boundary strings. Used by the `/due` and `/calendar` routes.
+- **`lib/api/localDateUtils.ts`** — lower-level functions used by write-time scheduling (`cascadeNextReviewDate`, `backfillReviewSchedule`) where params come from request bodies rather than search params:
+  - `utcToLocalDateStr(utcMsOrIso, tzOffset)` — converts a UTC timestamp to the user's local `YYYY-MM-DD`
+  - `localDayBoundsUTC(dateStr, tzOffset)` — returns `{ startMs, endMs }` UTC millisecond bounds for a local calendar day
+  - `nextLocalDateStr(dateStr)` — advances a local `YYYY-MM-DD` by one calendar day
+
+All `localDate` values are validated against `/^\d{4}-\d{2}-\d{2}$/` before use; malformed values return a 400. `tzOffset` values are clamped to `[-720, 840]` (the valid range of UTC offsets in minutes).

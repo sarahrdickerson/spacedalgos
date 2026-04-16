@@ -488,14 +488,23 @@ async function backfillReviewSchedule(
     }
   }
 
-  // 6) Apply updates in parallel
-  await Promise.all(
-    updates.map((u) =>
-      supabase
-        .from("user_problem_progress")
-        .update({ next_review_at: u.next_review_at })
-        .eq("user_id", userId)
-        .eq("problem_id", u.problem_id),
-    ),
-  );
+  // 6) Apply all updates in a single upsert (one round-trip).
+  //    onConflict generates: ON CONFLICT (user_id, problem_id) DO UPDATE SET next_review_at = EXCLUDED.next_review_at
+  //    so only next_review_at is touched; all other columns are left intact.
+  if (updates.length === 0) return;
+
+  const { error: upsertErr } = await supabase
+    .from("user_problem_progress")
+    .upsert(
+      updates.map((u) => ({
+        user_id: userId,
+        problem_id: u.problem_id,
+        next_review_at: u.next_review_at,
+      })),
+      { onConflict: "user_id,problem_id" },
+    );
+
+  if (upsertErr) {
+    console.error("Error backfilling review schedule:", upsertErr);
+  }
 }

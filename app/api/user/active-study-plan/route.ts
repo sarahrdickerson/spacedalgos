@@ -263,7 +263,7 @@ export async function POST(req: Request) {
 
     const tzOffset: number | null =
       body.tzOffset != null && Number.isFinite(body.tzOffset)
-        ? Math.round(body.tzOffset)
+        ? Math.min(840, Math.max(-720, Math.round(body.tzOffset)))
         : null;
 
     // 3) Validate that the problem list exists
@@ -400,10 +400,19 @@ async function backfillReviewSchedule(
   tzOffset: number | null,
 ) {
   // 1) Get all problem IDs in this list
-  const { data: listItems } = await supabase
+  const { data: listItems, error: listItemsErr } = await supabase
     .from("problem_list_items")
     .select("problem_id")
     .eq("list_id", listId);
+
+  if (listItemsErr) {
+    console.error("Error fetching problem list items for backfill:", {
+      listId,
+      userId,
+      error: listItemsErr,
+    });
+    return;
+  }
 
   const problemIds = (listItems ?? []).map(
     (item: any) => item.problem_id as string,

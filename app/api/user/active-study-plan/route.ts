@@ -382,7 +382,9 @@ async function backfillReviewSchedule(
     .select("problem_id")
     .eq("list_id", listId);
 
-  const problemIds = (listItems ?? []).map((item: any) => item.problem_id as string);
+  const problemIds = (listItems ?? []).map(
+    (item: any) => item.problem_id as string,
+  );
   if (problemIds.length === 0) return;
 
   // 2) Fetch all future progress rows (overdue reviews are left untouched)
@@ -418,7 +420,9 @@ async function backfillReviewSchedule(
   });
 
   // 4) Sort by ideal date so earlier reviews claim slots first
-  items.sort((a, b) => a.sortKey - b.sortKey);
+  items.sort(
+    (a: { sortKey: number }, b: { sortKey: number }) => a.sortKey - b.sortKey,
+  );
 
   // 5) Cascade forward with the new cap
   const slotsByDate = new Map<string, number>();

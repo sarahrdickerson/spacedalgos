@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import {
+  utcToLocalDateStr,
+  localDayBoundsUTC,
+  nextLocalDateStr,
+} from "@/lib/api/localDateUtils";
 
 // Grade meaning:
 // 0 = again/fail, 1 = good, 2 = easy
@@ -383,40 +388,15 @@ async function cascadeNextReviewDate(
   //
   // If tzOffset is unavailable, falls back to UTC midnight boundaries.
 
-  // Derive the local date of next_review_at. For a UTC timestamp, local date =
-  // UTC date shifted by -tzOffset minutes (tzOffset is positive west of UTC).
-  const nextReviewMs = Date.parse(next.next_review_at);
-  let dateStr: string;
-  if (tzOffset != null) {
-    const localMs = nextReviewMs - tzOffset * 60 * 1000;
-    dateStr = new Date(localMs).toISOString().slice(0, 10);
-  } else {
-    dateStr = next.next_review_at.slice(0, 10);
-  }
-
-  // Helper: get UTC boundaries for a local YYYY-MM-DD given tzOffset.
-  const localDayBounds = (ds: string): { startMs: number; endMs: number } => {
-    const [y, m, d] = ds.split("-").map(Number);
-    const startMs =
-      tzOffset != null
-        ? Date.UTC(y, m - 1, d) + tzOffset * 60 * 1000
-        : Date.UTC(y, m - 1, d);
-    return { startMs, endMs: startMs + 24 * 60 * 60 * 1000 };
-  };
-
-  // Helper: advance a local date string by one day.
-  const nextLocalDate = (ds: string): string => {
-    const [y, m, d] = ds.split("-").map(Number);
-    return new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10);
-  };
+  let dateStr = utcToLocalDateStr(next.next_review_at, tzOffset);
 
   const originalDate = dateStr;
-  const { startMs: windowStartMs } = localDayBounds(originalDate);
+  const { startMs: windowStartMs } = localDayBoundsUTC(originalDate, tzOffset);
   let windowEndDate = originalDate;
   for (let i = 0; i < 6; i++) {
-    windowEndDate = nextLocalDate(windowEndDate);
+    windowEndDate = nextLocalDateStr(windowEndDate);
   }
-  const { endMs: windowEndMs } = localDayBounds(windowEndDate);
+  const { endMs: windowEndMs } = localDayBoundsUTC(windowEndDate, tzOffset);
 
   const { data: scheduledReviews } = await supabase
     .from("user_problem_progress")
@@ -429,10 +409,7 @@ async function cascadeNextReviewDate(
   const reviewCountsByLocalDate = new Map<string, number>();
   for (const row of scheduledReviews ?? []) {
     if (!row?.next_review_at) continue;
-    const localReviewDate = toLocalDateString(
-      row.next_review_at,
-      tzOffsetMinutes,
-    );
+    const localReviewDate = utcToLocalDateStr(row.next_review_at, tzOffset);
     reviewCountsByLocalDate.set(
       localReviewDate,
       (reviewCountsByLocalDate.get(localReviewDate) ?? 0) + 1,
@@ -440,7 +417,7 @@ async function cascadeNextReviewDate(
   }
 
   for (let i = 0; i < 7; i++) {
-    const { startMs } = localDayBounds(dateStr);
+    const { startMs } = localDayBoundsUTC(dateStr, tzOffset);
     const count = reviewCountsByLocalDate.get(dateStr) ?? 0;
 
     if (count < reviewPerDay) {
@@ -452,7 +429,7 @@ async function cascadeNextReviewDate(
       return;
     }
 
-    dateStr = nextLocalDate(dateStr);
+    dateStr = nextLocalDateStr(dateStr);
   }
   // If no slot found within 7 days, keep original date (better than pushing indefinitely).
 }

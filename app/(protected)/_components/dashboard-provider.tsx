@@ -30,6 +30,7 @@ export interface Problem {
   category: string;
   difficulty: string;
   leetcode_url: string;
+  is_premium: boolean;
   order_index?: number;
   is_new?: boolean;
   projected_date?: string | null; // ISO date string for upcoming projected new problems

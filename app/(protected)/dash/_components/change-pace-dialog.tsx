@@ -86,6 +86,7 @@ export function ChangePaceDialog({
           new_per_day: option.new_per_day,
           review_per_day: option.review_per_day,
           localDate: new Date().toLocaleDateString("en-CA"),
+          tzOffset: new Date().getTimezoneOffset(),
         }),
       });
 

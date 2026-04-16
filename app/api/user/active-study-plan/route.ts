@@ -256,6 +256,11 @@ export async function POST(req: Request) {
       );
     }
 
+    const tzOffset: number | null =
+      body.tzOffset != null && Number.isFinite(body.tzOffset)
+        ? Math.round(body.tzOffset)
+        : null;
+
     // 3) Validate that the problem list exists
     const { data: list, error: listErr } = await supabase
       .from("problem_lists")
@@ -349,6 +354,7 @@ export async function POST(req: Request) {
         list_id,
         resolvedReviewPerDay,
         localDate,
+        tzOffset,
       );
     }
 
@@ -369,12 +375,16 @@ export async function POST(req: Request) {
 // Uses last_attempt_at + interval_days as the "ideal" date (pure algorithm output)
 // rather than the current next_review_at, making this fully reversible — changing pace
 // multiple times always produces the same result as if you'd had that pace from the start.
+//
+// Uses local day boundaries (via tzOffset) so slot counts match what the user sees in
+// the calendar, not UTC midnight boundaries.
 async function backfillReviewSchedule(
   supabase: any,
   userId: string,
   listId: string,
   newReviewPerDay: number,
   localDate: string | null,
+  tzOffset: number | null,
 ) {
   // 1) Get all problem IDs in this list
   const { data: listItems } = await supabase
@@ -403,18 +413,41 @@ async function backfillReviewSchedule(
   }
   if (!progressRows || progressRows.length === 0) return;
 
-  const todayStr = localDate ?? nowIso.slice(0, 10);
+  // Convert a UTC timestamp (ms) to a local YYYY-MM-DD string using tzOffset.
+  // tzOffset = getTimezoneOffset() = minutes west of UTC (positive for US).
+  // local time = UTC - tzOffset minutes, so shift ms back by tzOffset.
+  const toLocalDateStr = (utcMs: number): string => {
+    const shifted = tzOffset != null ? utcMs - tzOffset * 60 * 1000 : utcMs;
+    return new Date(shifted).toISOString().slice(0, 10);
+  };
 
-  // 3) Compute ideal date for each row: last_attempt_at + interval_days.
+  // Get the UTC start/end ms for a local YYYY-MM-DD.
+  const localDayBounds = (ds: string): { startMs: number; endMs: number } => {
+    const [y, m, d] = ds.split("-").map(Number);
+    const startMs =
+      tzOffset != null
+        ? Date.UTC(y, m - 1, d) + tzOffset * 60 * 1000
+        : Date.UTC(y, m - 1, d);
+    return { startMs, endMs: startMs + 24 * 60 * 60 * 1000 };
+  };
+
+  // Advance a local date string by one calendar day.
+  const nextLocalDate = (ds: string): string => {
+    const [y, m, d] = ds.split("-").map(Number);
+    return new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10);
+  };
+
+  const todayStr = localDate ?? toLocalDateStr(Date.now());
+
+  // 3) Compute ideal LOCAL date for each row: last_attempt_at + interval_days.
   //    Clamp to today if the ideal date is already in the past.
   const items = progressRows.map((row: any) => {
     const ideal = new Date(row.last_attempt_at);
     ideal.setUTCDate(ideal.getUTCDate() + (row.interval_days ?? 1));
-    const idealStr = ideal.toISOString().slice(0, 10);
+    const idealLocalStr = toLocalDateStr(ideal.getTime());
     return {
       problem_id: row.problem_id as string,
-      baseDate: idealStr < todayStr ? todayStr : idealStr,
-      originalTimeOfDay: (row.next_review_at as string).slice(10),
+      baseDate: idealLocalStr < todayStr ? todayStr : idealLocalStr,
       sortKey: ideal.getTime(),
     };
   });
@@ -424,7 +457,9 @@ async function backfillReviewSchedule(
     (a: { sortKey: number }, b: { sortKey: number }) => a.sortKey - b.sortKey,
   );
 
-  // 5) Cascade forward with the new cap
+  // 5) Cascade forward with the new cap, counting by LOCAL date.
+  //    Set next_review_at to the local day's UTC start so the review always
+  //    falls unambiguously within the correct local calendar day.
   const slotsByDate = new Map<string, number>();
   const updates: { problem_id: string; next_review_at: string }[] = [];
 
@@ -434,15 +469,14 @@ async function backfillReviewSchedule(
       const count = slotsByDate.get(dateStr) ?? 0;
       if (count < newReviewPerDay) {
         slotsByDate.set(dateStr, count + 1);
+        const { startMs } = localDayBounds(dateStr);
         updates.push({
           problem_id: item.problem_id,
-          next_review_at: `${dateStr}${item.originalTimeOfDay}`,
+          next_review_at: new Date(startMs).toISOString(),
         });
         break;
       }
-      const d = new Date(`${dateStr}T00:00:00Z`);
-      d.setUTCDate(d.getUTCDate() + 1);
-      dateStr = d.toISOString().slice(0, 10);
+      dateStr = nextLocalDate(dateStr);
     }
   }
 

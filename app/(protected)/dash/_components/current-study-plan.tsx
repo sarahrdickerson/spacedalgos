@@ -316,6 +316,9 @@ const CurrentStudyPlan = ({
                       },
                     )}
                   </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    You can change this later in settings
+                  </p>
                 </div>
                 {estCompletionFromCreateStudyPlan && (
                   <div className="flex items-center justify-between rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-sm">

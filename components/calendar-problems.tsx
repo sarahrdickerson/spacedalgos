@@ -4,8 +4,11 @@ import React from "react";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LogAttemptDialog } from "@/components/log-attempt-dialog";
-import { ViewAttemptDialog } from "@/components/view-attempt-dialog";
-import { DashboardData, Problem } from "@/app/(protected)/_components/dashboard-provider";
+import { ViewAttemptDialog } from "@/components/calendar/view-attempt-dialog";
+import {
+  DashboardData,
+  Problem,
+} from "@/app/(protected)/_components/dashboard-provider";
 import LegendPopover from "./calendar/legend-popover";
 import { CustomCalendar } from "./ui/custom-calendar";
 
@@ -529,8 +532,7 @@ export function CalendarProblems({
 
           return (
             <ViewAttemptDialog
-              problemKey={selectedEvent.problem.key}
-              problemTitle={selectedEvent.problem.title}
+              problem={selectedEvent.problem}
               attemptDate={selectedEvent.date.toISOString()}
               grade={validGrade}
               open={viewAttemptOpen}

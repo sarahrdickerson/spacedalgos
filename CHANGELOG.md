@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/sarahrdickerson/spacedalgos/compare/v0.3.0...v0.3.1) (2026-04-20)
+
+
+### Bug Fixes
+
+* cascade scheduled reviews when attempt logged to allow no more than study plan reviews / day ([7d64d74](https://github.com/sarahrdickerson/spacedalgos/commit/7d64d7467b79dc30101c572f72bfabd7bc3c770e))
+
 ## [0.3.0](https://github.com/sarahrdickerson/spacedalgos/compare/v0.2.3...v0.3.0) (2026-03-18)
 
 

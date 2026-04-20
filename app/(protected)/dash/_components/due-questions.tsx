@@ -17,7 +17,7 @@ interface DueQuestionsProps {
 
 const DueQuestions = ({ data, loading, onRefresh }: DueQuestionsProps) => {
   const [selectedProblem, setSelectedProblem] = React.useState<Problem | null>(
-    null
+    null,
   );
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [currentTime, setCurrentTime] = React.useState<Date | null>(null);
@@ -199,9 +199,7 @@ const DueQuestions = ({ data, loading, onRefresh }: DueQuestionsProps) => {
 
       {selectedProblem && (
         <LogAttemptDialog
-          problemKey={selectedProblem.key}
-          problemTitle={selectedProblem.title}
-          problemLink={selectedProblem.leetcode_url}
+          problem={selectedProblem}
           open={dialogOpen}
           onOpenChange={setDialogOpen}
           onSuccess={handleSuccess}

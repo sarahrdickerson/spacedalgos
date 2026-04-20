@@ -26,12 +26,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { LogAttemptDialog } from "@/components/log-attempt-dialog";
-import { useDashboard } from "../../_components/dashboard-provider";
+import { Problem, useDashboard } from "../../_components/dashboard-provider";
 
 type MenuButtonProps = {
-  problemKey: string;
-  problemTitle: string;
-  problemLink?: string | null;
+  problem: Problem;
 };
 
 type AttemptHistory = {
@@ -42,11 +40,8 @@ type AttemptHistory = {
   attempted_at: string;
 };
 
-const MenuButton = ({
-  problemKey,
-  problemTitle,
-  problemLink,
-}: MenuButtonProps) => {
+const MenuButton = ({ problem }: MenuButtonProps) => {
+  const { key: problemKey, title: problemTitle } = problem;
   const { refreshData } = useDashboard();
   const [isHistoryOpen, setIsHistoryOpen] = React.useState(false);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = React.useState(false);
@@ -132,9 +127,7 @@ const MenuButton = ({
       <LogAttemptDialog
         open={isLogAttemptOpen}
         onOpenChange={setIsLogAttemptOpen}
-        problemKey={problemKey}
-        problemTitle={problemTitle}
-        problemLink={problemLink}
+        problem={problem}
         onSuccess={refreshData}
       />
 

@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { computeNextProgress } from "@/lib/sr/algorithm";
+import { cascadeNextReviewDate } from "@/lib/sr/cascade";
 
 // Grade meaning:
 // 0 = again/fail, 1 = good, 2 = easy
@@ -11,109 +13,8 @@ type Body = {
   note?: string | null;
   attempted_at?: string | null; // ISO string optional
   localDate?: string | null; // YYYY-MM-DD in client's local timezone
+  tzOffset?: number | null; // minutes from getTimezoneOffset() — positive = west of UTC
 };
-
-function addDays(date: Date, days: number) {
-  const d = new Date(date);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d;
-}
-
-// Interval caps — prevent runaway growth
-const MAX_INTERVAL_GOOD = 30; // Grade 1: caps at monthly maintenance
-const MAX_INTERVAL_EASY = 90; // Grade 2: caps at quarterly maintenance
-
-// Spaced repetition logic
-function computeNextProgress(params: {
-  prevStage: number | null;
-  prevIntervalDays: number | null;
-  prevAttemptCount: number | null;
-  prevSuccessCount: number | null;
-  prevFailCount: number | null;
-  grade: Grade;
-  now: Date;
-}) {
-  const {
-    prevStage,
-    prevIntervalDays,
-    prevAttemptCount,
-    prevSuccessCount,
-    prevFailCount,
-    grade,
-    now,
-  } = params;
-
-  const attempt_count = (prevAttemptCount ?? 0) + 1;
-
-  const isSuccess = grade >= 1;
-  const success_count = (prevSuccessCount ?? 0) + (isSuccess ? 1 : 0);
-  const fail_count = (prevFailCount ?? 0) + (!isSuccess ? 1 : 0);
-
-  // Stage drives the UI label (Learning / Reinforcing / Mastered) — not intervals.
-  // Grade 0 drops one stage (min 1).
-  // Grade 1 (Good): from stage 1 → 2, from 2 → 2 (stay), from 3 → 2 (demote; Good cannot stay Mastered).
-  // Grade 2 (Easy): from stage 1 → 2, from 2 → 3, from 3 → 3 (Mastered).
-  // First attempt (prevStage null/0) always lands at stage 1 regardless of grade.
-  let stage = prevStage ?? 0;
-  if (grade === 0) {
-    stage = Math.max(1, stage - 1);
-  } else if (grade === 1) {
-    stage = Math.min(2, Math.max(1, stage + 1));
-  } else {
-    stage = Math.min(3, Math.max(1, stage + 1));
-  }
-
-  // Interval calculation — uses fixed intervals for the first two attempts,
-  // then grows from the previous interval and grade from the third attempt onward.
-  //   First attempt        → 1 day (Easy → 3 days)
-  //   Second attempt       → Good: 3 days, Easy: 7 days, Again: 1 day
-  //   Grade 0 (fail)       → ×0.25, min 1 day   (same/next-day repair)
-  //   Grade 1 (good)       → ×2.0,  cap 30 days  (monthly maintenance once stable)
-  //   Grade 2 (easy)       → ×2.3,  cap 90 days  (quarterly maintenance once stable)
-  //
-  // Approximate sequences produced:
-  //   Easy:  3 → 7 → 17 → 40 → 90 (cap) → 90 → …
-  //   Good:  1 → 3 → 6  → 12 → 24 → 30 (cap) → 30 → …
-  //   Fail:  current × 0.25 → min 1 day (next-day repair for short intervals)
-  let interval_days: number;
-  if (!prevIntervalDays || prevIntervalDays <= 0) {
-    // First attempt: Easy gets a head start (3 days), Good/Again review next day
-    interval_days = grade === 2 ? 3 : 1;
-  } else if (prevAttemptCount === 1) {
-    // Second attempt: 7 days for Easy, 3 days for Good, 1 day for Again
-    interval_days = grade === 0 ? 1 : grade === 2 ? 7 : 3;
-  } else if (grade === 0) {
-    // Fail: drop to 25% of previous interval, min 1 day (same/next-day repair)
-    interval_days = Math.max(1, Math.floor(prevIntervalDays * 0.25));
-  } else if (grade === 1) {
-    // Good: double the previous interval, capped at MAX_INTERVAL_GOOD to prevent runaway growth
-    // If mastered, a good review demotes to reinforcing but still gets the easier monthly maintenance interval instead of quarterly
-    interval_days = Math.min(
-      MAX_INTERVAL_GOOD,
-      Math.ceil(prevIntervalDays * 2.0),
-    );
-  } else {
-    // Easy: multiply previous interval by 2.3, capped at MAX_INTERVAL_EASY to prevent runaway growth
-    // grade === 2
-    interval_days = Math.min(
-      MAX_INTERVAL_EASY,
-      Math.ceil(prevIntervalDays * 2.3),
-    );
-  }
-
-  const next_review_at = addDays(now, interval_days).toISOString();
-
-  return {
-    stage,
-    interval_days,
-    next_review_at,
-    attempt_count,
-    success_count,
-    fail_count,
-    last_attempt_at: now.toISOString(),
-    last_success_at: isSuccess ? now.toISOString() : null,
-  };
-}
 
 export async function POST(
   req: Request,
@@ -173,6 +74,29 @@ export async function POST(
         { status: 400 },
       );
     }
+
+    const MIN_TZ_OFFSET_MINUTES = -720;
+    const MAX_TZ_OFFSET_MINUTES = 840;
+
+    const roundedTzOffset =
+      body.tzOffset != null && Number.isFinite(body.tzOffset)
+        ? Math.round(body.tzOffset)
+        : null;
+
+    if (
+      roundedTzOffset != null &&
+      (roundedTzOffset < MIN_TZ_OFFSET_MINUTES ||
+        roundedTzOffset > MAX_TZ_OFFSET_MINUTES)
+    ) {
+      return NextResponse.json(
+        {
+          error: `tzOffset must be between ${MIN_TZ_OFFSET_MINUTES} and ${MAX_TZ_OFFSET_MINUTES} minutes`,
+        },
+        { status: 400 },
+      );
+    }
+
+    const tzOffset: number | null = roundedTzOffset;
 
     // 3) Resolve problem id by key
     const { data: problemRow, error: problemErr } = await supabase
@@ -247,6 +171,11 @@ export async function POST(
     const wasDue =
       existingProgress?.next_review_at &&
       new Date(existingProgress.next_review_at) <= now;
+
+    // 6b) Cascade next_review_at to the first date with capacity under review_per_day.
+    // interval_days stays as computed (reflects actual algorithm output); only the
+    // scheduled date shifts to avoid overloading a single day.
+    await cascadeNextReviewDate(supabase, user.id, problemId, next, tzOffset);
 
     // 7) Upsert progress
     const { data: progress, error: progressUpsertErr } = await supabase
@@ -350,7 +279,6 @@ async function updateDailyActivityAndStreak(
 
   // Calculate current streak
   let currentStreak = 0;
-  const today = localDate ?? new Date().toISOString().split("T")[0];
   const yesterday = localDate
     ? (() => {
         const [y, m, d] = localDate.split("-").map(Number);

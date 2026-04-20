@@ -194,6 +194,8 @@ export async function GET(
     //   - overdue:   next_review_at < localDayStartMs — shown uncapped
     //   - today:     localDayStartMs <= next_review_at < localDayEndMs — capped to review_per_day
     //   - future:    next_review_at >= localDayEndMs — uncapped (powers "this week" view)
+    // Write-time scheduling/backfill tries to avoid overflowing a day's review_per_day
+    // allocation, but excess scheduled for today can still exist, so this route slices it.
     const getNextReviewMs = (p: any) =>
       p?.progress?.next_review_at
         ? new Date(p.progress.next_review_at).getTime()

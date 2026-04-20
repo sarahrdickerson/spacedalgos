@@ -261,6 +261,8 @@ New problems are only surfaced when there are zero overdue reviews. Today's new 
 - Problems with `is_new: true` and `projected_date: null` are today's new problems
 - Problems with `is_new: true` and a `projected_date` are projected for a future day this week
 - Future scheduled reviews (`days_until > 0`) are included uncapped so the client "this week" view has full visibility. The `review_per_day` cap only applies to today's scheduled reviews; when those future days arrive they will be capped at that point.
+- The `review_per_day` cap is **primarily enforced at write time** via `cascadeNextReviewDate` in the attempts route, so `next_review_at` values in the database are already authoritative. The `cappedToday.slice(0, reviewPerDay)` applied here is a safety net for any pre-existing data that predates write-time enforcement.
+- The distinction between **overflow** and **overdue** is handled at write time: a review bumped to a later day because today's cap is full gets a future `next_review_at`, whereas a review with a past `next_review_at` represents a genuinely missed session. This distinction cannot be recovered at read time, which is why enforcement happens at write time.
 
 ---
 
@@ -378,7 +380,7 @@ New problems are only surfaced when there are zero overdue reviews. Today's new 
 
 **Endpoint:** `POST /api/problems/[problemKey]/attempts`
 
-**Description:** Logs a new attempt for a specific problem and updates the user's spaced repetition progress.
+**Description:** Logs a new attempt for a specific problem, updates the user's spaced repetition progress, and enforces the `review_per_day` cap at write time by cascading the scheduled review date forward if needed.
 
 **Authentication:** Required
 
@@ -394,7 +396,8 @@ New problems are only surfaced when there are zero overdue reviews. Today's new 
   "time_bucket": "0-15m",
   "note": "Solved using hashmap approach",
   "attempted_at": "2026-03-06T10:30:00Z",
-  "localDate": "2026-03-06"
+  "localDate": "2026-03-06",
+  "tzOffset": 360
 }
 ```
 
@@ -405,6 +408,7 @@ New problems are only surfaced when there are zero overdue reviews. Today's new 
 - `note` (optional) - Notes about the attempt
 - `attempted_at` (optional) - ISO timestamp (defaults to current time)
 - `localDate` (optional) - The client's current local date in `YYYY-MM-DD` format. Used to record `user_daily_activity` on the correct calendar day and compute streak boundaries for users in UTC-offset timezones. Must match `/^\d{4}-\d{2}-\d{2}$/` or a 400 is returned.
+- `tzOffset` (optional) - The client's `Date.prototype.getTimezoneOffset()` value in minutes. Required for correct `review_per_day` cascade enforcement — see [Write-Time Review Scheduling](#write-time-review-scheduling) below.
 
 **Response:**
 
@@ -432,6 +436,17 @@ New problems are only surfaced when there are zero overdue reviews. Today's new 
   }
 }
 ```
+
+**Write-Time Review Scheduling:**
+
+After computing the next review date from the spaced repetition algorithm, the route runs `cascadeNextReviewDate` to enforce the study plan's `review_per_day` cap **before** writing to the database. This guarantees that `next_review_at` values stored in `user_problem_progress` are already authoritative — read paths (calendar, due queue) do not need to redistribute reviews on every fetch.
+
+The cascade logic:
+1. Determines the problem's list membership and looks up the active `review_per_day` for that list.
+2. Converts the computed `next_review_at` to a local calendar date using the client's `tzOffset`.
+3. Counts reviews already scheduled on that local day (counting by UTC bounds of the local day, not UTC midnight, to prevent timezone boundary violations).
+4. If the day is at capacity, advances to the next local day and repeats (up to 7 days out).
+5. Only mutates `next_review_at` when the review must be bumped to a later date; if the original slot is available, the `addDays`-computed timestamp is stored as-is (preserving time-of-day, which is inherently timezone-safe).
 
 **Spaced Repetition Algorithm:**
 
@@ -577,7 +592,7 @@ Intervals grow purely from the previous interval value — no stage-based multip
 
 **Endpoint:** `POST /api/user/active-study-plan`
 
-**Description:** Creates or updates the authenticated user's active study plan. Upserts the new plan first, then deactivates all other plans for the user, so a partial failure never leaves the user with no active plan.
+**Description:** Creates or updates the authenticated user's active study plan. Upserts the new plan first, then deactivates all other plans for the user, so a partial failure never leaves the user with no active plan. When `review_per_day` changes on an existing plan, all future scheduled reviews for that list are redistributed to match the new cap (see [Pace Change Backfill](#pace-change-backfill) below).
 
 **Authentication:** Required
 
@@ -588,7 +603,9 @@ Intervals grow purely from the previous interval value — no stage-based multip
   "list_id": "uuid",
   "pace": "normal",
   "new_per_day": 2,
-  "review_per_day": 4
+  "review_per_day": 4,
+  "localDate": "2026-03-06",
+  "tzOffset": 360
 }
 ```
 
@@ -598,6 +615,8 @@ Intervals grow purely from the previous interval value — no stage-based multip
 - `pace` (optional, default `"normal"`) - One of: `"leisurely"`, `"normal"`, `"accelerated"`, `"custom"`
 - `new_per_day` (optional) - New problems per day; required when `pace` is `"custom"`, otherwise defaults from preset
 - `review_per_day` (optional) - Reviews per day; required when `pace` is `"custom"`, otherwise defaults from preset
+- `localDate` (optional) - The client's current local date in `YYYY-MM-DD` format. Used to clamp backfilled review dates so past-ideal reviews are scheduled no earlier than today. Must match `/^\d{4}-\d{2}-\d{2}$/` or a 400 is returned.
+- `tzOffset` (optional) - The client's `Date.prototype.getTimezoneOffset()` value in minutes. Required for timezone-correct backfill slot counting.
 
 **Preset values:**
 
@@ -608,6 +627,20 @@ Intervals grow purely from the previous interval value — no stage-based multip
 | accelerated | 3           | 6              |
 
 Both `new_per_day` and `review_per_day` must be finite positive integers after preset resolution.
+
+**Pace Change Backfill:**
+
+When the new `review_per_day` differs from the current value on an existing plan, the route runs `backfillReviewSchedule` to redistribute all **future** scheduled reviews for the list to fit the new cap. Overdue reviews (already past) are left untouched.
+
+The backfill algorithm:
+1. Fetches all `user_problem_progress` rows with `next_review_at > now` for every problem in the list.
+2. Computes the **ideal** local date for each review as `last_attempt_at + interval_days` converted to the user's local timezone using `tzOffset`. This uses the algorithm's pure intent — not the prior `next_review_at` — making the operation **fully reversible**: changing pace multiple times always produces the same result as if you'd had that pace from the start.
+3. Clamps any ideal date that is already in the past to today (using `localDate` or the server's current UTC date as fallback).
+4. Sorts reviews by ideal date so earlier reviews claim slots first.
+5. Assigns each review to the earliest local day with a remaining slot under the new `review_per_day` cap, advancing day by day if needed (up to 365 days).
+6. Sets `next_review_at` to the UTC start of the assigned local day for unambiguous calendar placement.
+
+Slot counting uses the user's local day boundaries (derived from `tzOffset`) so the cap is enforced by the same calendar-day definition shown in the UI.
 
 **Response:**
 
@@ -792,7 +825,7 @@ Most endpoints require authentication via Supabase Auth (session cookie). Unauth
 
 ## Timezone Handling
 
-Several routes accept `localDate` and/or `tzOffset` query parameters (or `localDate` in the request body for POST endpoints) to ensure correct behaviour for users in non-UTC timezones.
+Several routes accept `localDate` and/or `tzOffset` query parameters (or body fields for POST endpoints) to ensure correct behaviour for users in non-UTC timezones.
 
 ### The problem
 
@@ -801,6 +834,7 @@ The server runs in UTC. At 6 PM CST the UTC clock has already flipped to the nex
 - Tomorrow's new problems appearing in today's review queue
 - Logged attempts after 6 PM not counting as today's consumed new slots
 - Streak staleness checks incorrectly treating today's activity as yesterday's
+- Review cap (`review_per_day`) violations when slot counts are measured against UTC midnight instead of local midnight — a review logged at 10 PM CST (stored as `T04:00Z` next UTC day) appears to the server as "tomorrow's" slot, so the cap count for today comes up short and an extra review is allowed in
 
 ### The solution
 
@@ -809,8 +843,28 @@ The client sends two values with every time-sensitive request:
 | Parameter   | Source                                   | Format                        | Example      |
 | ----------- | ---------------------------------------- | ----------------------------- | ------------ |
 | `localDate` | `new Date().toLocaleDateString('en-CA')` | `YYYY-MM-DD`                  | `2026-03-06` |
-| `tzOffset`  | `new Date().getTimezoneOffset()`         | integer minutes (UTC − local) | `360` (CST)  |
+| `tzOffset`  | `new Date().getTimezoneOffset()`         | integer minutes (west of UTC) | `360` (CST)  |
+
+`tzOffset` uses the JavaScript convention: **positive = west of UTC** (e.g. CST = +360, AEST = -600). To convert a UTC timestamp to local: `localMs = utcMs - tzOffset * 60_000`. To derive the UTC start of a local calendar day `YYYY-MM-DD`: `startMs = Date.UTC(y, m-1, d) + tzOffset * 60_000`.
 
 The server uses `localDate` to derive UTC midnight boundaries for the user's calendar day, and `tzOffset` to shift those boundaries to cover the true 24-hour window of that local day in UTC (so a 7 PM CST timestamp stored as `2026-03-07T01:00Z` is still recognised as belonging to March 6 local time).
 
-The shared helper `lib/api/parseLocalDateBounds.ts` implements this logic and is used by both the `/due` and `/calendar` routes. All `localDate` values are validated against `/^\d{4}-\d{2}-\d{2}$/` before use; malformed values return a 400.
+**Routes that use timezone context:**
+
+| Route | Parameters | Purpose |
+| ----- | ---------- | ------- |
+| `POST /api/problems/[key]/attempts` | `localDate`, `tzOffset` (body) | Streak/activity date + write-time review cascade slot counting |
+| `GET /api/problemlists/[key]/due` | `localDate`, `tzOffset` (query) | Today's local day boundaries for bucket split and new-slot counting |
+| `GET /api/problemlists/[key]/calendar` | `localDate`, `tzOffset` (query) | Today's local day boundaries for projected new-problem dates |
+| `POST /api/user/active-study-plan` | `localDate`, `tzOffset` (body) | Backfill slot counting when `review_per_day` changes |
+| `GET /api/user/streak` | `localDate` (query) | Yesterday boundary for streak staleness check |
+
+Two shared helpers implement timezone logic:
+
+- **`lib/api/parseLocalDateBounds.ts`** — parses `localDate`/`tzOffset` from URL search params and returns structured UTC boundary strings. Used by the `/due` and `/calendar` routes.
+- **`lib/api/localDateUtils.ts`** — lower-level functions used by write-time scheduling (`cascadeNextReviewDate`, `backfillReviewSchedule`) where params come from request bodies rather than search params:
+  - `utcToLocalDateStr(utcMsOrIso, tzOffset)` — converts a UTC timestamp to the user's local `YYYY-MM-DD`
+  - `localDayBoundsUTC(dateStr, tzOffset)` — returns `{ startMs, endMs }` UTC millisecond bounds for a local calendar day
+  - `nextLocalDateStr(dateStr)` — advances a local `YYYY-MM-DD` by one calendar day
+
+All `localDate` values are validated against `/^\d{4}-\d{2}-\d{2}$/` before use; malformed values return a 400. `tzOffset` values are clamped to `[-720, 840]` (the valid range of UTC offsets in minutes).

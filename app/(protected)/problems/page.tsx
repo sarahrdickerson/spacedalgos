@@ -10,7 +10,11 @@ import LogSolveButton from "./_components/log-solve-button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import MenuButton from "./_components/menu-button";
-import { CaretDownIcon, ExternalLinkIcon } from "@radix-ui/react-icons";
+import {
+  CaretDownIcon,
+  ExternalLinkIcon,
+  LockClosedIcon,
+} from "@radix-ui/react-icons";
 import RandomProblemDropdown from "./_components/random-problem-dropdown";
 import { Problem, useDashboard } from "../_components/dashboard-provider";
 
@@ -302,6 +306,11 @@ const ProblemsPage = () => {
                                     <span className="break-words whitespace-normal min-w-0">
                                       {problem.title}
                                     </span>
+                                    {problem.is_premium && (
+                                      <span className="text-yellow-500 dark:text-yellow-400/80 text-sm">
+                                        <LockClosedIcon className="size-4" />
+                                      </span>
+                                    )}
                                     <ExternalLinkIcon className="text-muted-foreground size-4 shrink-0" />
                                   </a>
                                 </div>
@@ -318,17 +327,9 @@ const ProblemsPage = () => {
                                     {problem.difficulty}
                                   </Badge>
                                   <div className="hidden sm:block">
-                                    <LogSolveButton
-                                      problemKey={problem.key}
-                                      problemTitle={problem.title}
-                                      problemLink={problem.leetcode_url}
-                                    />
+                                    <LogSolveButton problem={problem} />
                                   </div>
-                                  <MenuButton
-                                    problemKey={problem.key}
-                                    problemTitle={problem.title}
-                                    problemLink={problem.leetcode_url}
-                                  />
+                                  <MenuButton problem={problem} />
                                 </div>
                               </div>
                               {hasProgress && (

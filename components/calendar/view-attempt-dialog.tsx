@@ -10,6 +10,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import { Problem } from "@/app/(protected)/_components/dashboard-provider";
+import { LockClosedIcon, ExternalLinkIcon } from "@radix-ui/react-icons";
+import Link from "next/link";
 
 interface Attempt {
   id: string;
@@ -28,10 +31,9 @@ interface AttemptHistory {
 }
 
 interface ViewAttemptDialogProps {
-  problemKey: string;
-  problemTitle: string;
-  attemptDate: string;
+  problem: Problem;
   grade: Attempt["grade"];
+  attemptDate: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -55,8 +57,7 @@ const gradeColors: Record<Attempt["grade"], string> = {
 };
 
 export function ViewAttemptDialog({
-  problemKey,
-  problemTitle,
+  problem,
   attemptDate,
   grade,
   open,
@@ -70,15 +71,15 @@ export function ViewAttemptDialog({
 
   const fetchHistory = React.useCallback(
     async (signal: AbortSignal) => {
-      if (!problemKey) return;
+      if (!problem) return;
 
       setLoading(true);
       setError(null);
 
       try {
         const response = await fetch(
-          `/api/problems/${encodeURIComponent(problemKey)}/history`,
-          { signal }
+          `/api/problems/${encodeURIComponent(problem.key)}/history`,
+          { signal },
         );
         if (!response.ok) {
           throw new Error("Failed to fetch attempt history");
@@ -103,7 +104,7 @@ export function ViewAttemptDialog({
         }
       }
     },
-    [problemKey]
+    [problem],
   );
 
   const handleExpandToggle = () => {
@@ -159,7 +160,25 @@ export function ViewAttemptDialog({
       <DialogContent className="w-[calc(100vw-2rem)] max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-base sm:text-lg break-words">
-            {problemTitle}
+            Attempts —{" "}
+            {problem.leetcode_url ? (
+              <Link
+                href={problem.leetcode_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 hover:underline hover:text-muted-foreground transition-all duration-300 break-all"
+              >
+                {problem.title}{" "}
+                {problem.is_premium && (
+                  <span className="text-xs text-yellow-500 dark:text-yellow-400/80">
+                    <LockClosedIcon className="inline-block size-4" />
+                  </span>
+                )}
+                <ExternalLinkIcon className="text-muted-foreground flex-shrink-0" />
+              </Link>
+            ) : (
+              problem.title
+            )}
           </DialogTitle>
         </DialogHeader>
 

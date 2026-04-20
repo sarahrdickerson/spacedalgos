@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { backfillReviewSchedule } from "@/lib/sr/backfill";
 
 export async function GET() {
   try {
@@ -247,6 +248,20 @@ export async function POST(req: Request) {
       );
     }
 
+    const localDate: string | null =
+      typeof body.localDate === "string" ? body.localDate : null;
+    if (localDate != null && !/^\d{4}-\d{2}-\d{2}$/.test(localDate)) {
+      return NextResponse.json(
+        { error: "localDate must be YYYY-MM-DD" },
+        { status: 400 },
+      );
+    }
+
+    const tzOffset: number | null =
+      body.tzOffset != null && Number.isFinite(body.tzOffset)
+        ? Math.min(840, Math.max(-720, Math.round(body.tzOffset)))
+        : null;
+
     // 3) Validate that the problem list exists
     const { data: list, error: listErr } = await supabase
       .from("problem_lists")
@@ -261,7 +276,26 @@ export async function POST(req: Request) {
       );
     }
 
-    // 4) Upsert the new active study plan first, so the user always has an
+    // 4) Read the current plan so we can detect a review_per_day change.
+    const { data: existingPlan, error: existingPlanErr } = await supabase
+      .from("user_study_plans")
+      .select("review_per_day")
+      .eq("user_id", user.id)
+      .eq("list_id", list_id)
+      .maybeSingle();
+
+    if (existingPlanErr) {
+      console.error("Failed to fetch existing study plan", existingPlanErr);
+      return NextResponse.json(
+        { error: "Failed to fetch existing study plan" },
+        { status: 500 },
+      );
+    }
+
+    const previousReviewPerDay: number | null =
+      existingPlan?.review_per_day ?? null;
+
+    // 5) Upsert the new active study plan first, so the user always has an
     //    active plan even if the deactivation step below fails.
     const { error: planErr } = await supabase.from("user_study_plans").upsert(
       {
@@ -284,7 +318,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // 5) Deactivate all other plans for this user (excluding the one we just upserted).
+    // 6) Deactivate all other plans for this user (excluding the one we just upserted).
     //    Done after the upsert so a failure here leaves the user with a valid active plan
     //    rather than no active plan.
     const { error: deactivateErr } = await supabase
@@ -298,7 +332,7 @@ export async function POST(req: Request) {
       console.error("Error deactivating old study plans:", deactivateErr);
     }
 
-    // 6) Keep user_preferences.active_list_id in sync
+    // 7) Keep user_preferences.active_list_id in sync
     const { error: upsertErr } = await supabase.from("user_preferences").upsert(
       {
         user_id: user.id,
@@ -316,6 +350,23 @@ export async function POST(req: Request) {
       );
     }
 
+    // 8) Backfill scheduled reviews if review_per_day changed on an existing plan.
+    //    Uses last_attempt_at + interval_days as the ideal base date so the
+    //    redistribution is reversible regardless of prior pace changes.
+    if (
+      previousReviewPerDay !== null &&
+      previousReviewPerDay !== resolvedReviewPerDay
+    ) {
+      await backfillReviewSchedule(
+        supabase,
+        user.id,
+        list_id,
+        resolvedReviewPerDay,
+        localDate,
+        tzOffset,
+      );
+    }
+
     return NextResponse.json({
       success: true,
       active_list: list,
@@ -328,3 +379,4 @@ export async function POST(req: Request) {
     );
   }
 }
+

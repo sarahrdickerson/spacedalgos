@@ -22,21 +22,18 @@ import { ChevronDown } from "lucide-react";
 import React from "react";
 import { toast } from "sonner";
 import Link from "next/link";
-import { ExternalLinkIcon } from "@radix-ui/react-icons";
+import { ExternalLinkIcon, LockClosedIcon } from "@radix-ui/react-icons";
+import { Problem } from "@/app/(protected)/_components/dashboard-provider";
 
 type LogAttemptDialogProps = {
-  problemKey: string;
-  problemTitle: string;
-  problemLink?: string | null;
+  problem: Problem;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
 };
 
 export function LogAttemptDialog({
-  problemKey,
-  problemTitle,
-  problemLink,
+  problem,
   open,
   onOpenChange,
   onSuccess,
@@ -56,7 +53,7 @@ export function LogAttemptDialog({
 
     try {
       const response = await fetch(
-        `/api/problems/${encodeURIComponent(problemKey)}/attempts`,
+        `/api/problems/${encodeURIComponent(problem.key)}/attempts`,
         {
           method: "POST",
           headers: {
@@ -68,8 +65,9 @@ export function LogAttemptDialog({
             note: note || null,
             attempted_at: new Date().toISOString(),
             localDate: new Date().toLocaleDateString("en-CA"),
+            tzOffset: new Date().getTimezoneOffset(),
           }),
-        }
+        },
       );
 
       if (!response.ok) {
@@ -91,7 +89,7 @@ export function LogAttemptDialog({
     } catch (error) {
       console.error("Error logging attempt:", error);
       toast.error(
-        error instanceof Error ? error.message : "Failed to log attempt"
+        error instanceof Error ? error.message : "Failed to log attempt",
       );
     } finally {
       setIsSubmitting(false);
@@ -105,18 +103,23 @@ export function LogAttemptDialog({
           <DialogHeader>
             <DialogTitle className="text-base sm:text-lg break-words">
               Log Attempt —{" "}
-              {problemLink ? (
+              {problem.leetcode_url ? (
                 <Link
-                  href={problemLink}
+                  href={problem.leetcode_url}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 hover:underline hover:text-muted-foreground transition-all duration-300 break-all"
                 >
-                  {problemTitle}{" "}
+                  {problem.title}{" "}
+                  {problem.is_premium && (
+                    <span className="text-xs text-yellow-500 dark:text-yellow-400/80">
+                      <LockClosedIcon className="inline-block size-4" />
+                    </span>
+                  )}
                   <ExternalLinkIcon className="text-muted-foreground flex-shrink-0" />
                 </Link>
               ) : (
-                problemTitle
+                problem.title
               )}
             </DialogTitle>
             <DialogDescription className="text-sm">

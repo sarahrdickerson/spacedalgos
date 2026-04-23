@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { parseLocalDateBounds } from "@/lib/api/parseLocalDateBounds";
+import { buildDueQueue } from "@/lib/api/buildDueQueue";
 
 export async function GET(
   request: Request,
@@ -84,33 +85,23 @@ export async function GET(
       .map((item: any) => item.problems?.id)
       .filter(Boolean);
 
-    let dueProgressData: any[] | null = [];
-    let progressErr: any = null;
-
+    let progressData: any[] = [];
     if (problemIds.length > 0) {
       const { data, error } = await supabase
         .from("user_problem_progress")
-        .select("*")
+        .select(
+          "problem_id, stage, next_review_at, last_attempt_at, last_success_at, attempt_count, success_count, fail_count, interval_days",
+        )
         .eq("user_id", user.id)
         .in("problem_id", problemIds);
 
-      dueProgressData = data;
-      progressErr = error;
+      if (error) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+      progressData = data ?? [];
     }
 
-    if (progressErr) {
-      return NextResponse.json({ error: progressErr.message }, { status: 500 });
-    }
-
-    // 5) Map progress by problem_id
-    const dueProgressMap = new Map();
-    if (dueProgressData) {
-      dueProgressData.forEach((p) => {
-        dueProgressMap.set(p.problem_id, p);
-      });
-    }
-
-    // 6) Fetch the user's study plan for new/review problem scheduling
+    // 5) Fetch the user's study plan for new/review problem scheduling
     const { data: studyPlan, error: studyPlanErr } = await supabase
       .from("user_study_plans")
       .select("new_per_day, review_per_day")
@@ -130,7 +121,7 @@ export async function GET(
       ? 0
       : (studyPlan?.review_per_day ?? 0);
 
-    // 7) Build the review queue (all problems that have a progress row)
+    // 6) Parse local date bounds
     // Use client's local date/timezone so "today" boundaries match the user's clock.
     const { searchParams } = new URL(request.url);
     const dateBounds = parseLocalDateBounds(searchParams);
@@ -148,190 +139,18 @@ export async function GET(
       localDayEndUTC,
     } = dateBounds;
 
-    const localDayStartMs = Date.parse(localDayStartUTC);
-    const localDayEndMs = Date.parse(localDayEndUTC);
-    const MS_PER_DAY = 1000 * 60 * 60 * 24;
-
-    const reviewProblems = items
-      .map((item: any) => {
-        const problem = item.problems;
-        if (!problem) return null;
-
-        const progress = dueProgressMap.get(problem.id);
-        if (!progress) return null; // Only include problems with progress
-        if (!progress.next_review_at) return null; // No review scheduled yet — skip
-
-        // Calculate days until/overdue using the user's local-day boundaries.
-        // Any next_review_at in [localDayStartMs, localDayEndMs) yields days_until = 0;
-        // earlier is negative (overdue); later is positive (future).
-        const nextReview = new Date(progress.next_review_at);
-        const daysUntil = Math.floor(
-          (nextReview.getTime() - localDayStartMs) / MS_PER_DAY,
-        );
-
-        return {
-          ...problem,
-          leetcode_url: `https://leetcode.com/problems/${problem.leetcode_slug}/`,
-          order_index: item.order_index,
-          list_tags: item.list_tags,
-          progress: {
-            stage: progress.stage,
-            next_review_at: progress.next_review_at,
-            last_attempt_at: progress.last_attempt_at,
-            last_success_at: progress.last_success_at,
-            attempt_count: progress.attempt_count,
-            success_count: progress.success_count,
-            fail_count: progress.fail_count,
-            interval_days: progress.interval_days,
-            days_until: daysUntil,
-            days_overdue: daysUntil < 0 ? Math.abs(daysUntil) : 0,
-          },
-        };
-      })
-      .filter(Boolean);
-
-    // 7b) Split reviews into three buckets using localDayStartMs / localDayEndMs:
-    //   - overdue:   next_review_at < localDayStartMs — shown uncapped
-    //   - today:     localDayStartMs <= next_review_at < localDayEndMs — capped to review_per_day
-    //   - future:    next_review_at >= localDayEndMs — uncapped (powers "this week" view)
-    // Write-time scheduling/backfill tries to avoid overflowing a day's review_per_day
-    // allocation, but excess scheduled for today can still exist, so this route slices it.
-    const getNextReviewMs = (p: any) =>
-      p?.progress?.next_review_at
-        ? new Date(p.progress.next_review_at).getTime()
-        : NaN;
-
-    const compareNextReviewMs = (a: any, b: any) => {
-      const aMs = getNextReviewMs(a);
-      const bMs = getNextReviewMs(b);
-      if (!Number.isFinite(aMs) || !Number.isFinite(bMs)) return 0;
-      return aMs - bMs;
-    };
-
-    const baseReviewProblems = reviewProblems ?? [];
-
-    const overdueProblems = baseReviewProblems
-      .filter((p: any) => getNextReviewMs(p) < localDayStartMs)
-      .sort(compareNextReviewMs);
-
-    const todayScheduled = baseReviewProblems
-      .filter(
-        (p: any) =>
-          getNextReviewMs(p) >= localDayStartMs &&
-          getNextReviewMs(p) < localDayEndMs,
-      )
-      .sort(compareNextReviewMs);
-
-    const futureScheduled = baseReviewProblems
-      .filter((p: any) => getNextReviewMs(p) >= localDayEndMs)
-      .sort(compareNextReviewMs);
-
-    const cappedToday =
-      reviewPerDay > 0 ? todayScheduled.slice(0, reviewPerDay) : todayScheduled;
-
-    const cappedReviewProblems = [
-      ...overdueProblems,
-      ...cappedToday,
-      ...futureScheduled,
-    ];
-
-    // 8) Check if any reviews are overdue using the local-day start (localDayStartMs)
-    const hasOverdueReviews = (dueProgressData ?? []).some(
-      (p: any) =>
-        p.next_review_at && Date.parse(p.next_review_at) < localDayStartMs,
-    );
-
-    // 9) Add new problems only when all reviews are caught up
-    let newProblems: any[] = [];
-    if (newPerDay > 0 && !hasOverdueReviews) {
-      const seenProblemIds = new Set(
-        (dueProgressData ?? []).map((p: any) => p.problem_id),
-      );
-
-      // Subtract slots already consumed today: problems whose first-ever attempt
-      // was logged today (attempt_count === 1 and last_attempt_at is today).
-      // Use timezone-aware local-day bounds so post-6PM CST attempts (which are
-      // already UTC "tomorrow") are still counted as today's consumed slot.
-      const newSlotsUsedToday = (dueProgressData ?? []).filter((p: any) => {
-        if (p.attempt_count !== 1 || !p.last_attempt_at) return false;
-        const t = Date.parse(p.last_attempt_at);
-        return t >= localDayStartMs && t < localDayEndMs;
-      }).length;
-      const effectiveNewPerDay = Math.max(0, newPerDay - newSlotsUsedToday);
-
-      const unseenItems = items
-        .filter(
-          (item: any) => item.problems && !seenProblemIds.has(item.problems.id),
-        )
-        .slice(0, effectiveNewPerDay);
-
-      newProblems = unseenItems.map((item: any) => ({
-        ...item.problems,
-        leetcode_url: `https://leetcode.com/problems/${item.problems.leetcode_slug}/`,
-        order_index: item.order_index,
-        list_tags: item.list_tags,
-        is_new: true,
-        progress: null,
-      }));
-    }
-
-    // 10) Project upcoming new problems for the next 7 days (for "due this week" view).
-    // Uses full newPerDay (not effectiveNewPerDay) since tomorrow's quota resets.
-    let upcomingNewProblems: any[] = [];
-    if (newPerDay > 0) {
-      // Treat today's new problems as already "seen" so they don't double-appear
-      const allSeenIds = new Set(
-        (dueProgressData ?? []).map((p: any) => p.problem_id),
-      );
-      newProblems.forEach((p: any) => allSeenIds.add(p.id));
-
-      const allUnseenItems = items.filter(
-        (item: any) => item.problems && !allSeenIds.has(item.problems.id),
-      );
-
-      const tomorrowUTC = new Date(
-        Date.UTC(localYear, localMonth - 1, localDay + 1),
-      );
-      let problemIndex = 0;
-      let dayOffset = 0;
-      // Project through end of this calendar week (through Saturday).
-      // getUTCDay(): 0=Sun … 6=Sat. Count days from tomorrow through Saturday (inclusive).
-      const tomorrowDow = tomorrowUTC.getUTCDay();
-      const maxDays = (7 - tomorrowDow) % 7 || 7;
-
-      while (problemIndex < allUnseenItems.length && dayOffset < maxDays) {
-        const date = new Date(tomorrowUTC);
-        date.setUTCDate(tomorrowUTC.getUTCDate() + dayOffset);
-        const dateStr = date.toISOString().split("T")[0];
-
-        for (
-          let i = 0;
-          i < newPerDay &&
-          problemIndex < allUnseenItems.length &&
-          dayOffset < maxDays;
-          i++
-        ) {
-          const item = allUnseenItems[problemIndex] as any;
-          upcomingNewProblems.push({
-            ...item.problems,
-            leetcode_url: `https://leetcode.com/problems/${item.problems.leetcode_slug}/`,
-            order_index: item.order_index,
-            list_tags: item.list_tags,
-            is_new: true,
-            projected_date: dateStr,
-            progress: null,
-          });
-          problemIndex++;
-        }
-        dayOffset++;
-      }
-    }
-
-    const dueProblems = [
-      ...cappedReviewProblems,
-      ...newProblems,
-      ...upcomingNewProblems,
-    ];
+    // 7) Build the due queue
+    const dueProblems = buildDueQueue({
+      items,
+      progressData,
+      localDayStartMs: Date.parse(localDayStartUTC),
+      localDayEndMs: Date.parse(localDayEndUTC),
+      localYear,
+      localMonth,
+      localDay,
+      newPerDay,
+      reviewPerDay,
+    });
 
     return NextResponse.json({
       list: problemList,

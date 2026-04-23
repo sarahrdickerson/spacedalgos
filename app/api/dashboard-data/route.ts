@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { parseLocalDateBounds } from "@/lib/api/parseLocalDateBounds";
+import { buildDueQueue } from "@/lib/api/buildDueQueue";
 
 /**
  * GET /api/dashboard-data?localDate=YYYY-MM-DD&tzOffset=number
@@ -49,7 +50,6 @@ export async function GET(request: Request) {
     } = dateBounds;
     const localDayStartMs = Date.parse(localDayStartUTC);
     const localDayEndMs = Date.parse(localDayEndUTC);
-    const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
     // 2) Independent data in parallel
     const [prefsRes, allListsRes, activityRes] = await Promise.all([
@@ -176,10 +176,22 @@ export async function GET(request: Request) {
     ]);
 
     if (listRes.error || !listRes.data) {
-      return NextResponse.json(
-        { error: "Active problem list not found" },
-        { status: 404 },
+      // The active_list_id in user_preferences points to a missing or deleted list.
+      // Treat this as a recoverable state (same as no active list) so the dashboard
+      // can still load and show the list picker, matching /api/user/active-study-plan behavior.
+      console.warn(
+        `active_list_id ${activeListId} not found for user ${user.id} — treating as no active list`,
       );
+      return NextResponse.json({
+        user_id: user.id,
+        active_list: null,
+        study_plan: null,
+        problem_lists: problemLists,
+        streak,
+        due_problems: [],
+        all_problems: [],
+        stats: null,
+      });
     }
     if (itemsRes.error) {
       return NextResponse.json(
@@ -278,166 +290,18 @@ export async function GET(request: Request) {
       notStarted,
     };
 
-    // --- due_problems review queue (same logic as /due endpoint) ---
-    const getNextReviewMs = (p: any) =>
-      p?.progress?.next_review_at
-        ? new Date(p.progress.next_review_at).getTime()
-        : NaN;
-
-    const compareNextReviewMs = (a: any, b: any) => {
-      const aMs = getNextReviewMs(a);
-      const bMs = getNextReviewMs(b);
-      if (!Number.isFinite(aMs) || !Number.isFinite(bMs)) return 0;
-      return aMs - bMs;
-    };
-
-    const reviewProblems = items
-      .map((item: any) => {
-        const problem = item.problems;
-        if (!problem) return null;
-        const progress = progressMap.get(problem.id);
-        if (!progress?.next_review_at) return null;
-        const daysUntil = Math.floor(
-          (new Date(progress.next_review_at).getTime() - localDayStartMs) /
-            MS_PER_DAY,
-        );
-        return {
-          id: problem.id,
-          key: problem.key,
-          title: problem.title,
-          difficulty: problem.difficulty,
-          category: problem.category,
-          leetcode_url: `https://leetcode.com/problems/${problem.leetcode_slug}/`,
-          is_premium: problem.is_premium,
-          order_index: item.order_index,
-          list_tags: item.list_tags,
-          progress: {
-            stage: progress.stage,
-            next_review_at: progress.next_review_at,
-            last_attempt_at: progress.last_attempt_at,
-            last_success_at: progress.last_success_at,
-            attempt_count: progress.attempt_count,
-            success_count: progress.success_count,
-            fail_count: progress.fail_count,
-            interval_days: progress.interval_days,
-            days_until: daysUntil,
-            days_overdue: daysUntil < 0 ? Math.abs(daysUntil) : 0,
-          },
-        };
-      })
-      .filter(Boolean);
-
-    const overdueProblems = reviewProblems
-      .filter((p: any) => getNextReviewMs(p) < localDayStartMs)
-      .sort(compareNextReviewMs);
-    const todayScheduled = reviewProblems
-      .filter(
-        (p: any) =>
-          getNextReviewMs(p) >= localDayStartMs &&
-          getNextReviewMs(p) < localDayEndMs,
-      )
-      .sort(compareNextReviewMs);
-    const futureScheduled = reviewProblems
-      .filter((p: any) => getNextReviewMs(p) >= localDayEndMs)
-      .sort(compareNextReviewMs);
-
-    const cappedToday =
-      reviewPerDay > 0 ? todayScheduled.slice(0, reviewPerDay) : todayScheduled;
-    const cappedReviewProblems = [
-      ...overdueProblems,
-      ...cappedToday,
-      ...futureScheduled,
-    ];
-
-    // New problems (only when no overdue reviews)
-    const hasOverdueReviews = progressData.some(
-      (p: any) =>
-        p.next_review_at && Date.parse(p.next_review_at) < localDayStartMs,
-    );
-
-    let newProblems: any[] = [];
-    if (newPerDay > 0 && !hasOverdueReviews) {
-      const seenProblemIds = new Set(
-        progressData.map((p: any) => p.problem_id),
-      );
-      const newSlotsUsedToday = progressData.filter((p: any) => {
-        if (p.attempt_count !== 1 || !p.last_attempt_at) return false;
-        const t = Date.parse(p.last_attempt_at);
-        return t >= localDayStartMs && t < localDayEndMs;
-      }).length;
-      const effectiveNewPerDay = Math.max(0, newPerDay - newSlotsUsedToday);
-      const unseenItems = items
-        .filter(
-          (item: any) => item.problems && !seenProblemIds.has(item.problems.id),
-        )
-        .slice(0, effectiveNewPerDay);
-      newProblems = unseenItems.map((item: any) => ({
-        id: item.problems.id,
-        key: item.problems.key,
-        title: item.problems.title,
-        difficulty: item.problems.difficulty,
-        category: item.problems.category,
-        leetcode_url: `https://leetcode.com/problems/${item.problems.leetcode_slug}/`,
-        is_premium: item.problems.is_premium,
-        order_index: item.order_index,
-        list_tags: item.list_tags,
-        is_new: true,
-        progress: null,
-      }));
-    }
-
-    // Projected upcoming new problems (rest of calendar week)
-    let upcomingNewProblems: any[] = [];
-    if (newPerDay > 0) {
-      const allSeenIds = new Set(progressData.map((p: any) => p.problem_id));
-      newProblems.forEach((p: any) => allSeenIds.add(p.id));
-      const allUnseenItems = items.filter(
-        (item: any) => item.problems && !allSeenIds.has(item.problems.id),
-      );
-      const tomorrowUTC = new Date(
-        Date.UTC(localYear, localMonth - 1, localDay + 1),
-      );
-      const tomorrowDow = tomorrowUTC.getUTCDay();
-      const maxDays = (7 - tomorrowDow) % 7 || 7;
-      let problemIndex = 0;
-      let dayOffset = 0;
-      while (problemIndex < allUnseenItems.length && dayOffset < maxDays) {
-        const date = new Date(tomorrowUTC);
-        date.setUTCDate(tomorrowUTC.getUTCDate() + dayOffset);
-        const dateStr = date.toISOString().split("T")[0];
-        for (
-          let i = 0;
-          i < newPerDay &&
-          problemIndex < allUnseenItems.length &&
-          dayOffset < maxDays;
-          i++
-        ) {
-          const item = allUnseenItems[problemIndex] as any;
-          upcomingNewProblems.push({
-            id: item.problems.id,
-            key: item.problems.key,
-            title: item.problems.title,
-            difficulty: item.problems.difficulty,
-            category: item.problems.category,
-            leetcode_url: `https://leetcode.com/problems/${item.problems.leetcode_slug}/`,
-            is_premium: item.problems.is_premium,
-            order_index: item.order_index,
-            list_tags: item.list_tags,
-            is_new: true,
-            projected_date: dateStr,
-            progress: null,
-          });
-          problemIndex++;
-        }
-        dayOffset++;
-      }
-    }
-
-    const dueProblems = [
-      ...cappedReviewProblems,
-      ...newProblems,
-      ...upcomingNewProblems,
-    ];
+    // --- due_problems review queue ---
+    const dueProblems = buildDueQueue({
+      items,
+      progressData,
+      localDayStartMs,
+      localDayEndMs,
+      localYear,
+      localMonth,
+      localDay,
+      newPerDay,
+      reviewPerDay,
+    });
 
     return NextResponse.json({
       user_id: user.id,

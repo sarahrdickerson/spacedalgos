@@ -40,8 +40,13 @@ export async function GET(request: Request) {
         { status: 400 },
       );
     }
-    const { localYear, localMonth, localDay, localDayStartUTC, localDayEndUTC } =
-      dateBounds;
+    const {
+      localYear,
+      localMonth,
+      localDay,
+      localDayStartUTC,
+      localDayEndUTC,
+    } = dateBounds;
     const localDayStartMs = Date.parse(localDayStartUTC);
     const localDayEndMs = Date.parse(localDayEndUTC);
     const MS_PER_DAY = 1000 * 60 * 60 * 24;
@@ -77,6 +82,20 @@ export async function GET(request: Request) {
     }
     const prefs = prefsRes.error ? null : prefsRes.data;
 
+    if (allListsRes.error) {
+      return NextResponse.json(
+        { error: "Failed to fetch problem lists" },
+        { status: 500 },
+      );
+    }
+
+    if (activityRes.error) {
+      return NextResponse.json(
+        { error: "Failed to fetch activity data" },
+        { status: 500 },
+      );
+    }
+
     // All problem lists (for list picker)
     const problemLists = (allListsRes.data ?? []).map((list: any) => ({
       id: list.id,
@@ -93,9 +112,9 @@ export async function GET(request: Request) {
     let currentStreak = prefs?.current_streak ?? 0;
     const lastActivity = prefs?.last_activity_date ?? null;
     if (lastActivity) {
-      const localDateParam = searchParams.get("localDate")!;
-      const [y, m, d] = localDateParam.split("-").map(Number);
-      const yesterdayStr = new Date(Date.UTC(y, m - 1, d - 1))
+      const yesterdayStr = new Date(
+        Date.UTC(localYear, localMonth - 1, localDay - 1),
+      )
         .toISOString()
         .split("T")[0];
       if (lastActivity < yesterdayStr) {
@@ -114,6 +133,7 @@ export async function GET(request: Request) {
     // No active list — return early, nothing else to fetch
     if (!activeListId) {
       return NextResponse.json({
+        user_id: user.id,
         active_list: null,
         study_plan: null,
         problem_lists: problemLists,
@@ -133,7 +153,9 @@ export async function GET(request: Request) {
         .single(),
       supabase
         .from("user_study_plans")
-        .select("pace, new_per_day, review_per_day, start_date, target_end_date")
+        .select(
+          "pace, new_per_day, review_per_day, start_date, target_end_date",
+        )
         .eq("user_id", user.id)
         .eq("list_id", activeListId)
         .eq("is_active", true)
@@ -160,7 +182,10 @@ export async function GET(request: Request) {
       );
     }
     if (itemsRes.error) {
-      return NextResponse.json({ error: itemsRes.error.message }, { status: 500 });
+      return NextResponse.json(
+        { error: itemsRes.error.message },
+        { status: 500 },
+      );
     }
 
     const activeList = listRes.data;
@@ -176,7 +201,9 @@ export async function GET(request: Request) {
     if (problemIds.length > 0) {
       const { data, error } = await supabase
         .from("user_problem_progress")
-        .select("*")
+        .select(
+          "problem_id, stage, next_review_at, last_attempt_at, last_success_at, attempt_count, success_count, fail_count, interval_days",
+        )
         .eq("user_id", user.id)
         .in("problem_id", problemIds);
       if (error) {
@@ -330,7 +357,9 @@ export async function GET(request: Request) {
 
     let newProblems: any[] = [];
     if (newPerDay > 0 && !hasOverdueReviews) {
-      const seenProblemIds = new Set(progressData.map((p: any) => p.problem_id));
+      const seenProblemIds = new Set(
+        progressData.map((p: any) => p.problem_id),
+      );
       const newSlotsUsedToday = progressData.filter((p: any) => {
         if (p.attempt_count !== 1 || !p.last_attempt_at) return false;
         const t = Date.parse(p.last_attempt_at);
@@ -339,8 +368,7 @@ export async function GET(request: Request) {
       const effectiveNewPerDay = Math.max(0, newPerDay - newSlotsUsedToday);
       const unseenItems = items
         .filter(
-          (item: any) =>
-            item.problems && !seenProblemIds.has(item.problems.id),
+          (item: any) => item.problems && !seenProblemIds.has(item.problems.id),
         )
         .slice(0, effectiveNewPerDay);
       newProblems = unseenItems.map((item: any) => ({
@@ -412,6 +440,7 @@ export async function GET(request: Request) {
     ];
 
     return NextResponse.json({
+      user_id: user.id,
       active_list: activeList,
       study_plan: studyPlan,
       problem_lists: problemLists,

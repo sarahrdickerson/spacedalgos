@@ -10,6 +10,7 @@ import {
   ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 
 export interface ProblemProgress {
   stage: number;
@@ -111,13 +112,15 @@ const CACHE_KEY = "dashboard-cache-v1";
 interface CachedDashboard {
   data: DashboardData;
   localDate: string; // YYYY-MM-DD — invalidated when the calendar day changes
+  userId: string; // validated before use to prevent cross-user data leaks
 }
 
-function loadCache(): DashboardData | null {
+function loadCache(userId: string): DashboardData | null {
   try {
     const raw = localStorage.getItem(CACHE_KEY);
     if (!raw) return null;
     const cached: CachedDashboard = JSON.parse(raw);
+    if (cached.userId !== userId) return null; // different user — discard
     const today = new Date().toLocaleDateString("en-CA");
     if (cached.localDate !== today) return null; // new day — stale
     return cached.data;
@@ -126,10 +129,13 @@ function loadCache(): DashboardData | null {
   }
 }
 
-function saveCache(data: DashboardData): void {
+function saveCache(data: DashboardData, userId: string): void {
   try {
     const today = new Date().toLocaleDateString("en-CA");
-    localStorage.setItem(CACHE_KEY, JSON.stringify({ data, localDate: today }));
+    localStorage.setItem(
+      CACHE_KEY,
+      JSON.stringify({ data, localDate: today, userId }),
+    );
   } catch {
     // ignore quota / SSR errors
   }
@@ -175,13 +181,19 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
             : [],
           streak: json.streak ?? null,
           stats: json.stats ?? null,
-          dueProblems: Array.isArray(json.due_problems) ? json.due_problems : [],
-          allProblems: Array.isArray(json.all_problems) ? json.all_problems : [],
+          dueProblems: Array.isArray(json.due_problems)
+            ? json.due_problems
+            : [],
+          allProblems: Array.isArray(json.all_problems)
+            ? json.all_problems
+            : [],
           studyPlan: json.study_plan ?? null,
         };
 
         setData(newData);
-        saveCache(newData);
+        if (json.user_id) {
+          saveCache(newData, json.user_id);
+        }
       } catch (err) {
         console.error("Error fetching dashboard data:", err);
         setError(err instanceof Error ? err.message : "An error occurred");
@@ -196,16 +208,22 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     if (hasMounted.current) return;
     hasMounted.current = true;
 
-    const cached = loadCache();
-    if (cached) {
-      // Show stale data immediately — no spinner
-      setData(cached);
-      setLoading(false);
-      // Refresh silently in the background
-      fetchDashboardData(false);
-    } else {
-      fetchDashboardData(true);
-    }
+    const supabase = createClient();
+    // getSession() reads from the in-memory/localStorage session — no network call.
+    // We need the user ID to scope the cache and prevent cross-user data leaks.
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      const userId = session?.user?.id ?? null;
+      const cached = userId ? loadCache(userId) : null;
+      if (cached) {
+        // Show stale data immediately — no spinner
+        setData(cached);
+        setLoading(false);
+        // Refresh silently in the background
+        fetchDashboardData(false);
+      } else {
+        fetchDashboardData(true);
+      }
+    });
   }, [fetchDashboardData]);
 
   // Manual refresh (e.g. after logging an attempt) always shows a spinner

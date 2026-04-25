@@ -6,9 +6,11 @@ import {
   useState,
   useEffect,
   useCallback,
+  useRef,
   ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 
 export interface ProblemProgress {
   stage: number;
@@ -67,6 +69,11 @@ export interface StreakData {
   current_streak: number;
   longest_streak: number;
   last_activity_date: string | null;
+  recent_activity?: Array<{
+    activity_date: string;
+    problems_reviewed: number;
+    problems_due_completed: number;
+  }>;
 }
 
 export interface DashboardData {
@@ -98,119 +105,150 @@ export function useDashboard() {
   return context;
 }
 
+// --- localStorage cache helpers ---
+
+const CACHE_KEY = "dashboard-cache-v1";
+
+interface CachedDashboard {
+  data: DashboardData;
+  localDate: string; // YYYY-MM-DD — invalidated when the calendar day changes
+  userId: string; // validated before use to prevent cross-user data leaks
+}
+
+function loadCache(userId: string): DashboardData | null {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const cached: CachedDashboard = JSON.parse(raw);
+    if (cached.userId !== userId) return null; // different user — discard
+    const today = new Date().toLocaleDateString("en-CA");
+    if (cached.localDate !== today) return null; // new day — stale
+    return cached.data;
+  } catch {
+    return null;
+  }
+}
+
+function saveCache(data: DashboardData, userId: string): void {
+  try {
+    const today = new Date().toLocaleDateString("en-CA");
+    localStorage.setItem(
+      CACHE_KEY,
+      JSON.stringify({ data, localDate: today, userId }),
+    );
+  } catch {
+    // ignore quota / SSR errors
+  }
+}
+
 export function DashboardProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchDashboardData = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  // Prevent the mount effect from running twice in React Strict Mode
+  const hasMounted = useRef(false);
 
-      // Fetch initial data in parallel
-      const [activePlanRes, problemListsRes, streakRes] = await Promise.all([
-        fetch("/api/user/active-study-plan"),
-        fetch("/api/problemlists"),
-        fetch(
-          `/api/user/streak?localDate=${new Date().toLocaleDateString("en-CA")}`,
-        ),
-      ]);
-
-      // Check for auth errors
-      if (
-        activePlanRes.status === 401 ||
-        problemListsRes.status === 401 ||
-        streakRes.status === 401
-      ) {
-        // Clear any previously loaded protected data before redirecting
-        setData(null);
+  const fetchDashboardData = useCallback(
+    async (showLoadingSpinner: boolean) => {
+      try {
         setError(null);
-        router.replace("/auth/continue");
-        return;
-      }
+        if (showLoadingSpinner) setLoading(true);
 
-      // Check for API failures
-      if (!activePlanRes.ok) {
-        throw new Error("Failed to fetch active study plan");
-      }
+        const localDate = new Date().toLocaleDateString("en-CA");
+        const tzOffset = new Date().getTimezoneOffset();
+        const res = await fetch(
+          `/api/dashboard-data?localDate=${localDate}&tzOffset=${tzOffset}`,
+        );
 
-      if (!problemListsRes.ok) {
-        throw new Error("Failed to fetch problem lists");
-      }
-
-      // Streak is optional - don't fail if it's unavailable
-      const activePlanData = await activePlanRes.json();
-      const problemListsData = await problemListsRes.json();
-      const streakData = streakRes.ok ? await streakRes.json() : null;
-
-      // Fetch dependent data if there's an active list
-      let stats = null;
-      let dueProblems: Problem[] = [];
-      let allProblems: Problem[] = [];
-
-      if (activePlanData.active_list?.key) {
-        const encodedKey = encodeURIComponent(activePlanData.active_list.key);
-        const [statsRes, dueRes, progressRes] = await Promise.all([
-          fetch(`/api/problemlists/${encodedKey}/stats`),
-          fetch(
-            `/api/problemlists/${encodedKey}/due?localDate=${new Date().toLocaleDateString(
-              "en-CA",
-            )}&tzOffset=${new Date().getTimezoneOffset()}`,
-          ),
-          fetch(`/api/problemlists/${encodedKey}/progress`),
-        ]);
-
-        if (!statsRes.ok) {
-          throw new Error("Failed to fetch study plan statistics");
+        if (res.status === 401) {
+          setData(null);
+          setError(null);
+          router.replace("/auth/continue");
+          return;
         }
 
-        if (!dueRes.ok) {
-          throw new Error("Failed to fetch due problems");
+        if (!res.ok) {
+          throw new Error("Failed to fetch dashboard data");
         }
 
-        if (!progressRes.ok) {
-          throw new Error("Failed to fetch problem list");
-        }
+        const json = await res.json();
+        const newData: DashboardData = {
+          activeList: json.active_list,
+          problemLists: Array.isArray(json.problem_lists)
+            ? json.problem_lists
+            : [],
+          streak: json.streak ?? null,
+          stats: json.stats ?? null,
+          dueProblems: Array.isArray(json.due_problems)
+            ? json.due_problems
+            : [],
+          allProblems: Array.isArray(json.all_problems)
+            ? json.all_problems
+            : [],
+          studyPlan: json.study_plan ?? null,
+        };
 
-        stats = await statsRes.json();
-        const dueData = await dueRes.json();
-        const progressData = await progressRes.json();
-        dueProblems = dueData?.due_problems || [];
-        allProblems = Array.isArray(progressData?.problems)
-          ? progressData.problems
-          : [];
+        setData(newData);
+        if (json.user_id) {
+          saveCache(newData, json.user_id);
+        }
+      } catch (err) {
+        console.error("Error fetching dashboard data:", err);
+        setError(err instanceof Error ? err.message : "An error occurred");
+      } finally {
+        if (showLoadingSpinner) setLoading(false);
       }
-
-      setData({
-        activeList: activePlanData.active_list,
-        problemLists: Array.isArray(problemListsData?.data)
-          ? problemListsData.data
-          : [],
-        streak: streakData,
-        stats,
-        dueProblems,
-        allProblems,
-        studyPlan: activePlanData.study_plan ?? null,
-      });
-    } catch (err) {
-      console.error("Error fetching dashboard data:", err);
-      setError(err instanceof Error ? err.message : "An error occurred");
-    } finally {
-      setLoading(false);
-    }
-  }, [router]);
+    },
+    [router],
+  );
 
   useEffect(() => {
-    fetchDashboardData();
+    if (hasMounted.current) return;
+    hasMounted.current = true;
+
+    (async () => {
+      // Resolve the current user ID to scope the cache and prevent cross-user
+      // data leaks. getSession() reads from the in-memory/localStorage session
+      // — no network call. If it rejects (storage error, etc.) we skip the
+      // cache and fall through to a full fetch.
+      let userId: string | null = null;
+      try {
+        const supabase = createClient();
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        userId = session?.user?.id ?? null;
+      } catch {
+        // Non-fatal — proceed without cache
+      }
+
+      const cached = userId ? loadCache(userId) : null;
+      if (cached) {
+        // Show stale data immediately — no spinner
+        setData(cached);
+        setLoading(false);
+        // Refresh silently in the background
+        fetchDashboardData(false);
+      } else {
+        fetchDashboardData(true);
+      }
+    })();
   }, [fetchDashboardData]);
+
+  // Manual refresh (e.g. after logging an attempt) always shows a spinner
+  // and saves the result back to cache
+  const refreshData = useCallback(
+    () => fetchDashboardData(true),
+    [fetchDashboardData],
+  );
 
   const value = {
     data,
     loading,
     error,
-    refreshData: fetchDashboardData,
+    refreshData,
   };
 
   return (

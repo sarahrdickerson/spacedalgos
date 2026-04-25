@@ -50,19 +50,6 @@ function problemFields(problem: any, item: any) {
   };
 }
 
-function getNextReviewMs(p: any): number {
-  return p?.progress?.next_review_at
-    ? new Date(p.progress.next_review_at).getTime()
-    : NaN;
-}
-
-function compareNextReviewMs(a: any, b: any): number {
-  const aMs = getNextReviewMs(a);
-  const bMs = getNextReviewMs(b);
-  if (!Number.isFinite(aMs) || !Number.isFinite(bMs)) return 0;
-  return aMs - bMs;
-}
-
 /**
  * Returns the complete ordered due-problems array:
  *   [...overdue, ...cappedToday, ...future, ...newProblems, ...upcomingNewProblems]
@@ -82,51 +69,64 @@ export function buildDueQueue(params: DueQueueParams): any[] {
 
   const progressMap = new Map(progressData.map((p) => [p.problem_id, p]));
 
-  // 1) Build review-eligible problems (those with a scheduled next_review_at)
-  const reviewProblems = items
+  // 1) Build review candidates.
+  // nextReviewMs is computed once here and cached on each candidate so that
+  // the bucketing filters and sort comparator never re-parse the date string.
+  const reviewCandidates = items
     .map((item: any) => {
       const problem = item.problems;
       if (!problem) return null;
       const progress = progressMap.get(problem.id);
       if (!progress?.next_review_at) return null;
+      const nextReviewMs = new Date(progress.next_review_at).getTime();
+      if (!Number.isFinite(nextReviewMs)) return null;
       const daysUntil = Math.floor(
-        (new Date(progress.next_review_at).getTime() - localDayStartMs) /
-          MS_PER_DAY,
+        (nextReviewMs - localDayStartMs) / MS_PER_DAY,
       );
       return {
-        ...problemFields(problem, item),
-        progress: {
-          stage: progress.stage,
-          next_review_at: progress.next_review_at,
-          last_attempt_at: progress.last_attempt_at,
-          last_success_at: progress.last_success_at,
-          attempt_count: progress.attempt_count,
-          success_count: progress.success_count,
-          fail_count: progress.fail_count,
-          interval_days: progress.interval_days,
-          days_until: daysUntil,
-          days_overdue: daysUntil < 0 ? Math.abs(daysUntil) : 0,
+        nextReviewMs, // cached — used for bucketing/sorting, not included in output
+        problem: {
+          ...problemFields(problem, item),
+          progress: {
+            stage: progress.stage,
+            next_review_at: progress.next_review_at,
+            last_attempt_at: progress.last_attempt_at,
+            last_success_at: progress.last_success_at,
+            attempt_count: progress.attempt_count,
+            success_count: progress.success_count,
+            fail_count: progress.fail_count,
+            interval_days: progress.interval_days,
+            days_until: daysUntil,
+            days_overdue: daysUntil < 0 ? Math.abs(daysUntil) : 0,
+          },
         },
       };
     })
-    .filter(Boolean);
+    .filter(Boolean) as Array<{ nextReviewMs: number; problem: any }>;
 
-  // 2) Split into three buckets and cap today's reviews
-  const overdueProblems = reviewProblems
-    .filter((p: any) => getNextReviewMs(p) < localDayStartMs)
-    .sort(compareNextReviewMs);
+  // 2) Split into three buckets and cap today's reviews.
+  // The comparator operates directly on the cached nextReviewMs value.
+  const compareMs = (
+    a: { nextReviewMs: number },
+    b: { nextReviewMs: number },
+  ) => a.nextReviewMs - b.nextReviewMs;
 
-  const todayScheduled = reviewProblems
+  const overdueProblems = reviewCandidates
+    .filter((c) => c.nextReviewMs < localDayStartMs)
+    .sort(compareMs)
+    .map((c) => c.problem);
+
+  const todayScheduled = reviewCandidates
     .filter(
-      (p: any) =>
-        getNextReviewMs(p) >= localDayStartMs &&
-        getNextReviewMs(p) < localDayEndMs,
+      (c) => c.nextReviewMs >= localDayStartMs && c.nextReviewMs < localDayEndMs,
     )
-    .sort(compareNextReviewMs);
+    .sort(compareMs)
+    .map((c) => c.problem);
 
-  const futureScheduled = reviewProblems
-    .filter((p: any) => getNextReviewMs(p) >= localDayEndMs)
-    .sort(compareNextReviewMs);
+  const futureScheduled = reviewCandidates
+    .filter((c) => c.nextReviewMs >= localDayEndMs)
+    .sort(compareMs)
+    .map((c) => c.problem);
 
   const cappedToday =
     reviewPerDay > 0 ? todayScheduled.slice(0, reviewPerDay) : todayScheduled;
@@ -136,11 +136,9 @@ export function buildDueQueue(params: DueQueueParams): any[] {
     ...futureScheduled,
   ];
 
-  // 3) New problems — only when all overdue reviews are cleared
-  const hasOverdueReviews = progressData.some(
-    (p: any) =>
-      p.next_review_at && Date.parse(p.next_review_at) < localDayStartMs,
-  );
+  // 3) New problems — only when all overdue reviews are cleared.
+  // overdueProblems is already computed from the same dataset; no need to rescan.
+  const hasOverdueReviews = overdueProblems.length > 0;
 
   let newProblems: any[] = [];
   if (newPerDay > 0 && !hasOverdueReviews) {

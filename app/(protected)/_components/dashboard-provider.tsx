@@ -208,11 +208,22 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     if (hasMounted.current) return;
     hasMounted.current = true;
 
-    const supabase = createClient();
-    // getSession() reads from the in-memory/localStorage session — no network call.
-    // We need the user ID to scope the cache and prevent cross-user data leaks.
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      const userId = session?.user?.id ?? null;
+    (async () => {
+      // Resolve the current user ID to scope the cache and prevent cross-user
+      // data leaks. getSession() reads from the in-memory/localStorage session
+      // — no network call. If it rejects (storage error, etc.) we skip the
+      // cache and fall through to a full fetch.
+      let userId: string | null = null;
+      try {
+        const supabase = createClient();
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        userId = session?.user?.id ?? null;
+      } catch {
+        // Non-fatal — proceed without cache
+      }
+
       const cached = userId ? loadCache(userId) : null;
       if (cached) {
         // Show stale data immediately — no spinner
@@ -223,7 +234,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       } else {
         fetchDashboardData(true);
       }
-    });
+    })();
   }, [fetchDashboardData]);
 
   // Manual refresh (e.g. after logging an attempt) always shows a spinner
